@@ -1,0 +1,28 @@
+# Bog'liqliklar
+node_modules/
+*/node_modules/
+
+# Python / Django
+venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+.env
+*.env
+
+# Next.js build
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# Yuklangan media (katta fayllar)
+backend/media/
+
+# Tizim fayllari
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Zaxira nusxalar
+*.bak

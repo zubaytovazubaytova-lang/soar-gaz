@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Ichki panel — qidiruv natijalarida chiqmasin. Server X-Robots-Tag ham
+     yuboradi (soargaz/urls.py); bu ikkinchi qatlam. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Admin panel — Soar Gaz</title>
+<!-- Shrift va ikonkalar lokal. Ilgari Tabler CSS jsdelivr'dagi `/dist/`
+     yo'lidan so'ralardi — u manzil paketda yo'q, 404 qaytarardi va
+     paneldagi ikonkalar ko'rinmasdi. -->
+<link rel="stylesheet" href="/assets/inter.css">
+<link rel="stylesheet" href="/assets/manrope.css">
+<link rel="stylesheet" href="/vendor/tabler-icons/tabler-icons.min.css?v=2">
+<style>
+  :root{
+    --bg-top:#e9f1fd; --bg-bottom:#f8fbff;
+    --card-bg:#ffffff; --card-border:#e7edf6;
+    --text-primary:#0f1b2d; --text-secondary:#5b6b82; --text-muted:#93a1b3;
+    --blue:#2563eb; --blue-dark:#1d4ed8; --blue-light:#e8f0fe; --blue-border:#bfd7fb;
+    --green:#16a34a; --green-light:#eafaf0; --green-border:#bbe8cc;
+    --orange:#f97316; --orange-light:#fff2e8; --orange-border:#fdd6ae;
+    --red:#dc2626; --red-light:#fdecec; --red-border:#f6c4c4;
+    --sidebar-bg:#0f1b2d;
+    --radius-lg:20px; --radius-md:14px; --radius-sm:10px;
+    --shadow-card:0 16px 36px -22px rgba(15,27,45,.16);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;color:var(--text-primary);background:var(--bg-bottom);}
+  h1,h2,h3{font-family:'Manrope',system-ui,sans-serif;}
+  button,input,select,textarea{font-family:inherit;}
+
+  /* ===== login ===== */
+  #authView{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--bg-top),var(--bg-bottom));padding:20px;}
+  .auth-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);width:100%;max-width:400px;padding:36px 32px;}
+  .auth-logo{width:52px;height:52px;border-radius:14px;background:var(--sidebar-bg);color:#fff;display:flex;align-items:center;justify-content:center;font-size:23px;margin:0 auto 16px;}
+  .auth-card h1{font-size:21px;font-weight:800;text-align:center;margin:0 0 4px;}
+  .auth-card .sub{text-align:center;font-size:13.5px;color:var(--text-secondary);margin:0 0 26px;}
+  .f-label{font-size:12.5px;font-weight:600;color:var(--text-secondary);margin:0 0 6px;display:block;}
+  .f-input,.f-select{width:100%;padding:11px 14px;border:1.5px solid var(--card-border);border-radius:var(--radius-sm);font-size:14px;margin-bottom:16px;background:#fff;}
+  .f-input:focus,.f-select:focus{outline:none;border-color:var(--blue);}
+  .auth-btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;}
+  .auth-btn:hover{background:var(--blue-dark);}
+  .auth-btn:disabled{opacity:.6;cursor:default;}
+  .auth-xato{display:none;color:var(--red);font-size:12.5px;margin:-8px 0 14px;line-height:1.5;}
+  .auth-xato.bor{display:block;}
+  /* Ma'lumot yuklanayotgan / bo'sh jadval qatori */
+  .holat-qator td{padding:22px 14px;text-align:center;color:var(--text-muted);font-size:13px;}
+
+  /* ===== xodim kiritish formasi ===== */
+  /* Maydonlar ikki ustunda; tor ekranda o'zi bitta ustunga tushadi */
+  .xodim-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 18px;}
+  .xodim-form .f-input,.xodim-form .f-select{margin-bottom:14px;}
+  /* Eslatma va tugma har doim to'liq kenglikda, pastda */
+  .xodim-form-yakun{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:12px;}
+  .xodim-eslatma{flex:1;min-width:240px;margin:0;font-size:12.5px;line-height:1.55;color:var(--text-muted);}
+  .xodim-eslatma i{margin-right:5px;}
+  .xodim-eslatma a{color:var(--blue);}
+  .xodim-xato{display:none;width:100%;margin:0;color:var(--red);font-size:12.5px;line-height:1.5;}
+  .xodim-xato.bor{display:block;}
+  /* Yangi xodim kodi — parol o'rnini bosadi, shuning uchun ajralib tursin */
+  .xodim-kod{display:none;width:100%;margin:0;padding:12px 14px;border-radius:var(--radius-sm);
+    background:#eafaf0;border:1px solid #bbe8cc;color:#166534;font-size:13px;line-height:1.6;
+    align-items:flex-start;gap:9px;}
+  .xodim-kod.bor{display:flex;}
+  .xodim-kod i{font-size:17px;flex-shrink:0;margin-top:1px;}
+  .kod-katak{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;
+    letter-spacing:1.5px;background:#fff;border:1px solid #bbe8cc;border-radius:6px;
+    padding:2px 8px;font-size:13.5px;}
+
+  /* ===== shell ===== */
+  #dashView{display:none;}
+  .layout{display:flex;min-height:100vh;}
+  .sidebar{width:250px;background:var(--sidebar-bg);flex-shrink:0;padding:20px 14px;overflow-y:auto;}
+  .sb-logo{display:flex;align-items:center;gap:10px;padding:0 8px 20px;}
+  .sb-logo .box{width:32px;height:32px;border-radius:9px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .sb-logo span{color:#fff;font-weight:800;font-size:15px;}
+  .sb-group-label{color:#5c6a83;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:14px 12px 6px;}
+  .sb-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;color:#8b93a7;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;text-align:left;width:100%;}
+  .sb-item i{font-size:16px;width:17px;}
+  .sb-item:hover{background:#1a2436;color:#cdd6e5;}
+  .sb-item.active{background:var(--blue);color:#fff;}
+
+  .main{flex:1;min-width:0;}
+  .topbar{background:#fff;border-bottom:1px solid var(--card-border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+  .search-box{flex:1;max-width:320px;position:relative;}
+  .search-box i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:15px;}
+  .search-box input{width:100%;padding:9px 12px 9px 36px;border:1.5px solid var(--card-border);border-radius:999px;font-size:13.5px;background:var(--bg-bottom);}
+  .topbar-right{display:flex;align-items:center;gap:16px;}
+  .profile-chip{display:flex;align-items:center;gap:9px;cursor:pointer;}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+  .profile-chip .pname{font-size:13px;font-weight:700;line-height:1.2;}
+  .profile-chip .prole{font-size:11px;color:var(--text-muted);}
+
+  .content{padding:26px;max-width:1220px;}
+  .page{display:none;}
+  .page.active{display:block;}
+  .page-title{font-size:20px;font-weight:800;margin:0 0 4px;}
+  .page-sub{font-size:13px;color:var(--text-secondary);margin:0 0 22px;}
+
+  .card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:22px;}
+  .card + .card{margin-top:18px;}
+  /* Ma'lumot hali kiritilmagan bo'limlar uchun. Namuna raqam ko'rsatishdan
+     ko'ra bo'sh ekran halolroq: direktor yo'q ma'lumotni tahlil qilmaydi. */
+  .bosh-holat{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:44px 20px;color:var(--text-muted);}
+  .bosh-holat i{font-size:30px;margin-bottom:12px;opacity:.55;}
+  .bosh-holat b{display:block;font-size:14px;color:var(--text-secondary);margin-bottom:5px;}
+  .bosh-holat span{font-size:12.5px;line-height:1.6;max-width:400px;}
+  /* Bo'lim hali serverga ulanmagan — tugma bosilsa ham saqlanmaydi.
+     Buni yashirmaslik kerak: "saqlandi" deb aldash eng yomon xato. */
+  .ogoh{display:flex;align-items:flex-start;gap:9px;margin-bottom:16px;padding:11px 13px;
+    border-radius:var(--radius-sm);font-size:12.5px;line-height:1.55;
+    color:#92400e;background:#fffbeb;border:1px solid #fde68a;}
+  .ogoh i{font-size:15px;flex-shrink:0;margin-top:1px;}
+
+  /* ── Grafiklar ── O'q va to'r ataylab kuchsiz: ma'lumot ko'zga birinchi
+     tashlanishi kerak, chizmaning ramkasi emas. */
+  .gr-svg{width:100%;height:auto;display:block;overflow:visible;}
+  .gr-oq{stroke:var(--card-border);stroke-width:1;}
+  .gr-son{font-size:11px;font-weight:800;fill:var(--text-primary);text-anchor:middle;}
+  .gr-belgi{font-size:10.5px;fill:var(--text-muted);text-anchor:middle;}
+  .gr-ustun{transition:opacity .15s;}
+  .gr-ustun:hover{opacity:.75;cursor:default;}
+  .gr-halqa-quti{display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+  .gr-halqa{width:160px;height:160px;flex-shrink:0;}
+  .gr-markaz-son{font-size:26px;font-weight:800;fill:var(--text-primary);text-anchor:middle;}
+  .gr-markaz-belgi{font-size:10px;fill:var(--text-muted);text-anchor:middle;
+    text-transform:uppercase;letter-spacing:.06em;}
+  .gr-izoh{flex:1;min-width:150px;display:flex;flex-direction:column;gap:7px;}
+  .gr-izoh-qator{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary);}
+  .gr-izoh-qator b{margin-left:auto;color:var(--text-primary);font-weight:800;}
+  .gr-nuqta{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+  .gr-izoh-nom{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;}
+  .card-head h3{font-size:15.5px;font-weight:800;margin:0;display:flex;align-items:center;gap:8px;}
+  .card-head h3 i{color:var(--blue);}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px;}
+  .stat-box{background:var(--blue-light);border-radius:var(--radius-md);padding:16px 18px;}
+  .stat-box .n{font-size:22px;font-weight:800;margin:0;}
+  .stat-box .l{font-size:12px;color:var(--blue-dark);font-weight:600;margin:4px 0 0;}
+
+  table.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.data-table th{text-align:left;font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:0 10px 10px 0;border-bottom:1px solid var(--card-border);white-space:nowrap;}
+  table.data-table td{padding:12px 10px 12px 0;border-bottom:1px solid var(--card-border);color:var(--text-secondary);vertical-align:middle;}
+  table.data-table tr:last-child td{border-bottom:none;}
+  table.data-table td:first-child, table.data-table th:first-child{color:var(--text-primary);font-weight:600;}
+  .table-wrap{overflow-x:auto;}
+
+  .tag{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;display:inline-block;}
+  .tag.blue{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);}
+  .tag.orange{background:var(--orange-light);color:var(--orange);border:1px solid var(--orange-border);}
+  .tag.green{background:var(--green-light);color:var(--green);border:1px solid var(--green-border);}
+  .tag.red{background:var(--red-light);color:var(--red);border:1px solid var(--red-border);}
+  .tag.gray{background:#f1f5f9;color:var(--text-secondary);border:1px solid var(--card-border);}
+
+  .btn-sm{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-border);border-radius:var(--radius-sm);padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .btn-sm.ghost{background:#fff;color:var(--text-secondary);border-color:var(--card-border);}
+  .btn-sm.danger{background:var(--red-light);color:var(--red);border-color:var(--red-border);}
+  .btn-sm.ok{background:var(--green-light);color:var(--green);border-color:var(--green-border);}
+  .btn-primary{background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
+
+  .chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .fchip{cursor:pointer;border:1.5px solid var(--card-border);border-radius:999px;padding:6px 14px;font-size:12.5px;color:var(--text-secondary);background:#fff;}
+  .fchip.active{border-color:var(--blue);color:var(--blue);background:var(--blue-light);font-weight:700;}
+
+  /* bar chart */
+  .bars{display:flex;align-items:flex-end;gap:12px;height:150px;padding-top:10px;}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .bar{width:100%;background:var(--blue);border-radius:6px 6px 0 0;}
+  .bar-col .bl{font-size:11px;color:var(--text-muted);margin-top:8px;}
+
+  .hbar-row{margin-bottom:14px;}
+  .hbar-row:last-child{margin-bottom:0;}
+  .hbar-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;}
+  .hbar-top b{font-weight:700;}
+  .hbar-track{background:var(--blue-light);border-radius:999px;height:8px;overflow:hidden;}
+  .hbar-fill{background:var(--blue);height:100%;border-radius:999px;}
+
+  .activity-item{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--card-border);align-items:flex-start;}
+  .activity-item:last-child{border-bottom:none;}
+  .act-icon{width:32px;height:32px;border-radius:9px;background:var(--blue-light);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .activity-item p{margin:0;font-size:13px;}
+  .activity-item span{font-size:11.5px;color:var(--text-muted);}
+
+  /* kanban */
+  .kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;overflow-x:auto;}
+  .kcol{background:var(--bg-bottom);border-radius:var(--radius-md);padding:12px;min-width:220px;}
+  .kcol-head{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:700;margin-bottom:10px;padding:0 4px;}
+  .kcol-head .cnt{background:#fff;border-radius:999px;padding:1px 8px;font-size:11px;color:var(--text-secondary);}
+  .kcard{background:#fff;border:1px solid var(--card-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;box-shadow:0 4px 10px -6px rgba(15,27,45,.1);}
+  .kcard h5{font-size:12.5px;font-weight:700;margin:0 0 4px;}
+  .kcard p{font-size:11.5px;color:var(--text-secondary);margin:0 0 8px;}
+  .kcard select{width:100%;font-size:11.5px;padding:6px 8px;border:1px solid var(--card-border);border-radius:8px;}
+
+  /* certs */
+  .cert-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
+  .cert-card{border:1.5px solid var(--card-border);border-radius:var(--radius-md);padding:16px;}
+  .cert-card .cc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .cert-card .cc-icon{width:36px;height:36px;border-radius:10px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .cert-card h5{font-size:13.5px;font-weight:700;margin:0;}
+  .cert-card p{font-size:12px;color:var(--text-secondary);margin:0 0 6px;}
+  .cert-card .code{font-size:11.5px;color:var(--blue);font-weight:700;}
+
+  /* svc cards */
+  .svc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
+  .svc-edit-card{border:1.5px solid var(--card-border);border-radius:var(--radius-md);padding:16px;}
+  .svc-edit-card h5{font-size:14px;font-weight:700;margin:0 0 6px;}
+  .svc-edit-card p{font-size:12px;color:var(--text-secondary);margin:0 0 12px;line-height:1.5;}
+  .svc-edit-card .row{display:flex;gap:8px;}
+  .add-svc-card{border:1.5px dashed var(--blue-border);border-radius:var(--radius-md);padding:16px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--blue);font-weight:700;font-size:13px;cursor:pointer;min-height:150px;}
+
+  /* toggle */
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--card-border);gap:12px;}
+  .toggle-row:last-child{border-bottom:none;}
+  .toggle-row h5{font-size:13.5px;font-weight:700;margin:0 0 2px;}
+  .toggle-row p{font-size:12px;color:var(--text-secondary);margin:0;}
+  .switch{position:relative;width:40px;height:22px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider-tg{position:absolute;inset:0;background:#cbd5e1;border-radius:999px;cursor:pointer;transition:.2s;}
+  .slider-tg:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider-tg{background:var(--blue);}
+  .switch input:checked + .slider-tg:before{transform:translateX(18px);}
+
+  /* permission matrix */
+  table.perm-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.perm-table th,table.perm-table td{padding:10px;text-align:center;border-bottom:1px solid var(--card-border);}
+  table.perm-table th{font-size:11.5px;color:var(--text-secondary);font-weight:700;}
+  table.perm-table td:first-child,table.perm-table th:first-child{text-align:left;font-weight:600;color:var(--text-primary);}
+  .perm-yes{color:var(--green);font-size:16px;}
+  .perm-no{color:var(--card-border);font-size:16px;}
+
+  /* ── Ikki bosqichli kirish ── */
+  .otp-izoh{display:flex;gap:9px;align-items:flex-start;margin:0 0 16px;padding:11px 13px;
+    border-radius:var(--radius-sm);font-size:12.5px;line-height:1.55;
+    color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;text-align:left;}
+  .otp-izoh i{font-size:16px;flex-shrink:0;margin-top:1px;}
+  /* Kod raqamlari ajralib tursin — 6 xonani ko'chirib yozish oson bo'lsin */
+  .otp-kod{text-align:center;font-size:22px;font-weight:800;letter-spacing:.35em;
+    padding-left:.35em;font-variant-numeric:tabular-nums;}
+  .otp-ortga{width:100%;margin-top:12px;background:none;border:none;cursor:pointer;
+    font-size:12.5px;font-weight:600;color:var(--text-muted);padding:6px;}
+  .otp-ortga:hover{color:var(--blue);}
+
+  /* Chop etish / PDF ga saqlash — faqat ochiq sahifa qog'ozga tushsin,
+     yon panel va tugmalar chiqmasin. */
+  @media print{
+    .sidebar,.topbar,.chip-row,.btn-sm,.btn-primary,.ogoh{display:none !important;}
+    .main,.content{margin:0 !important;padding:0 !important;}
+    .card{break-inside:avoid;box-shadow:none;border-color:#ccc;}
+    .page{display:none;}
+    .page.active{display:block;}
+    body{background:#fff;}
+  }
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media (max-width:900px){.two-col{grid-template-columns:1fr;} .kanban{grid-template-columns:1fr 1fr;}}
+  @media (max-width:640px){.kanban{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="authView">
+  <div class="auth-card">
+    <div class="auth-logo"><i class="ti ti-shield-lock"></i></div>
+    <h1>Admin panel</h1>
+    <p class="sub">Soar Gaz — boshqaruv paneli</p>
+    <!-- 1-bosqich: telefon + parol -->
+    <form id="loginForm">
+      <label class="f-label" for="loginTelefon">Telefon raqam</label>
+      <input class="f-input" type="tel" id="loginTelefon" autocomplete="username"
+             placeholder="+998901234567" value="+998" maxlength="13">
+      <label class="f-label" for="loginParol">Parol</label>
+      <input class="f-input" type="password" id="loginParol" autocomplete="current-password">
+      <p id="loginXato" class="auth-xato"></p>
+      <button type="submit" class="auth-btn" id="loginBtn">Kirish</button>
+    </form>
+
+    <!-- 2-bosqich: telefonga kelgan SMS kod. Token faqat shu bosqichdan keyin
+         beriladi — parolning o'zi kirish uchun yetarli emas. -->
+    <form id="otpForm" style="display:none">
+      <p class="otp-izoh">
+        <i class="ti ti-device-mobile-message"></i>
+        <span><b id="otpTelefon">—</b> raqamiga 6 xonali kod yuborildi.
+          Kod <b id="otpMuddat">5</b> daqiqa amal qiladi.</span>
+      </p>
+      <label class="f-label" for="otpKod">SMS kod</label>
+      <input class="f-input otp-kod" type="text" id="otpKod" inputmode="numeric"
+             autocomplete="one-time-code" maxlength="6" placeholder="000000">
+      <p id="otpXato" class="auth-xato"></p>
+      <button type="submit" class="auth-btn" id="otpBtn">Tasdiqlash</button>
+      <button type="button" class="otp-ortga" id="otpOrtga">← Boshqa hisob bilan kirish</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== DASHBOARD SHELL ===================== -->
+<div id="dashView">
+  <div class="layout">
+
+    <div class="sidebar">
+      <div class="sb-logo"><div class="box"><i class="ti ti-flame"></i></div><span>Soar Gaz · Admin</span></div>
+
+      <div class="sb-group-label">Umumiy</div>
+      <button class="sb-item active" data-page="home"><i class="ti ti-layout-dashboard"></i>Bosh sahifa</button>
+
+      <div class="sb-group-label">Operatsion</div>
+      <button class="sb-item" data-page="orders"><i class="ti ti-clipboard-list"></i>Arizalar</button>
+      <button class="sb-item" data-page="dispatch"><i class="ti ti-route"></i>Vazifalar taqsimoti</button>
+      <button class="sb-item" data-page="staff"><i class="ti ti-users"></i>Xodimlar</button>
+      <button class="sb-item" data-page="crm"><i class="ti ti-address-book"></i>Mijozlar (CRM)</button>
+
+      <div class="sb-group-label">Kontent</div>
+      <button class="sb-item" data-page="services"><i class="ti ti-apps"></i>Xizmatlar</button>
+      <button class="sb-item" data-page="pricing"><i class="ti ti-calculator"></i>Narxlar</button>
+      <button class="sb-item" data-page="reviews"><i class="ti ti-star"></i>Sharhlar va reyting</button>
+
+      <div class="sb-group-label">Moliya</div>
+      <button class="sb-item" data-page="finance"><i class="ti ti-report-money"></i>Moliya va hisobotlar</button>
+      <button class="sb-item" data-page="certs"><i class="ti ti-certificate"></i>Sertifikatlar</button>
+
+      <div class="sb-group-label">Tizim</div>
+      <button class="sb-item" data-page="notify"><i class="ti ti-bell-cog"></i>Bildirishnomalar</button>
+      <button class="sb-item" data-page="roles"><i class="ti ti-lock"></i>Rollar va ruxsatlar</button>
+      <button class="sb-item" data-page="settings"><i class="ti ti-settings"></i>Sayt sozlamalari</button>
+      <button class="sb-item" data-page="log"><i class="ti ti-history"></i>Faoliyat jurnali</button>
+    </div>
+
+    <div class="main">
+      <div class="topbar">
+        <div class="search-box"><i class="ti ti-search"></i><input type="text" placeholder="Qidirish..."></div>
+        <div class="topbar-right">
+          <button class="btn-sm ghost" id="chiqishBtn" title="Chiqish"><i class="ti ti-logout"></i></button>
+          <div class="profile-chip">
+            <div class="avatar" id="profilHarf">—</div>
+            <div><p class="pname" id="profilIsm">—</p><p class="prole">To'liq huquq</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+
+        <!-- ========== 1. BOSH SAHIFA ========== -->
+        <div class="page active" id="page-home">
+          <p class="page-title">Bosh sahifa</p>
+          <p class="page-sub">Platformaning umumiy holati</p>
+          <!-- Raqamlar /api/buyurtmalar/statistika/ dan keladi -->
+          <div class="stat-grid">
+            <div class="stat-box"><p class="n" id="statYangi">—</p><p class="l">Yangi arizalar</p></div>
+            <div class="stat-box"><p class="n" id="statJarayon">—</p><p class="l">Jarayondagi arizalar</p></div>
+            <div class="stat-box"><p class="n" id="statBajarildi">—</p><p class="l">Bajarilgan arizalar</p></div>
+            <div class="stat-box"><p class="n" id="statXodim">—</p><p class="l">Faol xodimlar</p></div>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <div class="card-head"><h3><i class="ti ti-chart-bar"></i>Haftalik buyurtmalar</h3></div>
+              <!-- Ustunlar arizalar ro'yxatidagi 'yaratilgan' sanadan hisoblanadi -->
+              <div id="haftaBars"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3><i class="ti ti-chart-donut"></i>Arizalar holati</h3></div>
+              <div id="holatHalqa"></div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:18px;">
+            <div class="card-head"><h3><i class="ti ti-activity"></i>So'nggi faoliyat</h3></div>
+            <div id="faoliyatRoyxat"></div>
+          </div>
+        </div>
+
+        <!-- ========== 2. ARIZALAR ========== -->
+        <div class="page" id="page-orders">
+          <p class="page-title">Arizalar / Buyurtmalar</p>
+          <p class="page-sub">Saytdan kelgan barcha so'rovlar</p>
+          <!-- Chiplar Buyurtma.HOLAT_CHOICES bilan bir xil bo'lishi shart -->
+          <div class="chip-row" id="arizaChiplar">
+            <div class="fchip active" data-holat="">Barchasi</div>
+            <div class="fchip" data-holat="yangi">Yangi</div>
+            <div class="fchip" data-holat="qabul">Qabul qilindi</div>
+            <div class="fchip" data-holat="bajarilmoqda">Bajarilmoqda</div>
+            <div class="fchip" data-holat="bajarildi">Bajarildi</div>
+            <div class="fchip" data-holat="bekor">Bekor qilindi</div>
+          </div>
+          <div class="card table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>Mijoz</th><th>Xizmat</th><th>Tuman</th><th>Xodim</th><th>Sana</th><th>Holat</th></tr></thead>
+              <tbody id="arizaTana">
+                <tr class="holat-qator"><td colspan="7">Yuklanmoqda…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========== 3. VAZIFALAR TAQSIMOTI ========== -->
+        <div class="page" id="page-dispatch">
+          <p class="page-title">Vazifalar taqsimoti</p>
+          <p class="page-sub">Arizalarni xodimlarga tayinlash</p>
+          <!-- Kartochkalar haqiqiy arizalardan chiziladi (/api/buyurtmalar/).
+               Ariza kelmaguncha ustunlar bo'sh turadi. -->
+          <div class="kanban">
+            <div class="kcol">
+              <div class="kcol-head">Yangi <span class="cnt" id="kanbanYangiSoni">0</span></div>
+              <div id="kanbanYangi"></div>
+            </div>
+            <div class="kcol">
+              <div class="kcol-head">Qabul qilindi <span class="cnt" id="kanbanQabulSoni">0</span></div>
+              <div id="kanbanQabul"></div>
+            </div>
+            <div class="kcol">
+              <div class="kcol-head">Bajarilmoqda <span class="cnt" id="kanbanJarayonSoni">0</span></div>
+              <div id="kanbanJarayon"></div>
+            </div>
+            <div class="kcol">
+              <div class="kcol-head">Bajarildi <span class="cnt" id="kanbanBajarildiSoni">0</span></div>
+              <div id="kanbanBajarildi"></div>
+            </div>
+          </div>
+          <div class="card" id="kanbanBosh" style="margin-top:18px;">
+            <div class="bosh-holat">
+              <i class="ti ti-route"></i>
+              <b>Hali ariza yo'q</b>
+              <span>Saytdan ariza kelganda ular shu yerda holati bo'yicha
+                    ustunlarga taqsimlanadi.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 4. XODIMLAR ========== -->
+        <div class="page" id="page-staff">
+          <p class="page-title">Xodimlar boshqaruvi</p>
+          <p class="page-sub" id="xodimSoni">Yuklanmoqda…</p>
+
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-user-plus"></i>Yangi xodim kiritish</h3></div>
+            <form id="xodimForm" class="xodim-form">
+              <div>
+                <label class="f-label" for="xf-ism">Ism va familiya *</label>
+                <input class="f-input" id="xf-ism" required maxlength="100" placeholder="Aziz Karimov">
+              </div>
+              <div>
+                <label class="f-label" for="xf-telefon">Telefon raqam *</label>
+                <input class="f-input" id="xf-telefon" required placeholder="+998901234567">
+              </div>
+              <div>
+                <label class="f-label" for="xf-lavozim">Lavozim *</label>
+                <select class="f-select" id="xf-lavozim" required>
+                  <option value="">— tanlang —</option>
+                  <option>Montaj ustasi</option>
+                  <option>Katta montaj ustasi</option>
+                  <option>Loyihachi muhandis</option>
+                  <option>Metrolog</option>
+                  <option>Servis operatori</option>
+                  <option>Menejer</option>
+                </select>
+              </div>
+              <div>
+                <label class="f-label" for="xf-viloyat">Viloyat *</label>
+                <select class="f-select" id="xf-viloyat" required></select>
+              </div>
+              <div>
+                <label class="f-label" for="xf-tuman">Tuman / shahar *</label>
+                <select class="f-select" id="xf-tuman" data-hudud required>
+                  <option value="">— tanlang —</option>
+                  <!-- HUDUD:BOSH -->
+                  <optgroup label="Qoraqalpog'iston Respublikasi"><option>Nukus shahri</option><option>Amudaryo tumani</option><option>Beruniy tumani</option><option>Bo'zatov tumani</option><option>Chimboy tumani</option><option>Ellikqal'a tumani</option><option>Kegeyli tumani</option><option>Mo'ynoq tumani</option><option>Nukus tumani</option><option>Qanliko'l tumani</option><option>Qo'ng'irot tumani</option><option>Qorao'zak tumani</option><option>Shumanay tumani</option><option>Taxtako'pir tumani</option><option>To'rtko'l tumani</option><option>Xo'jayli tumani</option></optgroup>
+                  <optgroup label="Andijon viloyati"><option>Andijon shahri</option><option>Xonobod shahri</option><option>Andijon tumani</option><option>Asaka tumani</option><option>Baliqchi tumani</option><option>Bo'ston tumani</option><option>Buloqboshi tumani</option><option>Izboskan tumani</option><option>Jalaquduq tumani</option><option>Qo'rg'ontepa tumani</option><option>Marhamat tumani</option><option>Oltinko'l tumani</option><option>Paxtaobod tumani</option><option>Shahrixon tumani</option><option>Ulug'nor tumani</option><option>Xo'jaobod tumani</option></optgroup>
+                  <optgroup label="Buxoro viloyati"><option>Buxoro shahri</option><option>Kogon shahri</option><option>Buxoro tumani</option><option>G'ijduvon tumani</option><option>Jondor tumani</option><option>Kogon tumani</option><option>Olot tumani</option><option>Peshku tumani</option><option>Qorako'l tumani</option><option>Qorovulbozor tumani</option><option>Romitan tumani</option><option>Shofirkon tumani</option><option>Vobkent tumani</option></optgroup>
+                  <optgroup label="Farg'ona viloyati"><option>Farg'ona shahri</option><option>Marg'ilon shahri</option><option>Qo'qon shahri</option><option>Quvasoy shahri</option><option>Beshariq tumani</option><option>Bog'dod tumani</option><option>Buvayda tumani</option><option>Dang'ara tumani</option><option>Farg'ona tumani</option><option>Furqat tumani</option><option>Oltiariq tumani</option><option>Qo'shtepa tumani</option><option>Quva tumani</option><option>Rishton tumani</option><option>So'x tumani</option><option>Toshloq tumani</option><option>Uchko'prik tumani</option><option>O'zbekiston tumani</option><option>Yozyovon tumani</option></optgroup>
+                  <optgroup label="Jizzax viloyati"><option>Jizzax shahri</option><option>Arnasoy tumani</option><option>Baxmal tumani</option><option>Do'stlik tumani</option><option>Forish tumani</option><option>G'allaorol tumani</option><option>Mirzacho'l tumani</option><option>Paxtakor tumani</option><option>Sharof Rashidov tumani</option><option>Yangiobod tumani</option><option>Zafarobod tumani</option><option>Zarbdor tumani</option><option>Zomin tumani</option></optgroup>
+                  <optgroup label="Namangan viloyati"><option>Namangan shahri</option><option>Chortoq tumani</option><option>Chust tumani</option><option>Davlatobod tumani</option><option>Kosonsoy tumani</option><option>Mingbuloq tumani</option><option>Namangan tumani</option><option>Norin tumani</option><option>Pop tumani</option><option>To'raqo'rg'on tumani</option><option>Uchqo'rg'on tumani</option><option>Uychi tumani</option><option>Yangiqo'rg'on tumani</option></optgroup>
+                  <optgroup label="Navoiy viloyati"><option>Navoiy shahri</option><option>Zarafshon shahri</option><option>Karmana tumani</option><option>Konimex tumani</option><option>Navbahor tumani</option><option>Nurota tumani</option><option>Qiziltepa tumani</option><option>Tomdi tumani</option><option>Uchquduq tumani</option><option>Xatirchi tumani</option></optgroup>
+                  <optgroup label="Qashqadaryo viloyati"><option>Qarshi shahri</option><option>Shahrisabz shahri</option><option>Chiroqchi tumani</option><option>Dehqonobod tumani</option><option>G'uzor tumani</option><option>Kasbi tumani</option><option>Kitob tumani</option><option>Koson tumani</option><option>Ko'kdala tumani</option><option>Mirishkor tumani</option><option>Muborak tumani</option><option>Nishon tumani</option><option>Qamashi tumani</option><option>Qarshi tumani</option><option>Shahrisabz tumani</option><option>Yakkabog' tumani</option></optgroup>
+                  <optgroup label="Samarqand viloyati"><option>Samarqand shahri</option><option>Kattaqo'rg'on shahri</option><option>Bulung'ur tumani</option><option>Ishtixon tumani</option><option>Jomboy tumani</option><option>Kattaqo'rg'on tumani</option><option>Narpay tumani</option><option>Nurobod tumani</option><option>Oqdaryo tumani</option><option>Paxtachi tumani</option><option>Payariq tumani</option><option>Pastdarg'om tumani</option><option>Qo'shrabot tumani</option><option>Samarqand tumani</option><option>Toyloq tumani</option><option>Urgut tumani</option></optgroup>
+                  <optgroup label="Sirdaryo viloyati"><option>Guliston shahri</option><option>Shirin shahri</option><option>Yangiyer shahri</option><option>Boyovut tumani</option><option>Guliston tumani</option><option>Mirzaobod tumani</option><option>Oqoltin tumani</option><option>Sardoba tumani</option><option>Sayxunobod tumani</option><option>Sirdaryo tumani</option><option>Xovos tumani</option></optgroup>
+                  <optgroup label="Surxondaryo viloyati"><option>Termiz shahri</option><option>Angor tumani</option><option>Bandixon tumani</option><option>Boysun tumani</option><option>Denov tumani</option><option>Jarqo'rg'on tumani</option><option>Muzrabot tumani</option><option>Oltinsoy tumani</option><option>Qiziriq tumani</option><option>Qumqo'rg'on tumani</option><option>Sariosiyo tumani</option><option>Sherobod tumani</option><option>Sho'rchi tumani</option><option>Termiz tumani</option><option>Uzun tumani</option></optgroup>
+                  <optgroup label="Toshkent viloyati"><option>Nurafshon shahri</option><option>Angren shahri</option><option>Bekobod shahri</option><option>Chirchiq shahri</option><option>Olmaliq shahri</option><option>Ohangaron shahri</option><option>Yangiyo'l shahri</option><option>Bekobod tumani</option><option>Bo'ka tumani</option><option>Bo'stonliq tumani</option><option>Chinoz tumani</option><option>Ohangaron tumani</option><option>Oqqo'rg'on tumani</option><option>Parkent tumani</option><option>Piskent tumani</option><option>Qibray tumani</option><option>Quyi Chirchiq tumani</option><option>O'rta Chirchiq tumani</option><option>Yangiyo'l tumani</option><option>Yuqori Chirchiq tumani</option><option>Zangiota tumani</option></optgroup>
+                  <optgroup label="Xorazm viloyati"><option>Urganch shahri</option><option>Xiva shahri</option><option>Bog'ot tumani</option><option>Gurlan tumani</option><option>Hazorasp tumani</option><option>Qo'shko'pir tumani</option><option>Shovot tumani</option><option>Tuproqqal'a tumani</option><option>Urganch tumani</option><option>Xonqa tumani</option><option>Xiva tumani</option><option>Yangiariq tumani</option><option>Yangibozor tumani</option></optgroup>
+                  <optgroup label="Toshkent shahri"><option>Bektemir tumani</option><option>Chilonzor tumani</option><option>Mirobod tumani</option><option>Mirzo Ulug'bek tumani</option><option>Olmazor tumani</option><option>Sergeli tumani</option><option>Shayxontohur tumani</option><option>Uchtepa tumani</option><option>Yakkasaroy tumani</option><option>Yashnobod tumani</option><option>Yunusobod tumani</option></optgroup>
+                  <!-- HUDUD:OXIR -->
+                </select>
+              </div>
+              <div>
+                <label class="f-label" for="xf-mahalla">Mahalla / ko'cha</label>
+                <input class="f-input" id="xf-mahalla" maxlength="120"
+                       placeholder="ixtiyoriy — masalan: Navro'z MFY, Bog' ko'chasi 12">
+              </div>
+              <div>
+                <label class="f-label" for="xf-sana">Ishga kirgan sana</label>
+                <input class="f-input" id="xf-sana" type="date">
+              </div>
+              <div class="xodim-form-yakun">
+                <p class="xodim-eslatma">
+                  <i class="ti ti-info-circle"></i>
+                  Parol kerak emas — tizim <b>kirish kodi</b> yaratadi. Xodim
+                  telefon raqami va shu kod bilan
+                  <a href="/xodimlar/" target="_blank">xodimlar portaliga</a> kiradi.
+                  Kod saqlangandan keyin ko'rsatiladi — uni xodimga aytib qo'ying.
+                </p>
+                <p class="xodim-xato" id="xodimXato"></p>
+                <p class="xodim-kod" id="xodimKod"></p>
+                <button class="btn-primary" id="xodimSaqlaBtn" type="submit">
+                  <i class="ti ti-plus"></i>Xodimni qo'shish
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-users"></i>Barcha xodimlar</h3></div>
+            <div class="table-wrap"><table class="data-table">
+              <thead>
+                <tr><th>Ism</th><th>Lavozim</th><th>Telefon</th><th>Kirish kodi</th>
+                    <th>Tuman</th><th>Holat</th><th></th></tr>
+              </thead>
+              <tbody id="xodimJadval">
+                <tr class="holat-qator"><td colspan="7">Yuklanmoqda…</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <!-- ========== 5. MIJOZLAR CRM ========== -->
+        <div class="page" id="page-crm">
+          <p class="page-title">Mijozlar (CRM)</p>
+          <p class="page-sub">Barcha mijozlar bazasi</p>
+          <!-- Mijoz saytda ro'yxatdan o'tganda avtomatik paydo bo'ladi —
+               bu yerda qo'lda kiritilmaydi. -->
+          <div class="card table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Ism</th><th>Telefon</th><th>Tuman</th><th>Ro'yxatdan o'tgan</th><th>Buyurtmalar</th></tr></thead>
+              <tbody id="crmTana">
+                <tr class="holat-qator"><td colspan="5">Yuklanmoqda…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========== 6. XIZMATLAR ========== -->
+        <div class="page" id="page-services">
+          <p class="page-title">Xizmatlar</p>
+          <p class="page-sub">Saytda ko'rsatilayotgan xizmatlar ro'yxati</p>
+          <div class="ogoh">
+            <i class="ti ti-alert-triangle"></i>
+            <span>Xizmat matnlari hozircha <code>index.html</code> da turadi.
+              Bu yerdan tahrirlash hali ulanmagan — ro'yxat faqat ko'rish uchun.</span>
+          </div>
+          <div class="svc-grid">
+            <div class="svc-edit-card"><h5>Rezervuarli tizim</h5><p>500–10 000 litrlik rezervuarlar bilan avtonom gaz ta'minoti</p></div>
+            <div class="svc-edit-card"><h5>Montaj qilish</h5><p>Gaz quvurlari va uskunalarini xavfsiz o'rnatish</p></div>
+            <div class="svc-edit-card"><h5>Servis xizmatlar</h5><p>Texnik ko'rik, ta'mirlash va 24/7 yordam</p></div>
+            <div class="svc-edit-card"><h5>Metrologiya xizmatlari</h5><p>Davlat tekshiruvi, kalibrovka va attestatsiya</p></div>
+            <div class="add-svc-card"><i class="ti ti-plus" style="font-size:22px;"></i>Yangi xizmat qo'shish</div>
+          </div>
+        </div>
+
+        <!-- ========== 7. NARXLAR ========== -->
+        <div class="page" id="page-pricing">
+          <p class="page-title">Narxlar va kalkulyatorlar</p>
+          <p class="page-sub">Barcha xizmatlar uchun narx sozlamalari</p>
+          <div class="ogoh">
+            <i class="ti ti-alert-triangle"></i>
+            <span><b>Bu bo'lim hali serverga ulanmagan.</b> Quyidagi narxlar
+              saytdagi qiymatlar bo'lib, bu yerdan o'zgartirilsa <b>saqlanmaydi</b>.
+              Hozircha narxlar Django admin panelidan boshqariladi.</span>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-gauge"></i>Metrologiya — hisoblagich tekshiruvi</h3></div>
+            <div class="table-wrap"><table class="data-table">
+              <tr><th>Tur</th><th>Narx (so'm)</th><th>Muddat</th><th></th></tr>
+              <tr><td>G4</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="80 000"></td><td>1–2 kun</td><td><button class="btn-sm">Saqlash</button></td></tr>
+              <tr><td>G6</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="100 000"></td><td>1–2 kun</td><td><button class="btn-sm">Saqlash</button></td></tr>
+              <tr><td>G10</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="150 000"></td><td>2–3 kun</td><td><button class="btn-sm">Saqlash</button></td></tr>
+            </table></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-tool"></i>Montaj qilish — birlik narxi</h3></div>
+            <div class="table-wrap"><table class="data-table">
+              <tr><th>Xizmat</th><th>Narx</th><th>Birlik</th><th></th></tr>
+              <tr><td>Ichki tarmoq</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="150 000"></td><td>metr</td><td><button class="btn-sm">Saqlash</button></td></tr>
+              <tr><td>Magistral quvur</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="220 000"></td><td>metr</td><td><button class="btn-sm">Saqlash</button></td></tr>
+            </table></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-headset"></i>Servis — tariflar</h3></div>
+            <div class="table-wrap"><table class="data-table">
+              <tr><th>Tarif</th><th>Narx/yil</th><th></th></tr>
+              <tr><td>Standart</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="400 000"></td><td><button class="btn-sm">Saqlash</button></td></tr>
+              <tr><td>Qulay</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="700 000"></td><td><button class="btn-sm">Saqlash</button></td></tr>
+              <tr><td>Premium</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="1 200 000"></td><td><button class="btn-sm">Saqlash</button></td></tr>
+            </table></div>
+          </div>
+        </div>
+
+        <!-- ========== 8. SHARHLAR ========== -->
+        <div class="page" id="page-reviews">
+          <p class="page-title">Sharhlar va reyting</p>
+          <p class="page-sub">Mijozlar sharhlarini moderatsiya qilish</p>
+          <div class="card">
+            <div class="bosh-holat">
+              <i class="ti ti-star"></i>
+              <b>Sharh yo'q</b>
+              <span>Mijozlar qoldirgan sharhlar shu yerda moderatsiya uchun
+                    ko'rinadi. Sharh qo'lda yozilmaydi — u faqat mijozdan keladi.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 9. MOLIYA ========== -->
+        <div class="page" id="page-finance">
+          <p class="page-title">Moliya va hisobotlar</p>
+          <p class="page-sub">Daromad tahlili va eksport</p>
+          <!-- Raqamlar to'lov so'rovlaridan (tolovlar.TolovSorovi, holat='tolandi')
+               hisoblanadi. Hech qanday raqam qo'lda yozilmaydi. -->
+          <div class="stat-grid">
+            <div class="stat-box"><p class="n" id="molJami">—</p><p class="l">Jami to'langan</p></div>
+            <div class="stat-box"><p class="n" id="molOy">—</p><p class="l">Shu oyda</p></div>
+            <div class="stat-box"><p class="n" id="molKutil">—</p><p class="l">To'lov kutilmoqda</p></div>
+            <div class="stat-box"><p class="n" id="molSoni">—</p><p class="l">To'langan so'rovlar</p></div>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <div class="card-head"><h3><i class="ti ti-chart-donut"></i>Xizmat turi bo'yicha daromad</h3></div>
+              <div id="molHalqa"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3><i class="ti ti-chart-line"></i>Oylik daromad (6 oy)</h3></div>
+              <div id="molOylik"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3><i class="ti ti-list-details"></i>Batafsil</h3>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn-sm" onclick="hisobotYukla('csv')">
+                  <i class="ti ti-file-type-csv"></i> Excel (CSV)</button>
+                <button class="btn-sm" onclick="hisobotYukla('chop')">
+                  <i class="ti ti-printer"></i> PDF / Chop etish</button>
+              </div>
+            </div>
+            <div id="molXizmatlar"></div>
+          </div>
+        </div>
+
+        <!-- ========== 10. SERTIFIKATLAR ========== -->
+        <div class="page" id="page-certs">
+          <p class="page-title">Sertifikat va akkreditatsiyalar</p>
+          <p class="page-sub">Kompaniya darajasidagi hujjatlar</p>
+          <div class="card">
+            <!-- Bu sertifikatlar HAQIQIY — index.html dagi ma'lumot bilan bir xil.
+                 Qo'shish/tahrirlash hali serverga ulanmagan. -->
+            <div class="card-head"><h3><i class="ti ti-award"></i>Faol sertifikatlar</h3></div>
+            <div class="cert-grid">
+              <div class="cert-card"><div class="cc-head"><div class="cc-icon"><i class="ti ti-star"></i></div><h5>O'zMetrologiya Akkreditatsiyasi</h5></div><p>Amal qiladi: 2027 yilgacha</p><span class="code">№ AL-2024-0892</span></div>
+              <div class="cert-card"><div class="cc-head"><div class="cc-icon"><i class="ti ti-world"></i></div><h5>ISO/IEC 17025:2017</h5></div><p>Amal qiladi: 2026 yilgacha</p><span class="code">№ ISO-17025-2024-UZ</span></div>
+              <div class="cert-card"><div class="cc-head"><div class="cc-icon"><i class="ti ti-shield-check"></i></div><h5>OIML xalqaro sertifikati</h5></div><p>Amal qiladi: 2026 yilgacha</p><span class="code">№ OIML-R137-2024</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 11. BILDIRISHNOMALAR ========== -->
+        <div class="page" id="page-notify">
+          <p class="page-title">Bildirishnomalar markazi</p>
+          <p class="page-sub">SMS, push va email shablonlari</p>
+          <div class="ogoh">
+            <i class="ti ti-alert-triangle"></i>
+            <span><b>Rejalashtirilgan imkoniyat.</b> Quyidagi bildirishnomalar
+              hali yozilmagan — tugmalar o'chirilgan. Hozirda faqat kirish
+              uchun SMS kod yuboriladi.</span>
+          </div>
+          <div class="card">
+            <div class="toggle-row"><div><h5>SMS — Ariza qabul qilindi</h5><p>Mijoz ariza qoldirganda avtomatik yuboriladi</p></div><label class="switch"><input type="checkbox" disabled><span class="slider-tg"></span></label></div>
+            <div class="toggle-row"><div><h5>Push — Vazifa tayinlandi</h5><p>Xodimga yangi vazifa tayinlanganda</p></div><label class="switch"><input type="checkbox" disabled><span class="slider-tg"></span></label></div>
+            <div class="toggle-row"><div><h5>Email — Haftalik hisobot</h5><p>Har dushanba menejerlarga yuboriladi</p></div><label class="switch"><input type="checkbox" disabled><span class="slider-tg"></span></label></div>
+            <div class="toggle-row"><div><h5>SMS — Sertifikat muddati</h5><p>Muddat tugashiga 30 kun qolganda</p></div><label class="switch"><input type="checkbox" disabled><span class="slider-tg"></span></label></div>
+          </div>
+        </div>
+
+        <!-- ========== 12. ROLLAR ========== -->
+        <div class="page" id="page-roles">
+          <p class="page-title">Rollar va ruxsatlar</p>
+          <p class="page-sub">Har bir rol qaysi bo'limlarni ko'ra oladi</p>
+          <div class="card table-wrap">
+            <!-- Tizimda HAQIQATDA mavjud rollar. Ilgari bu yerda HR, Dispetcher,
+                 Moliyachi turardi — bunday rollar hech qachon bo'lmagan. -->
+            <table class="perm-table">
+              <tr><th>Bo'lim</th><th>Egasi</th><th>Direktor</th><th>Xodim</th><th>Mijoz</th></tr>
+              <tr><td>Django admin (/admin/)</td><td><i class="ti ti-check perm-yes"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td></tr>
+              <tr><td>Boshqaruv paneli (/boshqaruv/)</td><td><i class="ti ti-check perm-yes"></i></td><td><i class="ti ti-check perm-yes"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td></tr>
+              <tr><td>Arizalar va xodimlarni ko'rish</td><td><i class="ti ti-check perm-yes"></i></td><td><i class="ti ti-check perm-yes"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td></tr>
+              <tr><td>Xodimni nofaol qilish</td><td><i class="ti ti-check perm-yes"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td></tr>
+              <tr><td>Xodimlar portali (/xodimlar/)</td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-check perm-yes"></i></td><td><i class="ti ti-x perm-no"></i></td></tr>
+              <tr><td>Shaxsiy kabinet (/kabinet/)</td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-x perm-no"></i></td><td><i class="ti ti-check perm-yes"></i></td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========== 13. SOZLAMALAR ========== -->
+        <div class="page" id="page-settings">
+          <p class="page-title">Sayt sozlamalari</p>
+          <p class="page-sub">Umumiy ma'lumot va integratsiyalar</p>
+          <div class="ogoh">
+            <i class="ti ti-alert-triangle"></i>
+            <span><b>Bu bo'lim hali serverga ulanmagan</b> — kiritilgan qiymat
+              saqlanmaydi. Kompaniya ma'lumotlari hozircha to'g'ridan-to'g'ri
+              <code>index.html</code> da turadi.</span>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-building"></i>Kompaniya ma'lumotlari</h3></div>
+            <label class="f-label">Kompaniya nomi</label><input class="f-input" value="Soar Gaz" disabled>
+            <!-- Telefon ataylab bo'sh: saytda ham hali haqiqiy raqam qo'yilmagan -->
+            <label class="f-label">Telefon</label><input class="f-input" placeholder="Kiritilmagan" disabled>
+            <label class="f-label">Email</label><input class="f-input" value="info@soargaz.uz" disabled>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-plug"></i>Integratsiyalar</h3></div>
+            <!-- Holat settings.py dagi kalitlarga bog'liq, bu yerdan yoqilmaydi -->
+            <div class="toggle-row"><div><h5>SMS shlyuz (Eskiz.uz)</h5><p>Holati backend sozlamalarida</p></div><label class="switch"><input type="checkbox" disabled><span class="slider-tg"></span></label></div>
+            <div class="toggle-row"><div><h5>To'lov tizimi (Payme / Click)</h5><p>Holati backend sozlamalarida</p></div><label class="switch"><input type="checkbox" disabled><span class="slider-tg"></span></label></div>
+          </div>
+        </div>
+
+        <!-- ========== 14. AUDIT LOG ========== -->
+        <div class="page" id="page-log">
+          <p class="page-title">Faoliyat jurnali</p>
+          <p class="page-sub">Tizimdagi barcha o'zgarishlar</p>
+          <div class="ogoh" style="color:#1e40af;background:#eff6ff;border-color:#bfdbfe;">
+            <i class="ti ti-info-circle"></i>
+            <span>Jurnal yozuvlarini <b>hech kim o'zgartira va o'chira olmaydi</b> —
+              Django panelida ham faqat o'qish uchun ochiq.</span>
+          </div>
+          <div class="card table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Vaqt</th><th>Kim</th><th>Amal</th><th>Tafsilot</th><th>IP</th></tr></thead>
+              <tbody id="jurnalTana">
+                <tr class="holat-qator"><td colspan="5">Yuklanmoqda…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════ Backend ═══════
+// Sayt server orqali ochilsa nisbiy manzil, fayl sifatida ochilsa dev backend.
+// Diqqat: bu sahifa admin ROLI uchun (/api/auth/admin/login/), Django'ning
+// o'z /admin/ paneli bilan aralashtirmang.
+const API = location.protocol === 'file:' ? 'http://localhost:8001/api' : '/api';
+const TOKEN_KALIT = 'soargaz_admin_token';
+
+let token = null;
+let profil = null;
+// Arizalar bir marta yuklanadi, chiplar shu ro'yxatni filtrlaydi
+let arizalar = [];
+let xodimlar = [];
+let tanlanganHolat = '';
+
+function tokenSaqla(t){ token = t; try { sessionStorage.setItem(TOKEN_KALIT, t); } catch(e){} }
+function tokenYukla(){ try { token = sessionStorage.getItem(TOKEN_KALIT); } catch(e){} }
+function tokenOchir(){ token = null; try { sessionStorage.removeItem(TOKEN_KALIT); } catch(e){} }
+
+async function apiSorov(yol, sozlama = {}){
+  const javob = await fetch(API + yol, {
+    ...sozlama,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+      ...(sozlama.headers || {})
+    }
+  });
+  if (javob.status === 401) { chiqish(); throw new Error('Sessiya tugadi'); }
+  const matn = await javob.text();
+  const malumot = matn ? JSON.parse(matn) : null;
+  if (!javob.ok) throw new Error(xatoMatni(malumot));
+  return malumot;
+}
+
+// Django REST forma xatolarini {maydon: ["sabab"]} ko'rinishida qaytaradi —
+// faqat `detail` ni o'qisak, foydalanuvchi "Server xatosi" dan boshqa
+// hech narsa ko'rmaydi va nimani noto'g'ri kiritganini bilmaydi.
+function xatoMatni(malumot){
+  if (!malumot) return 'Server xatosi';
+  if (typeof malumot === 'string') return malumot;
+  if (malumot.detail) return malumot.detail;
+  const satrlar = [];
+  for (const [maydon, qiymat] of Object.entries(malumot)){
+    const matn = Array.isArray(qiymat) ? qiymat.join(' ') : String(qiymat);
+    satrlar.push(maydon === 'non_field_errors' ? matn : `${maydon}: ${matn}`);
+  }
+  return satrlar.join('\n') || 'Server xatosi';
+}
+
+// "Aziz Karimov" -> "AK"; bitta so'z bo'lsa birinchi ikki harf
+function boshHarflar(ism){
+  const b = (ism || '').trim().split(/\s+/).filter(Boolean);
+  if (!b.length) return '?';
+  if (b.length === 1) return b[0].slice(0, 2).toUpperCase();
+  return (b[0][0] + b[b.length - 1][0]).toUpperCase();
+}
+
+function sanaFormat(iso){
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  const ikki = n => String(n).padStart(2, '0');
+  return `${ikki(d.getDate())}.${ikki(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+function xavfsiz(matn){
+  const el = document.createElement('div');
+  el.textContent = matn == null ? '' : String(matn);
+  return el.innerHTML;
+}
+
+// ═══════ Kirish / chiqish ═══════
+function xatoKorsat(matn){
+  const el = document.getElementById('loginXato');
+  el.textContent = matn || '';
+  el.classList.toggle('bor', !!matn);
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const tugma = document.getElementById('loginBtn');
+  const telefon = document.getElementById('loginTelefon').value.replace(/\s/g, '');
+  const parol = document.getElementById('loginParol').value;
+
+  if (telefon.length < 13) { xatoKorsat("Telefon raqamni to'liq kiriting: +998 XX XXX XX XX"); return; }
+  if (!parol) { xatoKorsat('Parolni kiriting'); return; }
+
+  xatoKorsat('');
+  tugma.disabled = true;
+  tugma.textContent = 'Tekshirilmoqda…';
+  try {
+    const javob = await apiSorov('/auth/admin/login/', {
+      method: 'POST',
+      body: JSON.stringify({ telefon, parol })
+    });
+    document.getElementById('loginParol').value = '';
+
+    // 2FA yoqilgan bo'lsa parol bosqichi token bermaydi — kod so'raladi
+    if (javob.otp_kerak) { otpBosqichiniOch(javob); return; }
+
+    kirishYakunla(javob);
+  } catch (xato) {
+    xatoKorsat(xato.message);
+  } finally {
+    tugma.disabled = false;
+    tugma.textContent = 'Kirish';
+  }
+});
+
+// ═══════ Ikki bosqichli kirish (2FA) ═══════
+// Chipta — parol bosqichidan o'tilganini isbotlaydigan vaqtinchalik kalit.
+// Usiz OTP bosqichi qabul qilinmaydi, ya'ni ikkala bosqich ham majburiy.
+let otpChipta = null;
+
+function otpXatoKorsat(matn){
+  const el = document.getElementById('otpXato');
+  el.textContent = matn || '';
+  el.classList.toggle('bor', !!matn);
+}
+
+function otpBosqichiniOch(javob){
+  otpChipta = javob.chipta;
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('otpForm').style.display = 'block';
+  document.getElementById('otpTelefon').textContent = javob.telefon_maskasi || '—';
+  document.getElementById('otpMuddat').textContent = javob.muddat_daqiqa || 5;
+
+  // Dev rejimda SMS provayder ulanmagan — kod javobda keladi, aks holda
+  // lokal ishlab chiqishda panelga kirib bo'lmaydi. Serverda bu bo'lmaydi.
+  otpXatoKorsat('');
+  if (javob.dev_kod) {
+    document.getElementById('otpKod').value = javob.dev_kod;
+    otpXatoKorsat(`Dev rejim: SMS ulanmagan, kod — ${javob.dev_kod}`);
+  } else if (javob.ogohlantirish) {
+    otpXatoKorsat(javob.ogohlantirish);
+  }
+  document.getElementById('otpKod').focus();
+}
+
+function otpBosqichiniYop(){
+  otpChipta = null;
+  document.getElementById('otpForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('otpKod').value = '';
+  otpXatoKorsat('');
+}
+
+function kirishYakunla(javob){
+  tokenSaqla(javob.access);
+  profil = javob.user;
+  if (javob.sessiya_daqiqa) sessiyaDaqiqa = javob.sessiya_daqiqa;
+  otpBosqichiniYop();
+  sessiyaYangila();
+  panelniOch();
+}
+
+document.getElementById('otpOrtga').addEventListener('click', otpBosqichiniYop);
+
+document.getElementById('otpForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const kod = document.getElementById('otpKod').value.trim();
+  if (kod.length !== 6) { otpXatoKorsat('6 xonali kodni kiriting'); return; }
+
+  const tugma = document.getElementById('otpBtn');
+  otpXatoKorsat('');
+  tugma.disabled = true;
+  tugma.textContent = 'Tekshirilmoqda…';
+  try {
+    const javob = await apiSorov('/auth/admin/otp/', {
+      method: 'POST',
+      body: JSON.stringify({ chipta: otpChipta, kod })
+    });
+    kirishYakunla(javob);
+  } catch (xato) {
+    otpXatoKorsat(xato.message);
+    // Chipta kuchdan qolgan bo'lsa — birinchi bosqichga qaytaramiz
+    if (/qaytadan|muddati/i.test(xato.message || '')) {
+      setTimeout(() => { otpBosqichiniYop(); xatoKorsat(xato.message); }, 1800);
+    }
+  } finally {
+    tugma.disabled = false;
+    tugma.textContent = 'Tasdiqlash';
+  }
+});
+
+function chiqish(sabab){
+  clearTimeout(sessiyaTaymer);
+  otpBosqichiniYop();
+  tokenOchir();
+  profil = null;
+  arizalar = [];
+  document.getElementById('dashView').style.display = 'none';
+  document.getElementById('authView').style.display = 'flex';
+  xatoKorsat(sabab || '');
+}
+document.getElementById('chiqishBtn').addEventListener('click', () => chiqish());
+
+// ═══════ Sessiya nazorati ═══════
+// Server tokeni ADMIN_SESSIYA_DAQIQA dan keyin kuchini yo'qotadi. Panel ham
+// o'sha vaqt harakatsizlikdan keyin o'zi chiqadi — ochiq qolgan kompyuterda
+// panel egasiz turmasin. Har qanday harakat hisobni qaytadan boshlaydi.
+let sessiyaDaqiqa = 30;
+let sessiyaTaymer = null;
+
+function sessiyaYangila(){
+  if (!token) return;
+  clearTimeout(sessiyaTaymer);
+  sessiyaTaymer = setTimeout(() => {
+    chiqish(`${sessiyaDaqiqa} daqiqa harakatsizlikdan keyin sessiya yakunlandi. Qaytadan kiring.`);
+  }, sessiyaDaqiqa * 60 * 1000);
+}
+
+['click', 'keydown', 'scroll', 'touchstart'].forEach(hodisa => {
+  document.addEventListener(hodisa, sessiyaYangila, { passive: true });
+});
+
+async function panelniOch(){
+  document.getElementById('authView').style.display = 'none';
+  document.getElementById('dashView').style.display = 'block';
+  profilChiz();
+  await Promise.all([
+    statistikaYukla(), arizalarYukla(), xodimlarYukla(),
+    mijozlarYukla(), moliyaYukla(), jurnalYukla(),
+  ]);
+}
+
+function profilChiz(){
+  const ism = (profil && (profil.ism || profil.telefon)) || 'Admin';
+  document.getElementById('profilIsm').textContent = ism;
+  document.getElementById('profilHarf').textContent = boshHarflar(ism);
+}
+
+// ═══════ Bosh sahifa ═══════
+async function statistikaYukla(){
+  let s;
+  try { s = await apiSorov('/buyurtmalar/statistika/'); } catch (e) { return; }
+  document.getElementById('statYangi').textContent = s.yangi;
+  document.getElementById('statJarayon').textContent = s.qabul + s.jarayonda;
+  document.getElementById('statBajarildi').textContent = s.bajarildi;
+  document.getElementById('statXodim').textContent = s.xodimlar_soni;
+}
+
+const HAFTA_NOM = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'];
+
+// Oxirgi 7 kunlik ustunlar — arizalarning 'yaratilgan' sanasidan sanaladi
+function haftalikChiz(){
+  const kunlar = [];
+  const bugun = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(bugun);
+    d.setDate(bugun.getDate() - i);
+    kunlar.push({ nom: HAFTA_NOM[d.getDay()], kalit: d.toDateString(), soni: 0 });
+  }
+  const indeks = new Map(kunlar.map(k => [k.kalit, k]));
+  arizalar.forEach(a => {
+    const kun = indeks.get(new Date(a.yaratilgan).toDateString());
+    if (kun) kun.soni++;
+  });
+
+  const svg = ustunGrafik(
+    kunlar.map(k => ({ nom: k.nom, qiymat: k.soni })), GRAFIK_RANG[0]);
+
+  document.getElementById('haftaBars').innerHTML = svg || boshGrafik(
+    "Bu hafta ariza kelmagan",
+    "Saytdan ariza kelganda kunlar bo'yicha taqsimot shu yerda ko'rinadi.",
+    'ti-chart-bar');
+
+  // Holatlar bo'yicha halqa — arizalar qaysi bosqichda turganini bir qarashda
+  const holatQuti = document.getElementById('holatHalqa');
+  if (holatQuti) {
+    const bolaklar = Object.keys(HOLAT_NOM).map(h => ({
+      nom: HOLAT_NOM[h],
+      qiymat: arizalar.filter(a => a.holat === h).length,
+      rang: HOLAT_RANGI[h],
+    }));
+    holatQuti.innerHTML = halqaGrafik(bolaklar, 'jami ariza') || boshGrafik(
+      'Ariza yo\'q',
+      'Arizalar kelganda ular holati bo\'yicha shu yerda taqsimlanadi.',
+      'ti-chart-donut');
+  }
+}
+
+const FAOLIYAT_IKON = {
+  yangi: 'ti-file-plus', qabul: 'ti-user-check',
+  bajarilmoqda: 'ti-progress', bajarildi: 'ti-checkbox', bekor: 'ti-x'
+};
+
+function nechaVaqtOldin(iso){
+  const daqiqa = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (daqiqa < 1) return 'hozirgina';
+  if (daqiqa < 60) return `${daqiqa} daqiqa oldin`;
+  const soat = Math.floor(daqiqa / 60);
+  if (soat < 24) return `${soat} soat oldin`;
+  const kun = Math.floor(soat / 24);
+  return kun === 1 ? 'kecha' : `${kun} kun oldin`;
+}
+
+function faoliyatChiz(){
+  const oxirgi = arizalar.slice(0, 5);
+  const royxat = document.getElementById('faoliyatRoyxat');
+  if (!oxirgi.length) {
+    royxat.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0;">Hozircha ariza yo\'q</p>';
+    return;
+  }
+  royxat.innerHTML = oxirgi.map(a => `
+    <div class="activity-item">
+      <div class="act-icon"><i class="ti ${FAOLIYAT_IKON[a.holat] || 'ti-file'}"></i></div>
+      <div>
+        <p>Ariza #${a.id} — ${xavfsiz(a.xizmat_nomi)}</p>
+        <span>${nechaVaqtOldin(a.yangilangan || a.yaratilgan)}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════ Arizalar ═══════
+const HOLAT_NOM = {
+  yangi: 'Yangi', qabul: 'Qabul qilindi', bajarilmoqda: 'Bajarilmoqda',
+  bajarildi: 'Bajarildi', bekor: 'Bekor qilindi'
+};
+const HOLAT_RANG = {
+  yangi: 'orange', qabul: 'blue', bajarilmoqda: 'blue',
+  bajarildi: 'green', bekor: 'red'
+};
+
+async function arizalarYukla(){
+  try {
+    arizalar = await apiSorov('/buyurtmalar/');
+  } catch (xato) {
+    document.getElementById('arizaTana').innerHTML =
+      `<tr class="holat-qator"><td colspan="7">${xavfsiz(xato.message)}</td></tr>`;
+    return;
+  }
+  arizalarChiz();
+  haftalikChiz();
+  faoliyatChiz();
+  kanbanChiz();
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  GRAFIKLAR — tashqi kutubxonasiz, sof SVG
+//  Loyihada barcha resurs lokal (index.html:29), shuning uchun Chart.js
+//  kabi CDN kutubxona ishlatilmaydi. Bu funksiyalar SVG matnini qaytaradi.
+// ════════════════════════════════════════════════════════════════════
+
+// Ranglar tekshiruvdan o'tgan: ranglar ko'rlikda ham ajraladi (ΔE ≥ 14).
+// Tartib QAT'IY — rang ma'lumotga biriktirilgan, o'rin almashtirilmaydi.
+const GRAFIK_RANG = ['#2563eb', '#0891b2', '#f59e0b', '#7c3aed', '#65a30d'];
+
+// Ariza holatlari — bular holat ranglari, kategoriya emas: har biri
+// ma'noga biriktirilgan (yashil = bajarildi) va boshqa joyda ishlatilmaydi.
+const HOLAT_RANGI = {
+  yangi:        '#2563eb',
+  qabul:        '#0891b2',
+  bajarilmoqda: '#f59e0b',
+  bajarildi:    '#16a34a',
+  bekor:        '#94a3b8',
+};
+
+function boshGrafik(matn, izoh, ikon){
+  return `<div class="bosh-holat"><i class="ti ${ikon || 'ti-chart-bar'}"></i>
+    <b>${xavfsiz(matn)}</b><span>${xavfsiz(izoh || '')}</span></div>`;
+}
+
+/* Ustunli grafik. qatorlar: [{nom, qiymat}]
+   Qiymat har ustun tepasida yozib qo'yiladi — o'qish uchun y o'qi shart emas. */
+function ustunGrafik(qatorlar, rang){
+  if (!qatorlar.length || qatorlar.every(q => !q.qiymat)) return null;
+
+  const EN = 560, BALAND = 200, PAST = 34, TEPA = 22;
+  const eng = Math.max(...qatorlar.map(q => q.qiymat), 1);
+  const kengUst = EN / qatorlar.length;
+  const ustEn = Math.min(38, kengUst * 0.55);
+
+  const ustunlar = qatorlar.map((q, i) => {
+    const h = Math.round((BALAND - TEPA - PAST) * (q.qiymat / eng));
+    const x = i * kengUst + (kengUst - ustEn) / 2;
+    const y = BALAND - PAST - h;
+    return `
+      <g class="gr-ustun">
+        <title>${xavfsiz(q.nom)}: ${q.qiymat}</title>
+        ${h > 0 ? `<rect x="${x}" y="${y}" width="${ustEn}" height="${h}" rx="4" fill="${rang}"/>` : ''}
+        <text x="${x + ustEn / 2}" y="${(h > 0 ? y : BALAND - PAST) - 6}" class="gr-son">${q.qiymat}</text>
+        <text x="${x + ustEn / 2}" y="${BALAND - PAST + 17}" class="gr-belgi">${xavfsiz(q.nom)}</text>
+      </g>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${EN} ${BALAND}" class="gr-svg" role="img">
+    <line x1="0" y1="${BALAND - PAST}" x2="${EN}" y2="${BALAND - PAST}" class="gr-oq"/>
+    ${ustunlar}
+  </svg>`;
+}
+
+/* Halqa (donut) diagramma. bolaklar: [{nom, qiymat, rang}]
+   Markazda jami son — asosiy raqam darhol o'qiladi. */
+function halqaGrafik(bolaklar, markazBelgi){
+  const jami = bolaklar.reduce((s, b) => s + b.qiymat, 0);
+  if (!jami) return null;
+
+  const R = 62, ICH = 42, MARKAZ = 80;
+  let burchak = -Math.PI / 2;   // yuqoridan boshlanadi
+
+  const nuqta = (r, a) => [MARKAZ + r * Math.cos(a), MARKAZ + r * Math.sin(a)];
+
+  const yoylar = bolaklar.filter(b => b.qiymat > 0).map(b => {
+    const ulush = b.qiymat / jami;
+    // Ikki bo'lak orasida 2px tirqish — chegara aniq ko'rinadi
+    const tirqish = bolaklar.filter(x => x.qiymat > 0).length > 1 ? 0.03 : 0;
+    const bosh = burchak + tirqish / 2;
+    const oxir = burchak + ulush * Math.PI * 2 - tirqish / 2;
+    burchak += ulush * Math.PI * 2;
+
+    const katta = (oxir - bosh) > Math.PI ? 1 : 0;
+    const [x1, y1] = nuqta(R, bosh),   [x2, y2] = nuqta(R, oxir);
+    const [x3, y3] = nuqta(ICH, oxir), [x4, y4] = nuqta(ICH, bosh);
+
+    return `<path d="M${x1} ${y1} A${R} ${R} 0 ${katta} 1 ${x2} ${y2}
+      L${x3} ${y3} A${ICH} ${ICH} 0 ${katta} 0 ${x4} ${y4} Z" fill="${b.rang}">
+      <title>${xavfsiz(b.nom)}: ${b.qiymat} (${Math.round(ulush * 100)}%)</title></path>`;
+  }).join('');
+
+  const izoh = bolaklar.filter(b => b.qiymat > 0).map(b => `
+    <div class="gr-izoh-qator">
+      <span class="gr-nuqta" style="background:${b.rang}"></span>
+      <span class="gr-izoh-nom">${xavfsiz(b.nom)}</span>
+      <b>${b.qiymat}</b>
+    </div>`).join('');
+
+  return `
+    <div class="gr-halqa-quti">
+      <svg viewBox="0 0 160 160" class="gr-halqa" role="img">
+        ${yoylar}
+        <text x="80" y="76" class="gr-markaz-son">${jami}</text>
+        <text x="80" y="94" class="gr-markaz-belgi">${xavfsiz(markazBelgi || '')}</text>
+      </svg>
+      <div class="gr-izoh">${izoh}</div>
+    </div>`;
+}
+
+// ═══════ Vazifalar taqsimoti (kanban) ═══════
+// Ustunlar aynan shu arizalar ro'yxatidan chiziladi — alohida so'rov yo'q,
+// demak jadval bilan kanban hech qachon bir-biriga zid bo'lmaydi.
+function kanbanChiz(){
+  const ustunlar = [
+    ['yangi',        'kanbanYangi'],
+    ['qabul',        'kanbanQabul'],
+    ['bajarilmoqda', 'kanbanJarayon'],
+    ['bajarildi',    'kanbanBajarildi'],
+  ];
+
+  ustunlar.forEach(([holat, id]) => {
+    const royxat = arizalar.filter(a => a.holat === holat);
+    const quti = document.getElementById(id);
+    const soni = document.getElementById(id + 'Soni');
+    if (soni) soni.textContent = royxat.length;
+    if (!quti) return;
+    quti.innerHTML = royxat.map(a => `
+      <div class="kcard">
+        <h5>#${a.id} · ${xavfsiz(a.xizmat_nomi)}</h5>
+        <p>${xavfsiz(a.mijoz_malumot ? (a.mijoz_malumot.ism || a.mijoz_malumot.telefon) : '—')}${
+          a.tuman ? ', ' + xavfsiz(a.tuman) : ''}</p>
+        ${a.xodim_malumot
+          ? `<p style="font-weight:700">${xavfsiz(a.xodim_malumot.ism)}</p>`
+          : ''}
+      </div>`).join('');
+  });
+
+  // Umuman ariza bo'lmasa — tushuntirish, aks holda uni yashiramiz
+  const bosh = document.getElementById('kanbanBosh');
+  if (bosh) bosh.style.display = arizalar.length ? 'none' : '';
+}
+
+// ═══════ Mijozlar (CRM) ═══════
+// Ro'yxat /api/auth/mijozlar/ dan keladi. Mijoz saytda ro'yxatdan o'tganda
+// avtomatik qo'shiladi — bu yerdan qo'lda kiritilmaydi.
+async function mijozlarYukla(){
+  const tana = document.getElementById('crmTana');
+  if (!tana) return;
+  let royxat;
+  try {
+    royxat = await apiSorov('/auth/mijozlar/');
+  } catch (e) {
+    tana.innerHTML = `<tr class="holat-qator"><td colspan="5">${xavfsiz(e.message)}</td></tr>`;
+    return;
+  }
+  if (!royxat.length) {
+    tana.innerHTML = '<tr class="holat-qator"><td colspan="5">' +
+      'Hali mijoz ro\'yxatdan o\'tmagan</td></tr>';
+    return;
+  }
+  tana.innerHTML = royxat.map(m => `
+    <tr>
+      <td>${xavfsiz(m.ism || '—')}</td>
+      <td>${xavfsiz(m.telefon)}</td>
+      <td>${xavfsiz(m.tuman || m.viloyat || '—')}</td>
+      <td>${sanaFormat(m.yaratilgan)}</td>
+      <td>${m.buyurtmalar_soni}</td>
+    </tr>`).join('');
+}
+
+// ═══════ Hisobot eksporti ═══════
+// Kutubxonasiz: CSV — brauzerning o'zi yaratadi, PDF — chop etish oynasi
+// orqali (har bir brauzerda "PDF ga saqlash" varianti bor). Shu sababli
+// serverga ham, tashqi paketga ham ehtiyoj yo'q.
+let moliyaMalumot = [];   // [{nom, summa}] — moliyaYukla() to'ldiradi
+
+function hisobotYukla(tur){
+  if (!moliyaMalumot.length) { alert("Hisobot uchun ma'lumot yo'q."); return; }
+
+  if (tur === 'csv') {
+    // BOM — Excel faylni UTF-8 deb tanishi uchun, aks holda o'zbekcha
+    // harflar buziladi. Ajratgich `;` — rus/o'zbek Excel shu bilan ishlaydi.
+    const qatorlar = [['Xizmat turi', "Summa (so'm)"]]
+      .concat(moliyaMalumot.map(m => [m.nom, m.summa]));
+    const matn = '﻿' + qatorlar
+      .map(q => q.map(k => `"${String(k).replace(/"/g, '""')}"`).join(';'))
+      .join('\r\n');
+
+    const havola = document.createElement('a');
+    havola.href = URL.createObjectURL(new Blob([matn], { type: 'text/csv;charset=utf-8' }));
+    const bugun = new Date().toISOString().slice(0, 10);
+    havola.download = `soargaz-daromad-${bugun}.csv`;
+    havola.click();
+    URL.revokeObjectURL(havola.href);
+    return;
+  }
+
+  window.print();
+}
+
+// ═══════ Faoliyat jurnali (audit) ═══════
+// Yozuvlar serverda avtomatik yaratiladi, bu yerdan qo'shib bo'lmaydi.
+const JURNAL_RANG = {
+  kirish: 'green', kirish_xato: 'orange', kirish_blok: 'red',
+  ruxsat_rad: 'red', xodim_qoshildi: 'blue', xodim_holat: 'blue',
+  xodim_kod: 'blue', ariza_tayinlandi: 'blue',
+};
+
+function vaqtFormat(iso){
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  const ikki = n => String(n).padStart(2, '0');
+  return `${ikki(d.getDate())}.${ikki(d.getMonth() + 1)}.${d.getFullYear()}, ${ikki(d.getHours())}:${ikki(d.getMinutes())}`;
+}
+
+async function jurnalYukla(){
+  const tana = document.getElementById('jurnalTana');
+  if (!tana) return;
+  let royxat;
+  try {
+    royxat = await apiSorov('/auth/jurnal/');
+  } catch (e) {
+    tana.innerHTML = `<tr class="holat-qator"><td colspan="5">${xavfsiz(e.message)}</td></tr>`;
+    return;
+  }
+  if (!royxat.length) {
+    tana.innerHTML = '<tr class="holat-qator"><td colspan="5">Jurnal bo\'sh</td></tr>';
+    return;
+  }
+  tana.innerHTML = royxat.map(y => `
+    <tr>
+      <td style="white-space:nowrap">${vaqtFormat(y.vaqt)}</td>
+      <td>${xavfsiz(y.kim)}</td>
+      <td><span class="tag ${JURNAL_RANG[y.amal] || 'gray'}">${xavfsiz(y.amal_nomi)}</span></td>
+      <td>${xavfsiz(y.tafsilot || '—')}</td>
+      <td style="color:var(--text-muted)">${xavfsiz(y.ip || '—')}</td>
+    </tr>`).join('');
+}
+
+// ═══════ Moliya ═══════
+// Barcha raqam to'lov so'rovlaridan hisoblanadi (/api/tolovlar/).
+// Hech qanday summa qo'lda yozilmaydi.
+function pulFormat(son){
+  return (son || 0).toLocaleString('ru-RU').replace(/ /g, ' ') + " so'm";
+}
+
+async function moliyaYukla(){
+  const quti = document.getElementById('molXizmatlar');
+  if (!quti) return;
+  let sorovlar;
+  try {
+    sorovlar = await apiSorov('/tolovlar/');
+  } catch (e) {
+    quti.innerHTML = `<div class="bosh-holat"><b>${xavfsiz(e.message)}</b></div>`;
+    return;
+  }
+
+  const tolangan = sorovlar.filter(s => s.holat === 'tolandi');
+  const kutilmoqda = sorovlar.filter(s => s.holat === 'kutilmoqda');
+  const hozir = new Date();
+
+  const jami = tolangan.reduce((s, t) => s + (t.summa || 0), 0);
+  const oylik = tolangan.reduce((s, t) => {
+    const d = new Date(t.yaratilgan);
+    return (d.getFullYear() === hozir.getFullYear() && d.getMonth() === hozir.getMonth())
+      ? s + (t.summa || 0) : s;
+  }, 0);
+
+  document.getElementById('molJami').textContent  = pulFormat(jami);
+  document.getElementById('molOy').textContent    = pulFormat(oylik);
+  document.getElementById('molKutil').textContent =
+    pulFormat(kutilmoqda.reduce((s, t) => s + (t.summa || 0), 0));
+  document.getElementById('molSoni').textContent  = tolangan.length;
+
+  // Xizmat turi bo'yicha taqsimot
+  const guruh = {};
+  tolangan.forEach(t => {
+    const nom = t.xizmat_turi || 'Boshqa';
+    guruh[nom] = (guruh[nom] || 0) + (t.summa || 0);
+  });
+  const qatorlar = Object.entries(guruh).sort((a, b) => b[1] - a[1]);
+
+  if (!qatorlar.length) {
+    quti.innerHTML = `
+      <div class="bosh-holat">
+        <i class="ti ti-report-money"></i>
+        <b>To'langan buyurtma yo'q</b>
+        <span>Daromad to'lov so'rovlaridan hisoblanadi. To'lov "To'landi"
+              holatiga o'tgach, raqamlar shu yerda paydo bo'ladi.</span>
+      </div>`;
+    return;
+  }
+
+  moliyaMalumot = qatorlar.map(([nom, summa]) => ({ nom, summa }));
+
+  const eng = qatorlar[0][1] || 1;
+  quti.innerHTML = qatorlar.map(([nom, summa]) => `
+    <div class="hbar-row">
+      <div class="hbar-top"><span>${xavfsiz(nom)}</span><b>${pulFormat(summa)}</b></div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(summa / eng * 100)}%"></div></div>
+    </div>`).join('');
+
+  // Halqa: xizmat turlari ulushi. 5 tadan ortig'i "Boshqa" ga yig'iladi —
+  // rang ro'yxati cheklangan, yangi rang o'ylab topilmaydi.
+  const halqaQuti = document.getElementById('molHalqa');
+  if (halqaQuti) {
+    const asosiy = qatorlar.slice(0, 4).map(([nom, summa], i) => ({
+      nom, qiymat: summa, rang: GRAFIK_RANG[i],
+    }));
+    const qolgan = qatorlar.slice(4).reduce((s, [, v]) => s + v, 0);
+    if (qolgan) asosiy.push({ nom: 'Boshqa', qiymat: qolgan, rang: GRAFIK_RANG[4] });
+    halqaQuti.innerHTML = halqaGrafik(asosiy, 'xizmat turi') || '';
+  }
+
+  // Oxirgi 6 oy bo'yicha ustunlar
+  const oyQuti = document.getElementById('molOylik');
+  if (oyQuti) {
+    const OY_NOM = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
+    const oylar = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(hozir.getFullYear(), hozir.getMonth() - i, 1);
+      oylar.push({ nom: OY_NOM[d.getMonth()], yil: d.getFullYear(), oy: d.getMonth(), qiymat: 0 });
+    }
+    tolangan.forEach(t => {
+      const d = new Date(t.yaratilgan);
+      const o = oylar.find(x => x.yil === d.getFullYear() && x.oy === d.getMonth());
+      if (o) o.qiymat += Math.round((t.summa || 0) / 1000000 * 10) / 10;  // mln so'm
+    });
+    oyQuti.innerHTML = ustunGrafik(oylar, GRAFIK_RANG[1]) ||
+      boshGrafik("Bu davrda to'lov bo'lmagan", 'Raqamlar million so\'mda ko\'rsatiladi.', 'ti-chart-line');
+  }
+}
+
+function arizalarChiz(){
+  const royxat = tanlanganHolat
+    ? arizalar.filter(a => a.holat === tanlanganHolat)
+    : arizalar;
+
+  const tana = document.getElementById('arizaTana');
+  if (!royxat.length) {
+    tana.innerHTML = '<tr class="holat-qator"><td colspan="7">Ariza topilmadi</td></tr>';
+    return;
+  }
+  tana.innerHTML = royxat.map(a => `
+    <tr>
+      <td>#${a.id}</td>
+      <td>${xavfsiz(a.mijoz_malumot ? (a.mijoz_malumot.ism || a.mijoz_malumot.telefon) : '—')}</td>
+      <td>${xavfsiz(a.xizmat_nomi)}</td>
+      <td>${xavfsiz(a.tuman || '—')}</td>
+      <td>${xavfsiz(a.xodim_malumot ? a.xodim_malumot.ism : 'Tayinlanmagan')}</td>
+      <td>${sanaFormat(a.yaratilgan)}</td>
+      <td><span class="tag ${HOLAT_RANG[a.holat] || 'gray'}">${HOLAT_NOM[a.holat] || a.holat}</span></td>
+    </tr>`).join('');
+}
+
+// ═══════ Viloyat → tuman bog'lanishi ═══════
+// Tuman ro'yxati <optgroup> bo'lib guruhlangan, guruh sarlavhasi — viloyat
+// nomi. Shu sababli alohida ma'lumot ro'yxati kerak emas: viloyat ro'yxati
+// ham, filtrlash ham o'sha sarlavhalardan kelib chiqadi.
+function viloyatTumanUla(viloyatSel, tumanSel){
+  if (!viloyatSel || !tumanSel || tumanSel.dataset.ulangan) return;
+  tumanSel.dataset.ulangan = '1';
+
+  const guruhlar = Array.from(tumanSel.getElementsByTagName('optgroup'));
+
+  // Viloyat ro'yxatini guruh sarlavhalaridan to'ldiramiz
+  viloyatSel.innerHTML = '<option value="">— tanlang —</option>' +
+    guruhlar.map(g => `<option>${g.label}</option>`).join('');
+
+  function filtrla(tozala){
+    const v = viloyatSel.value;
+    guruhlar.forEach(g => {
+      const mos = !v || g.label === v;
+      g.style.display = mos ? '' : 'none';
+      // Viloyat almashsa, boshqa viloyatdagi tanlov qolib ketmasin
+      if (!mos && tozala && tumanSel.selectedOptions[0] &&
+          tumanSel.selectedOptions[0].parentElement === g) {
+        tumanSel.value = '';
+      }
+    });
+    tumanSel.disabled = !v;
+  }
+
+  viloyatSel.addEventListener('change', () => filtrla(true));
+
+  // Tuman oldindan tanlangan bo'lsa (tahrirlash), viloyatini topamiz
+  const tanlangan = tumanSel.selectedOptions[0];
+  if (tanlangan && tanlangan.parentElement.tagName === 'OPTGROUP') {
+    viloyatSel.value = tanlangan.parentElement.label;
+  }
+  filtrla(false);
+}
+
+viloyatTumanUla(document.getElementById('xf-viloyat'),
+                document.getElementById('xf-tuman'));
+
+// ═══════ Xodimlar ═══════
+// Ro'yxat /api/auth/xodimlar/ dan keladi. Yangi xodim shu yerdan kiritiladi —
+// Django admin paneli (/admin/auth_app/xodim/) ham ishlashda davom etadi.
+async function xodimlarYukla(){
+  const tana = document.getElementById('xodimJadval');
+  try {
+    xodimlar = await apiSorov('/auth/xodimlar/');
+  } catch (e) {
+    tana.innerHTML = `<tr class="holat-qator"><td colspan="7">Ro'yxatni yuklab bo'lmadi: ${xavfsiz(e.message)}</td></tr>`;
+    document.getElementById('xodimSoni').textContent = '—';
+    return;
+  }
+  xodimlarChiz();
+}
+
+function xodimlarChiz(){
+  const tana = document.getElementById('xodimJadval');
+  const soni = document.getElementById('xodimSoni');
+  const faol = xodimlar.filter(x => x.holat === 'faol').length;
+
+  soni.textContent = xodimlar.length
+    ? `Jami ${xodimlar.length} nafar xodim · ${faol} tasi faol`
+    : 'Hozircha xodim kiritilmagan';
+
+  if (!xodimlar.length){
+    tana.innerHTML = `<tr class="holat-qator"><td colspan="7">
+      Ro'yxat bo'sh. Yuqoridagi forma orqali birinchi xodimni kiriting.</td></tr>`;
+    return;
+  }
+
+  tana.innerHTML = xodimlar.map(x => `
+    <tr>
+      <td>${xavfsiz(x.ism || '—')}</td>
+      <td>${xavfsiz(x.lavozim || '—')}</td>
+      <td>${xavfsiz(x.telefon)}</td>
+      <td><code class="kod-katak">${xavfsiz(x.kirish_kodi || '—')}</code>
+          <button class="btn-sm ghost" onclick="kodYangila(${x.id})"
+                  title="Yangi kod berish">↻</button></td>
+      <td>${xavfsiz(x.tuman || '—')}</td>
+      <td><span class="tag ${x.holat === 'faol' ? 'green' : 'gray'}">${x.holat === 'faol' ? 'Faol' : 'Nofaol'}</span></td>
+      <td>${x.holat === 'faol' && !egasimi()
+            ? '<span style="color:#94a3b8;font-size:13px">—</span>'
+            : `<button class="btn-sm ${x.holat === 'faol' ? 'danger' : 'ok'}"
+                 onclick="xodimHolat(${x.id}, '${x.holat === 'faol' ? 'nofaol' : 'faol'}')">
+                 ${x.holat === 'faol' ? 'Nofaol qilish' : 'Faollashtirish'}</button>`}</td>
+    </tr>`).join('');
+}
+
+// Tizim egasimi? Faqat egasi xodimni nofaol qila oladi — boshqa adminlar
+// (direktor) xodimlarni ko'radi va qo'shadi, lekin faolligini to'xtata olmaydi.
+// Serverda ham shu tekshiruv bor (XodimDetailView.update) — bu faqat interfeys.
+function egasimi(){ return !!(profil && profil.egasi); }
+
+// Xodim o'chirilmaydi — nomi eski buyurtmalarda qolishi kerak.
+// Nofaol xodim portalga kira olmaydi.
+async function xodimHolat(id, holat){
+  const x = xodimlar.find(v => v.id === id);
+  const nom = (x && x.ism) || 'Xodim';
+  if (holat === 'nofaol' && !confirm(`${nom} nofaol qilinsinmi? U portalga kira olmaydi.`)) return;
+  try {
+    await apiSorov('/auth/xodimlar/' + id + '/', {
+      method: 'PATCH', body: JSON.stringify({ holat })
+    });
+    if (x) x.holat = holat;
+    xodimlarChiz();
+  } catch (e) {
+    alert('Xatolik: ' + e.message);
+  }
+}
+
+// Yangi xodim qo'shilgach kodini ko'rsatamiz — admin uni xodimga aytadi.
+// Kod parolning o'rnini bosadi, shuning uchun e'tiborni tortadigan qilib.
+function kodKorsat(x){
+  const el = document.getElementById('xodimKod');
+  el.innerHTML = `<i class="ti ti-key"></i>
+    <span><b>${xavfsiz(x.ism)}</b> qo'shildi. Kirish kodi:
+    <code class="kod-katak">${xavfsiz(x.kirish_kodi)}</code>
+    — telefon <b>${xavfsiz(x.telefon)}</b> bilan birga xodimga ayting.</span>`;
+  el.classList.add('bor');
+}
+
+async function kodYangila(id){
+  const x = xodimlar.find(v => v.id === id);
+  if (!confirm(`${(x && x.ism) || 'Xodim'} uchun yangi kod berilsinmi?\n` +
+               'Eski kod darhol ishlamay qoladi.')) return;
+  try {
+    const j = await apiSorov('/auth/xodimlar/' + id + '/kod/', { method: 'POST' });
+    if (x) { x.kirish_kodi = j.kirish_kodi; xodimlarChiz(); kodKorsat(x); }
+  } catch (e) {
+    alert('Xatolik: ' + e.message);
+  }
+}
+
+function xodimXato(matn){
+  const el = document.getElementById('xodimXato');
+  el.textContent = matn || '';
+  el.classList.toggle('bor', !!matn);
+}
+
+document.getElementById('xodimForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const tugma = document.getElementById('xodimSaqlaBtn');
+  const q = id => document.getElementById(id).value.trim();
+  const telefon = q('xf-telefon').replace(/[\s-]/g, '');
+
+  if (!/^\+998\d{9}$/.test(telefon)) {
+    xodimXato('Telefon raqam +998 bilan boshlanib, 12 ta raqamdan iborat bo\'lishi kerak');
+    return;
+  }
+
+  xodimXato('');
+  tugma.disabled = true;
+  const asl = tugma.innerHTML;
+  tugma.textContent = 'Saqlanmoqda…';
+  try {
+    const yangi = await apiSorov('/auth/xodimlar/', {
+      method: 'POST',
+      body: JSON.stringify({
+        ism: q('xf-ism'), telefon,
+        lavozim: q('xf-lavozim'),
+        viloyat: q('xf-viloyat'), tuman: q('xf-tuman'),
+        mahalla: q('xf-mahalla'),
+        // Bo'sh sana null bo'lishi kerak — bo'sh satrni Django qabul qilmaydi
+        ishga_kirgan: q('xf-sana') || null,
+      })
+    });
+    xodimlar.push(yangi);
+    xodimlar.sort((a, b) => (a.ism || '').localeCompare(b.ism || ''));
+    xodimlarChiz();
+    kodKorsat(yangi);
+    e.target.reset();
+    // reset() dan keyin viloyat bo'shaydi — tuman ro'yxatini qayta filtrlaymiz
+    document.getElementById('xf-viloyat').dispatchEvent(new Event('change'));
+  } catch (xato) {
+    xodimXato(xato.message);
+  } finally {
+    tugma.disabled = false;
+    tugma.innerHTML = asl;
+  }
+});
+
+// ═══════ Navigatsiya ═══════
+document.querySelectorAll('.sb-item[data-page]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.sb-item[data-page]').forEach(b=>b.classList.toggle('active', b===btn));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active', p.id==='page-'+btn.dataset.page));
+  });
+});
+
+document.querySelectorAll('.fchip').forEach(c=>{
+  c.addEventListener('click', ()=>{
+    c.parentElement.querySelectorAll('.fchip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    // Arizalar chiplari ro'yxatni filtrlaydi, qolganlari hozircha faqat ko'rinish
+    if (c.dataset.holat !== undefined) {
+      tanlanganHolat = c.dataset.holat;
+      arizalarChiz();
+    }
+  });
+});
+
+// ═══════ Boshlash ═══════
+// Sahifa yangilanganda sessiya saqlanib qolgan bo'lsa to'g'ridan-to'g'ri panel
+(async function(){
+  tokenYukla();
+  if (!token) return;
+  try {
+    profil = await apiSorov('/auth/profil/');
+    if (profil.rol !== 'admin') { chiqish(); return; }
+    await panelniOch();
+  } catch (e) { chiqish(); }
+})();
+</script>
+</body>
+</html>

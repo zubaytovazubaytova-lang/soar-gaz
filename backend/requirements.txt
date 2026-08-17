@@ -1,0 +1,8 @@
+Django==4.2.16
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.4.0
+Pillow==10.4.0
+# Faqat REDIS_URL o'rnatilganda kerak (umumiy kesh — hisobot keshlash uchun).
+# Redis'siz loyiha ishlayveradi, statistika keshi o'chiq bo'ladi.
+redis==5.0.8

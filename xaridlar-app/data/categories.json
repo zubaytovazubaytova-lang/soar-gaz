@@ -1,0 +1,10 @@
+[
+  { "slug": "gaz-plitalari", "name": "Gaz plitalari", "group": "gaz-jihozlari", "parent": "gaz-jihozlari", "icon": "🔥", "description": "Uy-joy va restoran uchun 2–5 konforkali gaz plitalari, gaz-elektr kombinatsiyalari." },
+  { "slug": "gaz-qozonlari", "name": "Gaz qozonlari (kotellar)", "group": "gaz-jihozlari", "parent": "gaz-jihozlari", "icon": "♨️", "description": "Devoriy va yerda o'rnatiladigan isitish kotellari — bir va ikki konturli." },
+  { "slug": "gaz-konvektorlari", "name": "Konvektorlar va isitgichlar", "group": "gaz-jihozlari", "parent": "gaz-jihozlari", "icon": "🌡️", "description": "Xona havosini tez isituvchi gaz konvektorlari va infraqizil isitgichlar." },
+  { "slug": "gaz-ballonlari", "name": "Ballonlar va armatura", "group": "gaz-jihozlari", "parent": "gaz-jihozlari", "icon": "🛢️", "description": "LPG ballonlari, reduktorlar, shланglar va xavfsizlik armaturasi." },
+
+  { "slug": "hisoblagichlar", "name": "Gaz hisoblagichlari", "group": "umumiy", "icon": "📟", "description": "Uy-joy va sanoat uchun G4–G40 membranasimon va ultratovushli hisoblagichlar." },
+  { "slug": "quvurlar", "name": "Quvurlar va fitinglar", "group": "umumiy", "icon": "🧵", "description": "Polietilen, po'lat va mis gaz quvurlari hamda ulash elementlari." },
+  { "slug": "ventillar", "name": "Ventillar va kranlar", "group": "umumiy", "icon": "🔧", "description": "Shar kranlar, klapanlar va gaz to'suvchi armatura." }
+]

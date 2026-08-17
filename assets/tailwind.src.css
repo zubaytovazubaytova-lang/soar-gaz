@@ -1,0 +1,7 @@
+/* Tailwind manba fayli. Build:  npm run css
+   Natija: assets/tailwind.css — index.html shuni yuklaydi.
+   Ilgari brauzerda cdn.tailwindcss.com JIT kompilyatori ishlagan edi;
+   u har ochilishda ~400 KB JS yuklab, CSS ni qaytadan generatsiya qilardi. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

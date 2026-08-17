@@ -1,0 +1,79 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Bosh sahifa</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='katalog' %}">Katalog</a>
+    &rsaquo; <a href="{% url 'admin:katalog_katalogmedia_changelist' %}">Katalog mediasi</a>
+    &rsaquo; Ko'plab yuklash
+  </div>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:720px">
+
+  <p style="background:#e8f4ff;border-left:4px solid #2563eb;padding:12px 14px;
+            border-radius:4px;line-height:1.6">
+    Bir necha rasm va videoni <b>birdan</b> yuklang. Tartib avtomatik qo'yiladi:
+    rasmlar navbat bilan, <b>video har doim oxirida</b> — katalog kartasida
+    birinchi rasm ko'rinadi, video esa slayderning eng oxirgi kadri bo'ladi.
+  </p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <fieldset class="module aligned" style="padding:14px">
+      {% for field in form %}
+        <div class="form-row">
+          <div>
+            <label for="{{ field.id_for_label }}"
+                   {% if field.field.required %}class="required"{% endif %}>
+              {{ field.label }}:
+            </label>
+            {% if field.name == 'kalit' %}
+              <input type="text" name="kalit" id="id_kalit" list="kalitlar_royxati"
+                     maxlength="80" value="{{ field.value|default:'' }}"
+                     style="width:340px" autocomplete="off">
+              <datalist id="kalitlar_royxati">
+                {% for k in kalitlar %}<option value="{{ k }}">{% endfor %}
+              </datalist>
+            {% else %}
+              {{ field }}
+            {% endif %}
+            {% if field.help_text %}
+              <div class="help" style="margin-left:0">{{ field.help_text }}</div>
+            {% endif %}
+            {% for xato in field.errors %}
+              <p class="errornote" style="padding:6px 10px">{{ xato }}</p>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </fieldset>
+
+    <div class="submit-row">
+      <input type="submit" value="Yuklash" class="default">
+      <a href="{% url 'admin:katalog_katalogmedia_changelist' %}"
+         class="button cancel-link" style="margin-left:8px">Bekor qilish</a>
+    </div>
+  </form>
+
+  <h3 style="margin-top:28px">Fayl nomlash qoidasi</h3>
+  <p style="line-height:1.7">
+    Kalitni bo'sh qoldirsangiz, u <b>fayl nomidan</b> aniqlanadi — shuning uchun
+    fayllarni shu ko'rinishda nomlang:
+  </p>
+  <table style="border-collapse:collapse;line-height:1.8">
+    <tr><td style="padding-right:22px"><code>ugop-16-1.jpg</code></td>
+        <td>1-rasm &rarr; kalit <code>ugop-16</code></td></tr>
+    <tr><td><code>ugop-16-2.jpg</code></td><td>2-rasm</td></tr>
+    <tr><td><code>ugop-16-video.mp4</code></td>
+        <td>video &rarr; avtomatik <b>oxiriga</b></td></tr>
+  </table>
+  <p style="line-height:1.7;margin-top:14px">
+    Bo'lim ham bo'sh qolsa — shu kalitdagi <b>mavjud mediadan</b> olinadi.
+    Mahsulot butunlay yangi bo'lsa, bo'limni bir marta qo'lda tanlang.
+  </p>
+
+</div>
+{% endblock %}

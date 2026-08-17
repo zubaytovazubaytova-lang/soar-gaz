@@ -1,0 +1,16 @@
+{
+  "name": "soar-gaz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SOAR GAZ — marketing sayti va kabinetlar uchun build vositalari",
+  "scripts": {
+    "css": "tailwindcss -i ./assets/tailwind.src.css -o ./assets/tailwind.css --minify",
+    "css:watch": "tailwindcss -i ./assets/tailwind.src.css -o ./assets/tailwind.css --watch",
+    "rasm": "node scripts/rasm-optimizatsiya.mjs",
+    "build": "npm run css && npm run rasm"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3",
+    "tailwindcss": "^3.4.6"
+  }
+}

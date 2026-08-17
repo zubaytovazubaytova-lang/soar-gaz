@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a1835"/>
+      <stop offset="50%" style="stop-color:#1e3a6e"/>
+      <stop offset="100%" style="stop-color:#132751"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#d4af37"/>
+      <stop offset="50%" style="stop-color:#f0c940"/>
+      <stop offset="100%" style="stop-color:#d4af37"/>
+    </linearGradient>
+    <linearGradient id="btn" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#d4af37"/>
+      <stop offset="100%" style="stop-color:#f0c940"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="950" cy="100" r="250" fill="#d4af37" opacity="0.04"/>
+  <circle cx="1050" cy="500" r="180" fill="#d4af37" opacity="0.04"/>
+  <circle cx="100" cy="500" r="200" fill="#1e3a6e" opacity="0.3"/>
+
+  <!-- Gold top line -->
+  <rect x="0" y="0" width="1200" height="4" fill="url(#gold)"/>
+
+  <!-- Logo circle -->
+  <rect x="80" y="100" width="90" height="90" rx="20" fill="url(#btn)"/>
+  <!-- Fire icon (simplified) -->
+  <text x="125" y="158" font-size="48" text-anchor="middle" fill="#0a1835">🔥</text>
+
+  <!-- Company name -->
+  <text x="190" y="148" font-family="Arial, sans-serif" font-weight="900" font-size="64" fill="white">SOAR</text>
+  <text x="388" y="148" font-family="Arial, sans-serif" font-weight="900" font-size="64" fill="#d4af37"> GAZ</text>
+
+  <!-- Tagline -->
+  <text x="190" y="185" font-family="Arial, sans-serif" font-size="24" fill="#d4af37" opacity="0.8">Ishonchli Gaz Ta'minoti • O'zbekiston</text>
+
+  <!-- Divider line -->
+  <rect x="80" y="220" width="500" height="2" fill="url(#gold)" opacity="0.5"/>
+
+  <!-- Main heading -->
+  <text x="80" y="295" font-family="Arial, sans-serif" font-weight="900" font-size="56" fill="white">Gaz Ta'minoti</text>
+  <text x="80" y="360" font-family="Arial, sans-serif" font-weight="900" font-size="56" fill="#d4af37">Platformasi</text>
+
+  <!-- Description -->
+  <text x="80" y="415" font-family="Arial, sans-serif" font-size="26" fill="#94a3b8">Loyihalashtirish • Montaj • Servis • Xaridlar</text>
+
+  <!-- Stats -->
+  <rect x="80" y="460" width="160" height="80" rx="12" fill="#1e3a6e" opacity="0.8"/>
+  <text x="160" y="500" font-family="Arial, sans-serif" font-weight="900" font-size="32" fill="#d4af37" text-anchor="middle">500+</text>
+  <text x="160" y="525" font-family="Arial, sans-serif" font-size="18" fill="#94a3b8" text-anchor="middle">Loyiha</text>
+
+  <rect x="260" y="460" width="160" height="80" rx="12" fill="#1e3a6e" opacity="0.8"/>
+  <text x="340" y="500" font-family="Arial, sans-serif" font-weight="900" font-size="32" fill="#d4af37" text-anchor="middle">10+</text>
+  <text x="340" y="525" font-family="Arial, sans-serif" font-size="18" fill="#94a3b8" text-anchor="middle">Yil tajriba</text>
+
+  <rect x="440" y="460" width="160" height="80" rx="12" fill="#1e3a6e" opacity="0.8"/>
+  <text x="520" y="500" font-family="Arial, sans-serif" font-weight="900" font-size="32" fill="#d4af37" text-anchor="middle">24/7</text>
+  <text x="520" y="525" font-family="Arial, sans-serif" font-size="18" fill="#94a3b8" text-anchor="middle">Servis</text>
+
+  <!-- Right side icon group -->
+  <rect x="750" y="180" width="360" height="280" rx="24" fill="#1e3a6e" opacity="0.5" stroke="#d4af37" stroke-width="1" stroke-opacity="0.3"/>
+
+  <!-- Service icons -->
+  <text x="870" y="270" font-family="Arial, sans-serif" font-size="52" text-anchor="middle">📐</text>
+  <text x="870" y="310" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle" font-weight="bold">Loyihalashtirish</text>
+
+  <text x="990" y="270" font-family="Arial, sans-serif" font-size="52" text-anchor="middle">🔧</text>
+  <text x="990" y="310" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle" font-weight="bold">Montaj</text>
+
+  <text x="870" y="390" font-family="Arial, sans-serif" font-size="52" text-anchor="middle">🛠️</text>
+  <text x="870" y="430" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle" font-weight="bold">Servis</text>
+
+  <text x="990" y="390" font-family="Arial, sans-serif" font-size="52" text-anchor="middle">🛒</text>
+  <text x="990" y="430" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle" font-weight="bold">Xaridlar</text>
+
+  <!-- Website URL -->
+  <text x="600" y="600" font-family="Arial, sans-serif" font-size="22" fill="#d4af37" text-anchor="middle" opacity="0.8">zubaytovazubaytova-lang.github.io/fizika-platforma/soar-gaz</text>
+
+  <!-- Bottom gold line -->
+  <rect x="0" y="626" width="1200" height="4" fill="url(#gold)"/>
+</svg>

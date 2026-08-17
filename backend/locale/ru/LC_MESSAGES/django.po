@@ -1,0 +1,161 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: soargaz\n"
+"Report-Msgid-Bugs-To: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
+
+#: apps/buyurtmalar/models.py
+msgid "Loyihalashtirish"
+msgstr "Проектирование"
+
+#: apps/buyurtmalar/models.py
+msgid "Montaj"
+msgstr "Монтаж"
+
+#: apps/buyurtmalar/models.py
+msgid "Servis"
+msgstr "Сервис"
+
+#: apps/buyurtmalar/models.py
+msgid "Uskunalar"
+msgstr "Оборудование"
+
+#: apps/buyurtmalar/models.py
+msgid "Metrologiya"
+msgstr "Метрология"
+
+#: apps/buyurtmalar/models.py
+msgid "Yangi"
+msgstr "Новая"
+
+#: apps/buyurtmalar/models.py
+msgid "Qabul qilindi"
+msgstr "Принята"
+
+#: apps/buyurtmalar/models.py
+msgid "Bajarilmoqda"
+msgstr "Выполняется"
+
+#: apps/buyurtmalar/models.py
+msgid "Bajarildi"
+msgstr "Завершена"
+
+#: apps/buyurtmalar/models.py
+msgid "Bekor qilindi"
+msgstr "Отменена"
+
+#: apps/kabinet/models.py
+msgid "Xususiy uy"
+msgstr "Частный дом"
+
+#: apps/kabinet/models.py
+msgid "Kvartira"
+msgstr "Квартира"
+
+#: apps/kabinet/models.py
+msgid "Dala hovli"
+msgstr "Загородный дом"
+
+#: apps/kabinet/models.py
+msgid "Ofis"
+msgstr "Офис"
+
+#: apps/kabinet/models.py
+msgid "Korxona / tashkilot"
+msgstr "Предприятие / организация"
+
+#: apps/kabinet/models.py
+msgid "Rezervuar"
+msgstr "Резервуар"
+
+#: apps/kabinet/models.py
+msgid "Hisoblagich"
+msgstr "Счётчик"
+
+#: apps/kabinet/models.py
+msgid "Qozon"
+msgstr "Котёл"
+
+#: apps/kabinet/models.py
+msgid "Gorelka"
+msgstr "Горелка"
+
+#: apps/kabinet/models.py
+msgid "Ventil / reduktor"
+msgstr "Вентиль / редуктор"
+
+#: apps/kabinet/models.py
+msgid "Boshqa"
+msgstr "Другое"
+
+#: apps/kabinet/models.py
+msgid "Mexanik"
+msgstr "Механический"
+
+#: apps/kabinet/models.py
+msgid "Elektron"
+msgstr "Электронный"
+
+#: apps/kabinet/models.py
+msgid "Smart (masofadan)"
+msgstr "Смарт (дистанционный)"
+
+#: apps/kabinet/models.py
+msgid "Faol"
+msgstr "Активен"
+
+#: apps/kabinet/models.py
+msgid "Nosoz"
+msgstr "Неисправен"
+
+#: apps/kabinet/models.py
+msgid "Almashtirildi"
+msgstr "Заменён"
+
+#: apps/kabinet/models.py
+msgid "Shartnoma"
+msgstr "Договор"
+
+#: apps/kabinet/models.py
+msgid "Metrologik sertifikat"
+msgstr "Метрологический сертификат"
+
+#: apps/kabinet/models.py
+msgid "Texnik hisobot"
+msgstr "Технический отчёт"
+
+#: apps/kabinet/models.py
+msgid "Hisob-faktura"
+msgstr "Счёт-фактура"
+
+#: apps/kabinet/models.py
+msgid "Buyurtma holati"
+msgstr "Статус заявки"
+
+#: apps/kabinet/models.py
+msgid "To'lov"
+msgstr "Оплата"
+
+#: apps/kabinet/models.py
+msgid "Texnik ko'rik"
+msgstr "Техосмотр"
+
+#: apps/kabinet/models.py
+msgid "Umumiy"
+msgstr "Общее"
+
+#: apps/kabinet/models.py
+msgid "Ochiq"
+msgstr "Открыто"
+
+#: apps/kabinet/models.py
+msgid "Javob berildi"
+msgstr "Есть ответ"
+
+#: apps/kabinet/models.py
+msgid "Yopilgan"
+msgstr "Закрыто"
