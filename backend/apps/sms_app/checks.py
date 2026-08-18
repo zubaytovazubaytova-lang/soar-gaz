@@ -12,15 +12,28 @@ Shuning uchun `DEBUG=False` bo'lganda bu holat XATO deb hisoblanadi: server
 chiqadi va shu yetarli.
 """
 
+import sys
+
 from django.conf import settings
 from django.core.checks import Error, register
 
 from .gateway import sozlanganmi
 
 
+def _test_rejimimi():
+    """Testlar ishlayaptimi?
+
+    Django test runner `DEBUG` ni majburan `False` qiladi, shuning uchun
+    tekshiruvsiz `manage.py test` har doim shu xato bilan to'xtardi va
+    birorta test umuman ishga tushmasdi. Testlarda SMS baribir yuborilmaydi,
+    demak provayder kalitlari kerak emas.
+    """
+    return 'test' in sys.argv or sys.argv[0].endswith(('pytest', 'pytest.exe'))
+
+
 @register()
 def sms_sozlangan_mi(app_configs, **kwargs):
-    if settings.DEBUG or sozlanganmi():
+    if settings.DEBUG or _test_rejimimi() or sozlanganmi():
         return []
 
     return [
