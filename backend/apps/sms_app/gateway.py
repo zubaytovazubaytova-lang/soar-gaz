@@ -108,7 +108,26 @@ def sms_yubor(telefon, matn):
     if provayder != 'konsol':
         logger.warning("SMS_PROVAYDER='%s', lekin kalitlar to'liq emas — konsol rejimi", provayder)
 
-    print(f"[SMS -> {telefon}] {matn}")
+    # Produksiyada konsol rejimi — bu SMS yuborilmagani. Ilgari bu yerda ham
+    # `True` qaytardi va `otp_yuborish` mijozga "kod yuborildi" deb javob
+    # berardi; mijoz esa hech qachon SMS olmasdi va tizimga kira olmasdi,
+    # hech qanday xato ham ko'rinmasdi. Endi rostini qaytaramiz: chaqiruvchi
+    # 502 bilan tushunarli xabar ko'rsatadi.
+    #
+    # `sms_app.checks.E001` bunday serverni umuman ishga tushirmaydi; bu yer
+    # esa tekshiruv chetlab o'tilgan holat uchun (`--skip-checks`) himoya.
+    if not settings.DEBUG:
+        logger.error(
+            'SMS provayder sozlanmagan (DEBUG=False) — %s raqamiga xabar YUBORILMADI',
+            telefon,
+        )
+        return False
+
+    # `print` EMAS: stdout TTY bo'lmaganda (runserver log faylga yo'naltirilgan,
+    # xizmat sifatida ishlayotgan gunicorn/systemd) Python uni buferlaydi va
+    # xabar log'ga umuman yetib bormaydi — dev rejimda OTP kod jimgina
+    # yo'qolardi va kirib bo'lmasdi. `logger` esa darhol yoziladi.
+    logger.warning('[SMS -> %s] %s', telefon, matn)
     return True
 
 
