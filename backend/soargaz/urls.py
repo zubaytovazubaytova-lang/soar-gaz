@@ -96,6 +96,18 @@ def statik_fayl(request, path, papka):
     return javob
 
 
+def sayt_fayli(request, path, papka):
+    """scripts/ va video/ — sayt bilan birga o'zgaradigan fayllar.
+
+    `statik_fayl` dan farqi — kesh muddati qisqa. Bu fayllar nomida versiya
+    yo'q (`scripts/hero-carousel.js`), shuning uchun bir yillik kesh berilsa
+    o'zgarish mijozga umuman yetib bormasdi.
+    """
+    javob = serve(request, path, document_root=os.path.join(ILDIZ, papka))
+    javob['Cache-Control'] = 'public, max-age=3600'
+    return javob
+
+
 def rasm_bilan_webp(request, path):
     """Mahsulot rasmlarini beradi; brauzer qo'llasa — WebP nusxasini.
 
@@ -193,6 +205,9 @@ urlpatterns = [
     # Lokal uslub/shrift/kutubxona fayllari (ilgari tashqi CDN'lardan olinardi)
     re_path(r'^assets/(?P<path>.+)$', statik_fayl, {'papka': 'assets'}),
     re_path(r'^vendor/(?P<path>.+)$', statik_fayl, {'papka': 'vendor'}),
+    # Sayt skriptlari va hero videosi (index.html yonidagi scripts/ va video/)
+    re_path(r'^scripts/(?P<path>.+)$', sayt_fayli, {'papka': 'scripts'}),
+    re_path(r'^video/(?P<path>.+)$', sayt_fayli, {'papka': 'video'}),
     # index.html yonidagi mahsulot rasmlari va videolari (loyiha ildizidagi images/).
     # Diqqat: sertifikat/pasport fayllari bu yerda EMAS — ular hujjatlar_maxfiy/ da
     # turadi va faqat /api/katalog/hujjat/<token>/ orqali beriladi.

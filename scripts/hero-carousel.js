@@ -25,8 +25,11 @@
   // Slaydlarni yarat
   slides.forEach((s, i) => {
     const el = document.createElement('div');
-    el.className = 'hc-slide absolute inset-0 transition-opacity duration-700 ease-in-out ' +
-                   (i === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0');
+    // Ko'rinish faqat `is-active` sinfi bilan boshqariladi. Ilgari bu yerda
+    // Tailwind sinflari (opacity-100/z-10) ishlatilgan edi, lekin karuselning
+    // o'z CSS'i `#hero-carousel` id'si orqali yozilgani uchun undan kuchliroq
+    // bo'lib, slaydlar ko'rinmay qolishi mumkin edi.
+    el.className = 'hc-slide' + (i === 0 ? ' is-active' : '');
     if (s.type === 'video') {
       const v = document.createElement('video');
       v.src = s.src;
@@ -46,7 +49,7 @@
     }
     // Yengil pastki gradient (matnsiz ham chiroyli ko'rinishi uchun)
     const shade = document.createElement('div');
-    shade.className = 'pointer-events-none absolute inset-0 bg-gradient-to-t from-navy-950/50 via-transparent to-transparent';
+    shade.className = 'hc-shade';
     el.appendChild(shade);
     track.appendChild(el);
   });
@@ -56,8 +59,7 @@
     const b = document.createElement('button');
     b.type = 'button';
     b.setAttribute('aria-label', 'Slayd ' + (i + 1));
-    b.className = 'hc-dot w-2.5 h-2.5 rounded-full transition-all duration-300 ' +
-                  (i === 0 ? 'bg-cobalt-400 w-6' : 'bg-white/40 hover:bg-white/70');
+    b.className = 'hc-dot' + (i === 0 ? ' is-active' : '');
     b.addEventListener('click', () => goTo(i, true));
     dotsWrap.appendChild(b);
     return b;
@@ -71,13 +73,11 @@
   function goTo(i, userAction) {
     const next = (i + slides.length) % slides.length;
     if (next === current) return;
-    slideEls[current].classList.replace('opacity-100', 'opacity-0');
-    slideEls[current].classList.replace('z-10', 'z-0');
-    slideEls[next].classList.replace('opacity-0', 'opacity-100');
-    slideEls[next].classList.replace('z-0', 'z-10');
+    slideEls[current].classList.remove('is-active');
+    slideEls[next].classList.add('is-active');
 
-    dots[current].className = 'hc-dot w-2.5 h-2.5 rounded-full transition-all duration-300 bg-white/40 hover:bg-white/70';
-    dots[next].className    = 'hc-dot w-2.5 h-2.5 rounded-full transition-all duration-300 bg-cobalt-400 w-6';
+    dots[current].classList.remove('is-active');
+    dots[next].classList.add('is-active');
 
     current = next;
     if (userAction) restart();
