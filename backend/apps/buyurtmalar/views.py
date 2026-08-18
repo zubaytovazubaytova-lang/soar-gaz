@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 from django.db.models import Count, Q
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -25,7 +26,7 @@ def _admin_mi(user):
 
 
 def _ruxsat_yoq():
-    return Response({'detail': "Bu amal uchun ruxsat yo'q"}, status=403)
+    return Response({'detail': _("Bu amal uchun ruxsat yo'q")}, status=403)
 
 
 @api_view(['GET', 'POST'])
@@ -60,7 +61,7 @@ def buyurtmalar_list(request):
     if ser.is_valid():
         obyekt = ser.validated_data.get('obyekt')
         if obyekt and obyekt.mijoz_id != user.id:
-            return Response({'detail': 'Obyekt sizga tegishli emas'}, status=403)
+            return Response({'detail': _('Obyekt sizga tegishli emas')}, status=403)
         # Manzil/tumanni `Buyurtma.save()` o'zi to'ldiradi: mijoz kiritgan
         # qiymat → obyektniki → profildagisi. Bu yerda ularni MAJBURAN
         # profildagiga tenglash mumkin emas edi: `save(**kwargs)` argumentlari
@@ -148,7 +149,7 @@ def buyurtma_update(request, pk):
     try:
         b = Buyurtma.objects.get(pk=pk)
     except Buyurtma.DoesNotExist:
-        return Response({'detail': 'Topilmadi'}, status=404)
+        return Response({'detail': _('Topilmadi')}, status=404)
 
     # Holatni admin yoki shu buyurtmaga tayinlangan xodim o'zgartiradi.
     # Mijoz faqat o'z buyurtmasini bekor qila oladi.
@@ -158,7 +159,7 @@ def buyurtma_update(request, pk):
         if not (b.mijoz_id == user.id and holat == 'bekor'):
             return _ruxsat_yoq()
         if b.holat in ('bajarildi', 'bekor'):
-            return Response({'detail': 'Bu buyurtmani bekor qilib bo\'lmaydi'}, status=400)
+            return Response({'detail': _('Bu buyurtmani bekor qilib bo\'lmaydi')}, status=400)
 
     if holat:
         b.holat = holat
@@ -175,13 +176,13 @@ def tayinlash(request, pk):
     try:
         b = Buyurtma.objects.get(pk=pk)
     except Buyurtma.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     xodim_id = request.data.get('xodim_id')
     try:
         xodim = Foydalanuvchi.objects.get(pk=xodim_id, rol='xodim')
     except Foydalanuvchi.DoesNotExist:
-        return Response({'detail': 'Xodim topilmadi'}, status=404)
+        return Response({'detail': _('Xodim topilmadi')}, status=404)
 
     b.xodim = xodim
     b.holat = 'yangi'
@@ -199,7 +200,7 @@ def qabul(request, pk):
     try:
         b = Buyurtma.objects.get(pk=pk, xodim=request.user)
     except Buyurtma.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     b.holat = 'qabul'
     b.save()
@@ -213,7 +214,7 @@ def natija(request, pk):
     try:
         b = Buyurtma.objects.get(pk=pk, xodim=request.user)
     except Buyurtma.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     b.natija = request.data.get('natija', '')
     b.natija_soat = request.data.get('natija_soat') or None
@@ -235,7 +236,7 @@ def foto_yuklash(request, pk):
     try:
         b = Buyurtma.objects.get(pk=pk)
     except Buyurtma.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     # Rasmni admin, tayinlangan xodim yoki buyurtma egasi yuklaydi
     user = request.user
@@ -244,7 +245,7 @@ def foto_yuklash(request, pk):
 
     rasmlar = request.FILES.getlist('rasmlar')
     if not rasmlar:
-        return Response({'detail': 'Rasm tanlanmadi'}, status=400)
+        return Response({'detail': _('Rasm tanlanmadi')}, status=400)
 
     tur = request.data.get('tur', 'ish')
     fotolar = [BuyurtmaFoto(buyurtma=b, rasm=r, tur=tur) for r in rasmlar]

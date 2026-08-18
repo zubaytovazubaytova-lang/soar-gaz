@@ -159,3 +159,47 @@ msgstr "Есть ответ"
 #: apps/kabinet/models.py
 msgid "Yopilgan"
 msgstr "Закрыто"
+
+#: apps/auth_app/views.py
+msgid "Telefon raqam kiritilishi shart"
+msgstr "Необходимо указать номер телефона"
+
+#: apps/auth_app/views.py
+msgid "Telefon va kod kiritilishi shart"
+msgstr "Необходимо указать номер телефона и код"
+
+#: apps/auth_app/views.py
+msgid "Hisobingiz bloklangan. Admin bilan bog'laning."
+msgstr "Ваш аккаунт заблокирован. Обратитесь к администратору."
+
+#: apps/auth_app/views.py
+msgid "SMS yuborilmadi. Birozdan keyin urinib ko'ring yoki operatorga murojaat qiling."
+msgstr "SMS не отправлено. Попробуйте позже или обратитесь к оператору."
+
+#: apps/auth_app/views.py
+msgid "Juda ko'p noto'g'ri urinish. Birozdan keyin qayta urinib ko'ring."
+msgstr "Слишком много неверных попыток. Попробуйте позже."
+
+#: apps/auth_app/views.py
+msgid "Juda ko'p noto'g'ri urinish. Hisobingiz vaqtincha bloklandi."
+msgstr "Слишком много неверных попыток. Аккаунт временно заблокирован."
+
+#: apps/auth_app/views.py
+msgid "Juda ko'p urinish. Birozdan keyin qayta urinib ko'ring."
+msgstr "Слишком много попыток. Попробуйте позже."
+
+#: apps/auth_app/views.py
+msgid "Kod noto'g'ri!"
+msgstr "Неверный код!"
+
+#: apps/auth_app/views.py
+msgid "Kod muddati tugagan. Qayta yuboring."
+msgstr "Срок действия кода истёк. Запросите новый."
+
+#: apps/auth_app/views.py
+msgid "Yangi kod %(soniya)s soniyada bir marta yuboriladi."
+msgstr "Новый код можно запросить раз в %(soniya)s секунд."
+
+#: apps/auth_app/views.py
+msgid "Bu raqamga kod yuborish chegarasi tugadi. Keyinroq urinib ko'ring."
+msgstr "Лимит отправки кода на этот номер исчерпан. Попробуйте позже."

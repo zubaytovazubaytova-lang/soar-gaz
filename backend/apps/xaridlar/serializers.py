@@ -1,3 +1,4 @@
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from .models import (Xarid, XaridQatori, YETKAZISH_CHOICES, TOLOV_USULI_CHOICES,
@@ -139,5 +140,5 @@ class XaridKirishSerializer(serializers.Serializer):
 
     def validate_items(self, qiymat):
         if not qiymat:
-            raise serializers.ValidationError("Savat bo'sh")
+            raise serializers.ValidationError(_("Savat bo'sh"))
         return qiymat

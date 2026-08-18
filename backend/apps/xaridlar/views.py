@@ -3,6 +3,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Count, F, Q, Sum
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -55,7 +56,7 @@ def xaridlar_list(request):
             # tanitishi va faqat O'Z raqamini so'rashi kerak.
             if not request.user.is_authenticated:
                 return Response(
-                    {'detail': 'Buyurtmalarni ko\'rish uchun tizimga kiring'},
+                    {'detail': _('Buyurtmalarni ko\'rish uchun tizimga kiring')},
                     status=401,
                 )
             raqamlar = _telefon_raqamlari(telefon)
@@ -63,7 +64,7 @@ def xaridlar_list(request):
                 return Response([])
             if not _admin_mi(request.user) and \
                     raqamlar != _telefon_raqamlari(request.user.telefon):
-                return Response({'detail': "Ruxsat yo'q"}, status=403)
+                return Response({'detail': _("Ruxsat yo'q")}, status=403)
             # Telefon turli formatlarda saqlanishi mumkin — raqamlar bo'yicha solishtiramiz
             qs = [x for x in qs if raqamlar in _telefon_raqamlari(x.telefon)]
         elif _admin_mi(request.user):
@@ -71,7 +72,7 @@ def xaridlar_list(request):
             if holat:
                 qs = qs.filter(holat=holat)
         else:
-            return Response({'detail': "Ruxsat yo'q"}, status=403)
+            return Response({'detail': _("Ruxsat yo'q")}, status=403)
 
         return Response(XaridSerializer(qs, many=True).data)
 
@@ -169,15 +170,15 @@ def xaridlar_list(request):
 def promokod_tekshir(request):
     kod = (request.data.get('kod') or '').strip()
     if not kod:
-        return Response({'detail': 'Promokod kiriting'}, status=400)
+        return Response({'detail': _('Promokod kiriting')}, status=400)
 
     qatorlar = request.data.get('items') or []
     try:
         qatorlar = [{'price': int(q.get('price', 0)), 'qty': int(q.get('qty', 0))} for q in qatorlar]
     except (TypeError, ValueError):
-        return Response({'detail': "Savat ma'lumoti noto'g'ri"}, status=400)
+        return Response({'detail': _("Savat ma'lumoti noto'g'ri")}, status=400)
     if not qatorlar:
-        return Response({'detail': "Savat bo'sh"}, status=400)
+        return Response({'detail': _("Savat bo'sh")}, status=400)
 
     summa, promo, xato = hisobla(
         qatorlar,
@@ -215,7 +216,7 @@ def tolov_boshqarish(request, raqam):
     try:
         xarid = Xarid.objects.get(raqam=raqam)
     except Xarid.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     if request.method == 'GET':
         return Response({
@@ -230,13 +231,13 @@ def tolov_boshqarish(request, raqam):
 
     # ── POST: qayta urinish / usulni almashtirish ──
     if xarid.tolandi:
-        return Response({'detail': "Bu buyurtma allaqachon to'langan"}, status=400)
+        return Response({'detail': _("Bu buyurtma allaqachon to'langan")}, status=400)
     if xarid.holat == 'bekor':
-        return Response({'detail': 'Bekor qilingan buyurtmani to\'lab bo\'lmaydi'}, status=400)
+        return Response({'detail': _('Bekor qilingan buyurtmani to\'lab bo\'lmaydi')}, status=400)
 
     yangi_usul = request.data.get('method') or xarid.tolov_usuli
     if yangi_usul not in TOLOV_USULLARI:
-        return Response({'detail': "Bunday to'lov usuli yo'q"}, status=400)
+        return Response({'detail': _("Bunday to'lov usuli yo'q")}, status=400)
 
     eski_jami = xarid.jami
     bolib_oy, oylik = 0, 0
@@ -303,17 +304,17 @@ def xarid_detail(request, raqam):
     try:
         xarid = Xarid.objects.prefetch_related('qatorlar').get(raqam=raqam)
     except Xarid.DoesNotExist:
-        return Response({'detail': 'Topilmadi'}, status=404)
+        return Response({'detail': _('Topilmadi')}, status=404)
 
     if request.method == 'GET':
         return Response(XaridSerializer(xarid).data)
 
     if not _admin_mi(request.user):
-        return Response({'detail': "Ruxsat yo'q"}, status=403)
+        return Response({'detail': _("Ruxsat yo'q")}, status=403)
 
     holat = request.data.get('status') or request.data.get('holat')
     if holat not in HOLATLAR:
-        return Response({'detail': "Noto'g'ri holat"}, status=400)
+        return Response({'detail': _("Noto'g'ri holat")}, status=400)
 
     xarid.holat = holat
     xarid.save(update_fields=['holat', 'yangilangan'])
@@ -337,7 +338,7 @@ def _kuryer_mi(user):
 @permission_classes([IsAuthenticated])
 def kuryer_royxati(request):
     if not _kuryer_mi(request.user):
-        return Response({'detail': "Ruxsat yo'q"}, status=403)
+        return Response({'detail': _("Ruxsat yo'q")}, status=403)
 
     qs = Xarid.objects.prefetch_related('qatorlar').filter(yetkazish='kuryer')
 
@@ -360,16 +361,16 @@ def kuryer_royxati(request):
 @permission_classes([IsAuthenticated])
 def kuryer_qabul(request, raqam):
     if not _kuryer_mi(request.user):
-        return Response({'detail': "Ruxsat yo'q"}, status=403)
+        return Response({'detail': _("Ruxsat yo'q")}, status=403)
     try:
         xarid = Xarid.objects.get(raqam=raqam)
     except Xarid.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     if xarid.kuryer and xarid.kuryer_id != request.user.id:
-        return Response({'detail': 'Bu buyurtmani boshqa kuryer olgan'}, status=409)
+        return Response({'detail': _('Bu buyurtmani boshqa kuryer olgan')}, status=409)
     if xarid.holat in ('yetkazildi', 'bekor'):
-        return Response({'detail': 'Buyurtma yakunlangan'}, status=400)
+        return Response({'detail': _('Buyurtma yakunlangan')}, status=400)
 
     xarid.kuryer = request.user
     if xarid.holat in ('tasdiqlandi', 'tayyorlanmoqda'):
@@ -389,18 +390,18 @@ KURYER_RUXSAT = {'jonatildi', 'yolda', 'yetkazildi'}
 @permission_classes([IsAuthenticated])
 def kuryer_holat(request, raqam):
     if not _kuryer_mi(request.user):
-        return Response({'detail': "Ruxsat yo'q"}, status=403)
+        return Response({'detail': _("Ruxsat yo'q")}, status=403)
     try:
         xarid = Xarid.objects.get(raqam=raqam)
     except Xarid.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     if xarid.kuryer_id != request.user.id and getattr(request.user, 'rol', '') != 'admin':
-        return Response({'detail': 'Bu buyurtma sizga biriktirilmagan'}, status=403)
+        return Response({'detail': _('Bu buyurtma sizga biriktirilmagan')}, status=403)
 
     holat = request.data.get('holat')
     if holat not in KURYER_RUXSAT:
-        return Response({'detail': "Kuryer bu holatga o'tkaza olmaydi"}, status=400)
+        return Response({'detail': _("Kuryer bu holatga o'tkaza olmaydi")}, status=400)
 
     xarid.holat = holat
     # Yetkazib berilgach muammo belgisi tozalanadi
@@ -425,20 +426,20 @@ def kuryer_holat(request, raqam):
 @permission_classes([IsAuthenticated])
 def yetkazish_muammosi(request, raqam):
     if not _kuryer_mi(request.user):
-        return Response({'detail': "Ruxsat yo'q"}, status=403)
+        return Response({'detail': _("Ruxsat yo'q")}, status=403)
     try:
         xarid = Xarid.objects.get(raqam=raqam)
     except Xarid.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     if xarid.kuryer_id != request.user.id and getattr(request.user, 'rol', '') != 'admin':
-        return Response({'detail': 'Bu buyurtma sizga biriktirilmagan'}, status=403)
+        return Response({'detail': _('Bu buyurtma sizga biriktirilmagan')}, status=403)
     if xarid.holat in ('yetkazildi', 'bekor'):
-        return Response({'detail': 'Buyurtma yakunlangan'}, status=400)
+        return Response({'detail': _('Buyurtma yakunlangan')}, status=400)
 
     sabab = request.data.get('sabab')
     if sabab not in MUAMMOLAR:
-        return Response({'detail': "Sababni tanlang"}, status=400)
+        return Response({'detail': _("Sababni tanlang")}, status=400)
 
     xarid.muammo = sabab
     xarid.muammo_izohi = (request.data.get('izoh') or '')[:500]
@@ -470,15 +471,16 @@ def qayta_yetkazish(request, raqam):
     try:
         xarid = Xarid.objects.get(raqam=raqam)
     except Xarid.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     if xarid.holat != 'muammo':
-        return Response({'detail': "Bu buyurtma qayta yetkazishni kutmayapti"}, status=400)
+        return Response({'detail': _("Bu buyurtma qayta yetkazishni kutmayapti")}, status=400)
 
     limit = narx_qoidalari()['urinishlar']
     if xarid.urinish_soni >= limit and not _admin_mi(request.user):
         return Response({
-            'detail': f"{limit} marta urinib ko'rildi. Iltimos, operator bilan bog'laning.",
+            'detail': _("%(limit)s marta urinib ko'rildi. Iltimos, operator "
+                        "bilan bog'laning.") % {'limit': limit},
             'operator_kerak': True,
         }, status=400)
 
@@ -514,20 +516,20 @@ def qayta_yetkazish(request, raqam):
 def kuryer_joylashuvi(request, raqam):
     rol = getattr(request.user, 'rol', None)
     if rol not in ('admin', 'xodim'):
-        return Response({'detail': "Ruxsat yo'q"}, status=403)
+        return Response({'detail': _("Ruxsat yo'q")}, status=403)
 
     try:
         xarid = Xarid.objects.get(raqam=raqam)
     except Xarid.DoesNotExist:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
     try:
         lat = float(request.data.get('lat'))
         lng = float(request.data.get('lng'))
     except (TypeError, ValueError):
-        return Response({'detail': "lat va lng to'g'ri son bo'lishi kerak"}, status=400)
+        return Response({'detail': _("lat va lng to'g'ri son bo'lishi kerak")}, status=400)
     if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
-        return Response({'detail': "Koordinata chegaradan tashqarida"}, status=400)
+        return Response({'detail': _("Koordinata chegaradan tashqarida")}, status=400)
 
     xarid.kuryer_lat = lat
     xarid.kuryer_lng = lng
@@ -553,7 +555,7 @@ def kuryer_joylashuvi(request, raqam):
 @permission_classes([IsAuthenticated])
 def statistika(request):
     if not _admin_mi(request.user):
-        return Response({'detail': "Ruxsat yo'q"}, status=403)
+        return Response({'detail': _("Ruxsat yo'q")}, status=403)
 
     # Butun Xarid jadvalini skanerlaydigan hisobot — keshlanadi.
     # Muddat 0 bo'lsa (umumiy kesh sozlanmagan) har safar qaytadan hisoblanadi.

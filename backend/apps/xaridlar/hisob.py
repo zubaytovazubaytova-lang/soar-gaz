@@ -4,6 +4,7 @@ Frontend ham xuddi shu qoidalarni ko'rsatadi (index.html: XARID_NARX),
 lekin buyurtmaga yoziladigan raqamlar faqat shu yerdan chiqadi.
 """
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 from .models import Promokod
 
@@ -62,10 +63,11 @@ def bolib_hisobla(jami, oy):
     eng_kam = getattr(settings, 'BOLIB_ENG_KAM_SUMMA', 0)
 
     if oy not in bolib:
-        return jami, 0, "Bunday bo'lib to'lash muddati mavjud emas"
+        return jami, 0, _("Bunday bo'lib to'lash muddati mavjud emas")
     if eng_kam and jami < eng_kam:
         kerak = f"{eng_kam:,}".replace(',', ' ')
-        return jami, 0, f"Bo'lib to'lash {kerak} so'mdan yuqori buyurtmalarga beriladi"
+        return jami, 0, _("Bo'lib to'lash %(summa)s so'mdan yuqori "
+                              "buyurtmalarga beriladi") % {'summa': kerak}
 
     umumiy = jami + jami * bolib[oy] // 100
     # Oylik to'lovni yuqoriga yaxlitlaymiz, oxirgi oy qolgan farqni yopadi
@@ -97,7 +99,7 @@ def hisobla(qatorlar, yetkazish='kuryer', ornatish=False, kod='', tuman=''):
     if kod:
         promo = promokod_topish(kod)
         if not promo:
-            xato = 'Bunday promokod topilmadi'
+            xato = _('Bunday promokod topilmadi')
         else:
             chegirma, xato = promo.tekshir(mahsulotlar)
             if xato:

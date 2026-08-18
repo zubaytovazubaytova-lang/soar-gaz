@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny, SAFE_METHODS
@@ -81,10 +82,10 @@ def admin_login(request):
     parol = request.data.get('parol', '')
 
     if not telefon or not parol:
-        return Response({'detail': 'Telefon va parol kiritilishi shart'}, status=400)
+        return Response({'detail': _('Telefon va parol kiritilishi shart')}, status=400)
 
-    BLOK_XABAR = ("Hisob bloklandi: juda ko'p noto'g'ri urinish. "
-                  "Tizim egasi uni qayta faollashtirib, yangi parol berishi kerak.")
+    BLOK_XABAR = _("Hisob bloklandi: juda ko'p noto'g'ri urinish. "
+                   "Tizim egasi uni qayta faollashtirib, yangi parol berishi kerak.")
 
     user = Foydalanuvchi.objects.filter(telefon=telefon, rol='admin').first()
 
@@ -114,7 +115,8 @@ def admin_login(request):
         audit_yoz(request, 'kirish_xato',
                   f'{telefon} — noto\'g\'ri parol ({urinish}-urinish)', user=user)
         return Response(
-            {'detail': f"Telefon yoki parol noto'g'ri! Yana {qoldi} ta urinish qoldi."},
+            {'detail': _("Telefon yoki parol noto'g'ri! Yana %(qoldi)s ta urinish qoldi.")
+                       % {'qoldi': qoldi}},
             status=401)
 
     cache.delete(f'admin:urinish:{telefon}')
@@ -184,19 +186,19 @@ def admin_otp_tasdiqlash(request):
     kod = (request.data.get('kod') or '').strip()
 
     if not chipta or not kod:
-        return Response({'detail': 'Kod kiritilishi shart'}, status=400)
+        return Response({'detail': _('Kod kiritilishi shart')}, status=400)
 
     kalit = f'admin:2fa:{chipta}'
     holat = cache.get(kalit)
     if not holat:
         return Response(
-            {'detail': 'Kod muddati tugadi. Qaytadan kiring.', 'qaytadan': True},
+            {'detail': _('Kod muddati tugadi. Qaytadan kiring.'), 'qaytadan': True},
             status=401)
 
     user = Foydalanuvchi.objects.filter(telefon=holat['telefon'], rol='admin').first()
     if user is None or user.holat == 'nofaol':
         cache.delete(kalit)
-        return Response({'detail': 'Hisob mavjud emas yoki bloklangan', 'qaytadan': True}, status=403)
+        return Response({'detail': _('Hisob mavjud emas yoki bloklangan'), 'qaytadan': True}, status=403)
 
     muddat = timezone.now() - timezone.timedelta(minutes=settings.ADMIN_2FA_DAQIQA)
     otp = (OtpKod.objects
@@ -210,12 +212,13 @@ def admin_otp_tasdiqlash(request):
             audit_yoz(request, 'kirish_blok',
                       'SMS kod bir necha marta xato — kirish bekor qilindi', user=user)
             return Response(
-                {'detail': "Kod bir necha marta xato kiritildi. Qaytadan kiring.", 'qaytadan': True},
+                {'detail': _("Kod bir necha marta xato kiritildi. Qaytadan kiring."), 'qaytadan': True},
                 status=401)
         cache.set(kalit, holat, settings.ADMIN_2FA_DAQIQA * 60)
         qoldi = settings.ADMIN_2FA_URINISH - holat['urinish']
         audit_yoz(request, 'kirish_xato', "Noto'g'ri SMS kod", user=user)
-        return Response({'detail': f"Kod noto'g'ri. Yana {qoldi} ta urinish qoldi."}, status=401)
+        return Response({'detail': _("Kod noto'g'ri. Yana %(qoldi)s ta urinish qoldi.")
+                         % {'qoldi': qoldi}}, status=401)
 
     # Kod to'g'ri — bir martalik, darhol kuchsizlantiramiz
     otp.ishlatildi = True
@@ -256,16 +259,17 @@ def _kesh_kaliti(nom, telefon):
 def _otp_cheklov(telefon):
     """Kod so'rash cheklovlari. Muammo bo'lsa (matn, soniya) qaytaradi."""
     if cache.get(_kesh_kaliti('blok', telefon)):
-        return "Juda ko'p urinish. Birozdan keyin qayta urinib ko'ring.", 429
+        return _("Juda ko'p urinish. Birozdan keyin qayta urinib ko'ring."), 429
 
     oxirgi = cache.get(_kesh_kaliti('oxirgi', telefon))
     if oxirgi:
-        return f"Yangi kod {settings.OTP_QAYTA_SONIYA} soniyada bir marta yuboriladi.", 429
+        return _('Yangi kod %(soniya)s soniyada bir marta yuboriladi.') % {
+            'soniya': settings.OTP_QAYTA_SONIYA}, 429
 
     soatlik = cache.get(_kesh_kaliti('soatlik', telefon), 0)
     if soatlik >= settings.OTP_SOATLIK_LIMIT:
         cache.set(_kesh_kaliti('blok', telefon), 1, settings.OTP_BLOK_DAQIQA * 60)
-        return "Bu raqamga kod yuborish chegarasi tugadi. Keyinroq urinib ko'ring.", 429
+        return _("Bu raqamga kod yuborish chegarasi tugadi. Keyinroq urinib ko'ring."), 429
 
     return None, 0
 
@@ -275,7 +279,7 @@ def _otp_cheklov(telefon):
 def otp_yuborish(request):
     telefon = request.data.get('telefon', '').replace(' ', '')
     if not telefon:
-        return Response({'detail': 'Telefon raqam kiritilishi shart'}, status=400)
+        return Response({'detail': _('Telefon raqam kiritilishi shart')}, status=400)
 
     xato, kod_holat = _otp_cheklov(telefon)
     if xato:
@@ -285,7 +289,7 @@ def otp_yuborish(request):
     try:
         mavjud = Foydalanuvchi.objects.get(telefon=telefon)
         if mavjud.holat == 'nofaol':
-            return Response({'detail': 'Hisobingiz bloklangan. Admin bilan bog\'laning.'}, status=403)
+            return Response({'detail': _('Hisobingiz bloklangan. Admin bilan bog\'laning.')}, status=403)
         yangi_mijoz = False
         rol = mavjud.rol
     except Foydalanuvchi.DoesNotExist:
@@ -297,7 +301,7 @@ def otp_yuborish(request):
 
     if not _send_otp_sms(telefon, kod):
         return Response(
-            {'detail': "SMS yuborilmadi. Birozdan keyin urinib ko'ring yoki operatorga murojaat qiling."},
+            {'detail': _("SMS yuborilmadi. Birozdan keyin urinib ko'ring yoki operatorga murojaat qiling.")},
             status=502,
         )
 
@@ -316,11 +320,11 @@ def otp_tasdiqlash(request):
     kod = request.data.get('kod', '').strip()
 
     if not telefon or not kod:
-        return Response({'detail': 'Telefon va kod kiritilishi shart'}, status=400)
+        return Response({'detail': _('Telefon va kod kiritilishi shart')}, status=400)
 
     if cache.get(_kesh_kaliti('blok', telefon)):
         return Response(
-            {'detail': "Juda ko'p noto'g'ri urinish. Birozdan keyin qayta urinib ko'ring."},
+            {'detail': _("Juda ko'p noto'g'ri urinish. Birozdan keyin qayta urinib ko'ring.")},
             status=429,
         )
 
@@ -335,13 +339,13 @@ def otp_tasdiqlash(request):
         if urinish >= settings.OTP_URINISH_LIMIT:
             cache.set(_kesh_kaliti('blok', telefon), 1, settings.OTP_BLOK_DAQIQA * 60)
             return Response(
-                {'detail': "Juda ko'p noto'g'ri urinish. Hisobingiz vaqtincha bloklandi."},
+                {'detail': _("Juda ko'p noto'g'ri urinish. Hisobingiz vaqtincha bloklandi.")},
                 status=429,
             )
-        return Response({'detail': 'Kod noto\'g\'ri!'}, status=400)
+        return Response({'detail': _('Kod noto\'g\'ri!')}, status=400)
 
     if otp.muddati_utganmi():
-        return Response({'detail': 'Kod muddati tugagan. Qayta yuboring.'}, status=400)
+        return Response({'detail': _('Kod muddati tugagan. Qayta yuboring.')}, status=400)
 
     otp.ishlatildi = True
     otp.save()
@@ -420,7 +424,7 @@ def xodim_login(request):
     parol = request.data.get('parol', '')
 
     if not telefon or not (kod or parol):
-        return Response({'detail': 'Telefon va kirish kodi kiritilishi shart'},
+        return Response({'detail': _('Telefon va kirish kodi kiritilishi shart')},
                         status=400)
 
     # Kod parolning o'rnini bosadi, shuning uchun taxmin qilishga cheklov
@@ -428,8 +432,9 @@ def xodim_login(request):
     blok_kalit = f'xodim:blok:{telefon}'
     if cache.get(blok_kalit):
         return Response(
-            {'detail': "Juda ko'p noto'g'ri urinish. "
-                       f"{settings.OTP_BLOK_DAQIQA} daqiqadan keyin urinib ko'ring."},
+            {'detail': _("Juda ko'p noto'g'ri urinish. %(daqiqa)s daqiqadan "
+                         "keyin urinib ko'ring.")
+                       % {'daqiqa': settings.OTP_BLOK_DAQIQA}},
             status=429)
 
     try:
@@ -438,8 +443,8 @@ def xodim_login(request):
         # Aniq xabar: xodim qaysi tomonda xato qilganini bilsin. Bu ichki
         # portal — raqamning ro'yxatda borligi maxfiy ma'lumot emas.
         return Response(
-            {'detail': 'Bu telefon raqam xodim sifatida ro\'yxatda yo\'q. '
-                       'Administrator bilan bog\'laning.'}, status=401)
+            {'detail': _('Bu telefon raqam xodim sifatida ro\'yxatda yo\'q. '
+                       'Administrator bilan bog\'laning.')}, status=401)
 
     # Kodni katta-kichik harfga qaramay solishtiramiz — u og'zaki aytiladi
     kod_togri = bool(user.kirish_kodi) and kod and \
@@ -453,19 +458,21 @@ def xodim_login(request):
         if urinish >= settings.OTP_URINISH_LIMIT:
             cache.set(blok_kalit, 1, settings.OTP_BLOK_DAQIQA * 60)
             return Response(
-                {'detail': "Juda ko'p noto'g'ri urinish. "
-                           f"{settings.OTP_BLOK_DAQIQA} daqiqadan keyin urinib ko'ring."},
+                {'detail': _("Juda ko'p noto'g'ri urinish. %(daqiqa)s daqiqadan "
+                             "keyin urinib ko'ring.")
+                           % {'daqiqa': settings.OTP_BLOK_DAQIQA}},
                 status=429)
         qoldi = settings.OTP_URINISH_LIMIT - urinish
         return Response(
-            {'detail': f'Kirish kodi noto\'g\'ri. Administratordan kodni '
-                       f'tekshirib oling. Yana {qoldi} ta urinish qoldi.'},
+            {'detail': _("Kirish kodi noto'g'ri. Administratordan kodni "
+                         "tekshirib oling. Yana %(qoldi)s ta urinish qoldi.")
+                       % {'qoldi': qoldi}},
             status=401)
 
     cache.delete(f'xodim:urinish:{telefon}')
 
     if user.holat == 'nofaol':
-        return Response({'detail': 'Hisobingiz bloklangan. Admin bilan bog\'laning.'}, status=403)
+        return Response({'detail': _('Hisobingiz bloklangan. Admin bilan bog\'laning.')}, status=403)
 
     return Response({**_tokens_for_user(user), 'xodim': _xodim_data(user)})
 
@@ -477,7 +484,7 @@ def xodim_profil(request):
     Ism/lavozim/tabel raqam admin panelidan boshqariladi — bu yerda o'zgarmaydi."""
     user = request.user
     if user.rol != 'xodim':
-        return Response({'detail': 'Faqat xodimlar uchun'}, status=403)
+        return Response({'detail': _('Faqat xodimlar uchun')}, status=403)
 
     if request.method == 'GET':
         return Response(_xodim_data(user))
@@ -498,7 +505,7 @@ def audit_list(request):
     Oxirgi 200 ta yozuv beriladi — jurnal cheksiz o'smasin.
     """
     if getattr(request.user, 'rol', None) != 'admin':
-        return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+        return Response({'detail': _('Ruxsat yo\'q')}, status=403)
 
     qs = AuditYozuv.objects.select_related('kim')[:200]
     nomlar = dict(AuditYozuv._meta.get_field('amal').choices)
@@ -523,7 +530,7 @@ def mijozlar_list(request):
     beriladi, panel uni alohida so'rov qilmasin.
     """
     if getattr(request.user, 'rol', None) != 'admin':
-        return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+        return Response({'detail': _('Ruxsat yo\'q')}, status=403)
 
     qs = (Foydalanuvchi.objects
           .filter(rol='mijoz')
@@ -591,12 +598,12 @@ def xodim_kod_yangila(request, pk):
     Eski kod darhol ishlamay qoladi. Faqat admin chaqira oladi.
     """
     if getattr(request.user, 'rol', '') != 'admin':
-        return Response({'detail': 'Faqat admin uchun'}, status=403)
+        return Response({'detail': _('Faqat admin uchun')}, status=403)
 
     try:
         xodim = Foydalanuvchi.objects.get(pk=pk, rol='xodim')
     except Foydalanuvchi.DoesNotExist:
-        return Response({'detail': 'Xodim topilmadi'}, status=404)
+        return Response({'detail': _('Xodim topilmadi')}, status=404)
 
     while True:
         kod = kirish_kodi_yasa()
@@ -630,7 +637,7 @@ class XodimDetailView(generics.RetrieveUpdateAPIView):
             audit_yoz(request, 'ruxsat_rad',
                       f'Xodimni nofaol qilishga urinish (id={kwargs.get("pk")})')
             return Response(
-                {'detail': "Xodimni nofaol qilish huquqi yo'q — tizim egasiga murojaat qiling."},
+                {'detail': _("Xodimni nofaol qilish huquqi yo'q — tizim egasiga murojaat qiling.")},
                 status=403,
             )
         javob = super().update(request, *args, **kwargs)

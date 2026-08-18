@@ -1,3 +1,4 @@
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from .hududlar import viloyat_tumanlari, viloyatlar, tuman_viloyati
@@ -82,7 +83,7 @@ class XodimYaratishSerializer(JoylashuvMixin, serializers.ModelSerializer):
         telefon = qiymat.replace(' ', '').replace('-', '')
         if Foydalanuvchi.objects.filter(telefon=telefon).exists():
             raise serializers.ValidationError(
-                'Bu telefon raqam allaqachon ro\'yxatda bor')
+                _('Bu telefon raqam allaqachon ro\'yxatda bor'))
         return telefon
 
     def create(self, malumot):
@@ -127,9 +128,9 @@ class RoyxatSerializer(JoylashuvMixin, serializers.ModelSerializer):
     def validate_telefon(self, qiymat):
         telefon = qiymat.replace(' ', '')
         if not telefon:
-            raise serializers.ValidationError('Telefon raqam kiritilishi shart')
+            raise serializers.ValidationError(_('Telefon raqam kiritilishi shart'))
         if Foydalanuvchi.objects.filter(telefon=telefon).exists():
-            raise serializers.ValidationError('Bu raqam allaqachon ro\'yxatdan o\'tgan')
+            raise serializers.ValidationError(_('Bu raqam allaqachon ro\'yxatdan o\'tgan'))
         return telefon
 
     def create(self, validated_data):

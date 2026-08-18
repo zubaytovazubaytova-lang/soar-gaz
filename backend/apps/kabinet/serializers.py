@@ -1,3 +1,4 @@
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from apps.auth_app.serializers import JoylashuvMixin
@@ -108,7 +109,7 @@ class SharhSerializer(serializers.ModelSerializer):
 
     def validate_baho(self, qiymat):
         if not 1 <= qiymat <= 5:
-            raise serializers.ValidationError('Baho 1 dan 5 gacha bo\'lishi kerak')
+            raise serializers.ValidationError(_('Baho 1 dan 5 gacha bo\'lishi kerak'))
         return qiymat
 
 

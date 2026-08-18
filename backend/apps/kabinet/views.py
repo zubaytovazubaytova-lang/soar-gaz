@@ -10,6 +10,7 @@ from django.core import signing
 from django.db.models import Count, Exists, OuterRef, Q, Sum
 from django.http import FileResponse, HttpResponseForbidden, HttpResponseGone
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -178,7 +179,7 @@ def buyurtma_detal(request, pk):
     b = Buyurtma.objects.filter(mijoz=request.user, pk=pk).select_related(
         'mijoz', 'xodim', 'obyekt').first()
     if not b:
-        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
     malumot = BuyurtmaSerializer(b).data
     malumot['bosqich'] = _bosqich(b)
     malumot['obyekt_nomi'] = b.obyekt.nom if b.obyekt else ''
@@ -214,7 +215,7 @@ def obyektlar(request):
 def obyekt_detal(request, pk):
     obj = _obyekt_olish(request.user, pk)
     if not obj:
-        return Response({'detail': 'Obyekt topilmadi'}, status=404)
+        return Response({'detail': _('Obyekt topilmadi')}, status=404)
 
     if request.method == 'GET':
         return Response(ObyektSerializer(obj).data)
@@ -235,7 +236,7 @@ def obyekt_detal(request, pk):
 def uskunalar(request):
     obyekt = _obyekt_olish(request.user, request.data.get('obyekt'))
     if not obyekt:
-        return Response({'detail': 'Obyekt topilmadi'}, status=404)
+        return Response({'detail': _('Obyekt topilmadi')}, status=404)
     ser = UskunaSerializer(data=request.data)
     if not ser.is_valid():
         return Response(ser.errors, status=400)
@@ -248,7 +249,7 @@ def uskunalar(request):
 def uskuna_detal(request, pk):
     u = Uskuna.objects.filter(pk=pk, obyekt__mijoz=request.user).first()
     if not u:
-        return Response({'detail': 'Uskuna topilmadi'}, status=404)
+        return Response({'detail': _('Uskuna topilmadi')}, status=404)
     if request.method == 'DELETE':
         u.delete()
         return Response({'ochirildi': True})
@@ -275,7 +276,7 @@ def hisoblagichlar(request):
 
     obyekt = _obyekt_olish(request.user, request.data.get('obyekt'))
     if not obyekt:
-        return Response({'detail': 'Obyekt topilmadi'}, status=404)
+        return Response({'detail': _('Obyekt topilmadi')}, status=404)
     ser = HisoblagichSerializer(data=request.data)
     if not ser.is_valid():
         return Response(ser.errors, status=400)
@@ -288,7 +289,7 @@ def hisoblagichlar(request):
 def hisoblagich_detal(request, pk):
     h = Hisoblagich.objects.filter(pk=pk, obyekt__mijoz=request.user).first()
     if not h:
-        return Response({'detail': 'Hisoblagich topilmadi'}, status=404)
+        return Response({'detail': _('Hisoblagich topilmadi')}, status=404)
     if request.method == 'DELETE':
         h.delete()
         return Response({'ochirildi': True})
@@ -305,14 +306,15 @@ def tekshiruvga_yozilish(request, pk):
     """Bir tugma bilan metrologiya buyurtmasi ochiladi."""
     h = Hisoblagich.objects.filter(pk=pk, obyekt__mijoz=request.user).select_related('obyekt').first()
     if not h:
-        return Response({'detail': 'Hisoblagich topilmadi'}, status=404)
+        return Response({'detail': _('Hisoblagich topilmadi')}, status=404)
 
     ochiq = Buyurtma.objects.filter(
         mijoz=request.user, xizmat='metrologiya', obyekt=h.obyekt
     ).exclude(holat__in=['bajarildi', 'bekor']).first()
     if ochiq:
         return Response({
-            'detail': f"Bu obyekt uchun metrologiya buyurtmasi allaqachon ochiq (#{ochiq.id})",
+            'detail': _("Bu obyekt uchun metrologiya buyurtmasi allaqachon "
+                        "ochiq (#%(id)s)") % {'id': ochiq.id},
             'buyurtma_id': ochiq.id,
         }, status=400)
 
@@ -460,7 +462,7 @@ def xarid_detal(request, raqam):
     for x in _xaridlarim(request.user):
         if x.raqam == raqam:
             return Response(XaridSerializer(x).data)
-    return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+    return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -561,9 +563,9 @@ def sharhlar(request):
     buyurtma_id = request.data.get('buyurtma')
     b = Buyurtma.objects.filter(mijoz=request.user, pk=buyurtma_id, holat='bajarildi').first()
     if not b:
-        return Response({'detail': 'Faqat yakunlangan buyurtmaga sharh qoldiriladi'}, status=400)
+        return Response({'detail': _('Faqat yakunlangan buyurtmaga sharh qoldiriladi')}, status=400)
     if Sharh.objects.filter(buyurtma=b).exists():
-        return Response({'detail': 'Bu buyurtmaga sharh allaqachon qoldirilgan'}, status=400)
+        return Response({'detail': _('Bu buyurtmaga sharh allaqachon qoldirilgan')}, status=400)
 
     ser = SharhSerializer(data=request.data)
     if not ser.is_valid():
@@ -577,7 +579,7 @@ def sharhlar(request):
 def sharh_detal(request, pk):
     s = Sharh.objects.filter(pk=pk, mijoz=request.user).first()
     if not s:
-        return Response({'detail': 'Sharh topilmadi'}, status=404)
+        return Response({'detail': _('Sharh topilmadi')}, status=404)
     if request.method == 'DELETE':
         s.delete()
         return Response({'ochirildi': True})
@@ -602,7 +604,7 @@ def murojaatlar(request):
     mavzu = (request.data.get('mavzu') or '').strip()
     matn = (request.data.get('matn') or '').strip()
     if not mavzu or not matn:
-        return Response({'detail': 'Mavzu va xabar matni kiritilishi shart'}, status=400)
+        return Response({'detail': _('Mavzu va xabar matni kiritilishi shart')}, status=400)
 
     m = Murojaat.objects.create(mijoz=request.user, mavzu=mavzu)
     MurojaatXabar.objects.create(murojaat=m, kim='mijoz', matn=matn)
@@ -614,13 +616,13 @@ def murojaatlar(request):
 def murojaat_xabar(request, pk):
     m = Murojaat.objects.filter(pk=pk, mijoz=request.user).first()
     if not m:
-        return Response({'detail': 'Murojaat topilmadi'}, status=404)
+        return Response({'detail': _('Murojaat topilmadi')}, status=404)
     if m.holat == 'yopiq':
-        return Response({'detail': 'Murojaat yopilgan. Yangi murojaat oching.'}, status=400)
+        return Response({'detail': _('Murojaat yopilgan. Yangi murojaat oching.')}, status=400)
 
     matn = (request.data.get('matn') or '').strip()
     if not matn:
-        return Response({'detail': 'Xabar matni bo\'sh'}, status=400)
+        return Response({'detail': _('Xabar matni bo\'sh')}, status=400)
 
     x = MurojaatXabar.objects.create(murojaat=m, kim='mijoz', matn=matn)
     m.holat = 'ochiq'
@@ -633,7 +635,7 @@ def murojaat_xabar(request, pk):
 def murojaat_yopish(request, pk):
     m = Murojaat.objects.filter(pk=pk, mijoz=request.user).first()
     if not m:
-        return Response({'detail': 'Murojaat topilmadi'}, status=404)
+        return Response({'detail': _('Murojaat topilmadi')}, status=404)
     m.holat = 'yopiq'
     m.save(update_fields=['holat', 'yangilangan'])
     return Response(MurojaatSerializer(m).data)
@@ -692,11 +694,11 @@ def hisobni_ochirish(request):
     """
     user = request.user
     if user.rol != 'mijoz':
-        return Response({'detail': 'Faqat mijoz hisobi uchun'}, status=403)
+        return Response({'detail': _('Faqat mijoz hisobi uchun')}, status=403)
 
     tasdiq = (request.data.get('tasdiq') or '').strip().upper()
     if tasdiq != "O'CHIRISH":
-        return Response({'detail': "Tasdiqlash uchun O'CHIRISH so'zini kiriting"}, status=400)
+        return Response({'detail': _("Tasdiqlash uchun O'CHIRISH so'zini kiriting")}, status=400)
 
     user.holat = 'nofaol'
     user.is_active = False

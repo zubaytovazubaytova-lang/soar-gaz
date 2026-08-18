@@ -1,3 +1,4 @@
+from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -24,14 +25,14 @@ def sms_list(request):
 def sms_yuborish(request):
     # Ommaviy SMS tarqatish — faqat admin
     if getattr(request.user, 'rol', None) != 'admin':
-        return Response({'detail': "Bu amal uchun ruxsat yo'q"}, status=403)
+        return Response({'detail': _("Bu amal uchun ruxsat yo'q")}, status=403)
 
     matn = request.data.get('matn', '').strip()
     target = request.data.get('target', 'hammaga')
     tuman = request.data.get('tuman', '')
 
     if not matn:
-        return Response({'detail': 'Matn kiritilishi shart'}, status=400)
+        return Response({'detail': _('Matn kiritilishi shart')}, status=400)
 
     mijozlar = Foydalanuvchi.objects.filter(rol='mijoz', holat='faol')
     if target == 'tuman' and tuman:

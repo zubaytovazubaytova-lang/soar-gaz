@@ -3,6 +3,7 @@ import hashlib
 from urllib.parse import urlencode
 
 from django.conf import settings
+from django.utils.translation import gettext as _
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -94,7 +95,7 @@ def sorov_yaratish(request):
 @permission_classes([IsAuthenticated])
 def tolovlar_list(request):
     if getattr(request.user, 'rol', None) != 'admin':
-        return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+        return Response({'detail': _('Ruxsat yo\'q')}, status=403)
     qs = TolovSorovi.objects.all()
     holat = request.query_params.get('holat')
     turi = request.query_params.get('tolov_turi')
@@ -109,11 +110,11 @@ def tolovlar_list(request):
 @permission_classes([IsAuthenticated])
 def sorov_update(request, pk):
     if getattr(request.user, 'rol', None) != 'admin':
-        return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+        return Response({'detail': _('Ruxsat yo\'q')}, status=403)
     try:
         sorov = TolovSorovi.objects.get(pk=pk)
     except TolovSorovi.DoesNotExist:
-        return Response({'detail': 'Topilmadi'}, status=404)
+        return Response({'detail': _('Topilmadi')}, status=404)
     holat = request.data.get('holat')
     if holat:
         sorov.holat = holat
@@ -143,7 +144,7 @@ def mahsulot_sorov_yaratish(request):
 @permission_classes([IsAuthenticated])
 def mahsulot_sorovlar_list(request):
     if getattr(request.user, 'rol', None) != 'admin':
-        return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+        return Response({'detail': _('Ruxsat yo\'q')}, status=403)
     qs = MahsulotSorovi.objects.all()
     holat = request.query_params.get('holat')
     katalog = request.query_params.get('katalog')
@@ -158,11 +159,11 @@ def mahsulot_sorovlar_list(request):
 @permission_classes([IsAuthenticated])
 def mahsulot_sorov_update(request, pk):
     if getattr(request.user, 'rol', None) != 'admin':
-        return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+        return Response({'detail': _('Ruxsat yo\'q')}, status=403)
     try:
         sorov = MahsulotSorovi.objects.get(pk=pk)
     except MahsulotSorovi.DoesNotExist:
-        return Response({'detail': 'Topilmadi'}, status=404)
+        return Response({'detail': _('Topilmadi')}, status=404)
     holat = request.data.get('holat')
     if holat:
         sorov.holat = holat
