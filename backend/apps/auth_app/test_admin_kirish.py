@@ -13,12 +13,15 @@ SMS chinakam yuborilmaydi — `sms_yubor` mock qilinadi, kod esa bazadagi
 `OtpKod` dan olinadi.
 """
 
+import io
 from unittest import mock
 
 from django.core.cache import cache
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 
-from .models import Foydalanuvchi, OtpKod
+from .models import AuditYozuv, Foydalanuvchi, OtpKod
 
 LOGIN = '/api/auth/admin/login/'
 OTP = '/api/auth/admin/otp/'
@@ -163,3 +166,72 @@ class IkkiBosqichOchirilganTest(AdminKirishAsosi):
         self.assertEqual(javob.status_code, 200)
         self.assertTrue(javob.json()['access'])
         self.sms.assert_not_called()
+
+
+class KonsolOchishTest(AdminKirishAsosi):
+    """`python manage.py admin_ochish` — brauzersiz, server konsoli orqali."""
+
+    def blokla(self):
+        for _ in range(CHEKLOVLAR['ADMIN_URINISH_LIMIT']):
+            self.parol_yubor(parol='xato')
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.holat, 'nofaol')
+
+    def buyruq(self, *argv):
+        chiqish = io.StringIO()
+        call_command('admin_ochish', *argv, stdout=chiqish)
+        return chiqish.getvalue()
+
+    def test_bloklangan_hisob_ochiladi_va_kira_oladi(self):
+        self.blokla()
+        chiqish = self.buyruq(TELEFON)
+        self.assertIn('qayta faollashtirildi', chiqish)
+
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.holat, 'faol')
+        # Hisoblagich ham tozalangan — birinchi xatoda qayta bloklanmasin
+        self.assertIsNone(cache.get(f'admin:urinish:{TELEFON}'))
+        self.assertTrue(self.parol_yubor().json()['otp_kerak'])
+
+    def test_ochish_jurnalga_yoziladi(self):
+        self.blokla()
+        self.buyruq(TELEFON)
+        yozuv = AuditYozuv.objects.filter(amal='admin_ochildi').first()
+        self.assertIsNotNone(yozuv)
+        self.assertIn(TELEFON, yozuv.tafsilot)
+
+    def test_telefonsiz_chaqiruv_bloklanganlar_royxatini_beradi(self):
+        self.blokla()
+        chiqish = self.buyruq()
+        self.assertIn(TELEFON, chiqish)
+        # Ro'yxat ko'rsatish hech nimani o'zgartirmaydi
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.holat, 'nofaol')
+
+    def test_notogri_telefon_xato_beradi(self):
+        with self.assertRaises(CommandError):
+            self.buyruq('998900000001')
+
+    def test_mijoz_hisobini_ocha_olmaydi(self):
+        Foydalanuvchi.objects.create_user(telefon='998900000000', rol='mijoz',
+                                          holat='nofaol')
+        with self.assertRaises(CommandError):
+            self.buyruq('998900000000')
+
+    def test_yangi_parol_ornatiladi(self):
+        self.blokla()
+        with mock.patch('apps.auth_app.management.commands.admin_ochish.getpass',
+                        return_value='yangi-parol-123'):
+            self.buyruq(TELEFON, '--parol')
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.check_password('yangi-parol-123'))
+
+    def test_qisqa_parol_qabul_qilinmaydi(self):
+        self.blokla()
+        with mock.patch('apps.auth_app.management.commands.admin_ochish.getpass',
+                        return_value='qisqa'):
+            with self.assertRaises(CommandError):
+                self.buyruq(TELEFON, '--parol')
+        # Xato bo'lganda hisob ochilmay qolishi kerak — yarim ish bo'lmasin
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.holat, 'nofaol')

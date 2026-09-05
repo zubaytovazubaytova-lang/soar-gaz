@@ -153,6 +153,7 @@ AUDIT_AMAL_CHOICES = [
     ('xodim_kod', 'Xodimga yangi kod berildi'),
     ('ariza_tayinlandi', 'Ariza xodimga tayinlandi'),
     ('ruxsat_rad', 'Ruxsat rad etildi'),
+    ('admin_ochildi', 'Bloklangan hisob qayta faollashtirildi'),
 ]
 
 
