@@ -79,7 +79,9 @@
   .auth-back{display:block;text-align:center;font-size:12.5px;color:var(--text-muted);text-decoration:none;margin-top:18px;}
   .auth-back:hover{color:var(--blue);}
   /* Boshqaruv paneliga o'tish — asosiy "Kirish" tugmasidan pastroq turadi,
-     shuning uchun ko'zga tashlanadi-yu, xodimni chalg'itmaydi. */
+     shuning uchun ko'zga tashlanadi-yu, xodimni chalg'itmaydi.
+     Havolaning o'zi hozircha izohga olingan (pastda), uslub esa qaytarish
+     oson bo'lishi uchun saqlab qo'yilgan. */
   .auth-boshqaruv{display:flex;align-items:center;justify-content:center;
     width:40px;height:40px;margin:16px auto 0;border-radius:var(--radius-sm);
     font-size:17px;text-decoration:none;
@@ -295,17 +297,23 @@
     <!-- "/xodimlar/" manzilida nisbiy havola noto'g'ri ishlaydi — shuning uchun
          sayt orqali ochilganda ildizga, fayl sifatida ochilganda index.html ga -->
     <!-- Rahbariyat uchun: xodim kodi emas, telefon + parol bilan kiriladigan
-         alohida panel. Havola faqat yo'l ko'rsatadi — huquqni server tekshiradi. -->
+         alohida panel. Havola faqat yo'l ko'rsatadi — huquqni server tekshiradi.
+         VAQTINCHA OLIB TASHLANDI: boshqaruv paneli to'liq tayyor bo'lib
+         sinovdan o'tgach, quyidagi havola qaytariladi (CSS joyida turibdi).
+         Panelning o'zi ishlayveradi — /boshqaruv/ manzili bo'yicha ochiladi.
     <a class="auth-boshqaruv" href="/boshqaruv/" id="boshqaruvHavola"
        title="Boshqaruv paneli" aria-label="Boshqaruv paneli">
       <i class="ti ti-shield-lock" aria-hidden="true"></i>
     </a>
+    -->
 
     <a class="auth-back" href="/" id="qaytishHavola"><i class="ti ti-arrow-left"></i> Asosiy saytga qaytish</a>
     <script>
       if (location.protocol === 'file:') {
         document.getElementById('qaytishHavola').href = 'index.html';
-        document.getElementById('boshqaruvHavola').href = 'admin.html';
+        // Boshqaruv havolasi vaqtincha yashirilgan — bo'lmasligi mumkin
+        const bh = document.getElementById('boshqaruvHavola');
+        if (bh) bh.href = 'admin.html';
       }
     </script>
   </div>
