@@ -11,7 +11,7 @@
    uchun strategiyalar quyida ataylab ajratilgan.
    ============================================================ */
 
-const VERSIYA = 'soargaz-v2';
+const VERSIYA = 'soargaz-v5';
 const STATIK_KESH = `${VERSIYA}-statik`;
 const SAHIFA_KESH = `${VERSIYA}-sahifa`;
 const OFFLINE_SAHIFA = '/offline.html';
@@ -29,6 +29,20 @@ const OLDINDAN = [
   '/vendor/fontawesome/css/all.min.css?v=2',
   '/vendor/fontawesome/webfonts/fa-solid-900.woff2?v=2',
   '/assets/icons/favicon-48.png?v=2',
+  // offline.html skriptlari (CSP tufayli inline emas). Internet yo'q paytida ham
+  // «Qayta urinish» tugmasi ishlashi uchun oldindan keshlanadi.
+  '/scripts/hodisa-boshqaruvchi.js?v=1',
+  '/scripts/offline-asosiy.js?v=1',
+  '/scripts/offline-hodisalar.js?v=1',
+];
+
+// Faqat shu skriptlar keshdan beriladi. Boshqa /scripts/ fayllari (index-asosiy.js va h.k.)
+// HECH QACHON keshdan birinchi berilmaydi: yangi HTML eski JS bilan aralashib qolsa,
+// tugmalar ishlamay qoladi.
+const OFFLINE_SKRIPTLAR = [
+  '/scripts/hodisa-boshqaruvchi.js',
+  '/scripts/offline-asosiy.js',
+  '/scripts/offline-hodisalar.js',
 ];
 
 self.addEventListener('install', (e) => {
@@ -90,18 +104,34 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // ── O'zgarmas resurslar: avval kesh, bo'lmasa tarmoq ─────────
-  // /assets/ va /vendor/ deploy paytidagina o'zgaradi.
+  // ── O'zgarmas resurslar: kesh bo'lsa shuni beramiz, fonda yangilaymiz ─
+  // Ilgari faqat keshdan berilardi: tailwind.css qayta yig'ilsa ham brauzer
+  // eski nusxani ushlab turardi (yangi sinflar ishlamasdi). Endi keyingi
+  // ochilishda doim yangisi keladi.
   if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/vendor/')) {
     e.respondWith((async () => {
-      const keshlangan = await caches.match(req);
-      if (keshlangan) return keshlangan;
-      const javob = await fetch(req);
-      if (javob.ok) {
-        const kesh = await caches.open(STATIK_KESH);
-        kesh.put(req, javob.clone());
+      const kesh = await caches.open(STATIK_KESH);
+      const keshlangan = await kesh.match(req);
+      const tarmoq = fetch(req).then((javob) => {
+        if (javob.ok) kesh.put(req, javob.clone());
+        return javob;
+      }).catch(() => keshlangan);
+      return keshlangan || tarmoq;
+    })());
+    return;
+  }
+
+  // ── offline.html skriptlari: tarmoq bor bo'lsa yangisi, yo'q bo'lsa kesh ─
+  if (OFFLINE_SKRIPTLAR.includes(url.pathname)) {
+    e.respondWith((async () => {
+      const kesh = await caches.open(STATIK_KESH);
+      try {
+        const javob = await fetch(req);
+        if (javob.ok) kesh.put(req, javob.clone());
+        return javob;
+      } catch (err) {
+        return (await kesh.match(req)) || Response.error();
       }
-      return javob;
     })());
     return;
   }

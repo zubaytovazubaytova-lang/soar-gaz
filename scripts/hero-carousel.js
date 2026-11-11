@@ -1,20 +1,19 @@
 /* Hero carousel — vanilla JS, no deps.
-   Placeholder slaydlar: keyinroq /images/hero-slider/1.jpg ... 6.jpg (yoki .mp4) qilib almashtiring. */
+   Slaydlar ro'yxati pastda (images/hero-slider/). */
 (function () {
   const root = document.getElementById('hero-carousel');
   if (!root) return;
 
   // Slaydlar ro'yxati. type: 'image' | 'video'
-  // Hozircha mavjud "ish-jarayoni" rasmlaridan foydalanamiz — o'zgartirish oson.
+  // Rasmlar images/hero-slider/ da: N.webp (2000px, kompyuter) va N-m.webp (900px, telefon).
+  // Matn rasmning o'zida, shuning uchun alt shu matnni takrorlaydi.
   const slides = [
-    { type: 'image', src: 'images/ish-jarayoni/01-kotlovan-qazish.webp',   alt: 'Kotlovan qazish' },
-    { type: 'image', src: 'images/ish-jarayoni/03-quvurni-tushirish.webp', alt: 'Quvurni tushirish' },
-    { type: 'image', src: 'images/ish-jarayoni/05-tor-joyda-ulash.webp',   alt: 'Ulash' },
-    { type: 'image', src: 'images/ish-jarayoni/07-payvand-choki.webp',     alt: 'Payvand choki' },
-    { type: 'image', src: 'images/ish-jarayoni/10-izolyatsiya.webp',       alt: 'Izolyatsiya' },
-    { type: 'image', src: 'images/ish-jarayoni/11-yakuniy-nazorat.webp',   alt: 'Yakuniy nazorat' },
-    // Video misol (fayl mavjud bo'lganda ochib qo'ying):
-    // { type: 'video', src: 'images/hero-slider/demo.mp4' },
+    { type: 'image', src: 'images/hero-slider/1.webp', small: 'images/hero-slider/1-m.webp',
+      alt: "SOAR GAZ — Gaz va isitish yechimlari: loyihalash, montaj va texnik xizmat" },
+    { type: 'image', src: 'images/hero-slider/2.webp', small: 'images/hero-slider/2-m.webp',
+      alt: "SOAR GAZ — Qozon va radiator servisi: diagnostika va tizimni yuvish" },
+    { type: 'image', src: 'images/hero-slider/3.webp', small: 'images/hero-slider/3-m.webp',
+      alt: "SOAR GAZ — AGNKS uchun servis: uskunalarga texnik xizmat" },
   ];
 
   const track = root.querySelector('.hc-track');
@@ -42,6 +41,9 @@
     } else {
       const img = document.createElement('img');
       img.src = s.src;
+      if (s.small) { img.srcset = s.small + ' 900w, ' + s.src + ' 2000w'; img.sizes = '100vw'; }
+      img.decoding = 'async';
+      if (i === 0) img.fetchPriority = 'high';
       img.alt = s.alt || '';
       img.loading = i === 0 ? 'eager' : 'lazy';
       img.className = 'w-full h-full object-cover';
@@ -68,7 +70,7 @@
   const slideEls = Array.from(track.querySelectorAll('.hc-slide'));
   let current = 0;
   let timer = null;
-  const INTERVAL = 4000;
+  const INTERVAL = 6000;   // matn rasmda — o'qishga vaqt kerak
 
   function goTo(i, userAction) {
     const next = (i + slides.length) % slides.length;

@@ -13,7 +13,37 @@
 <link rel="stylesheet" href="/assets/inter.css">
 <link rel="stylesheet" href="/assets/manrope.css">
 <link rel="stylesheet" href="/vendor/tabler-icons/tabler-icons.min.css?v=2">
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
 <style>
+  /* Xodimlar xaritasi */
+  #joyXarita{height:460px;border-radius:12px;border:1px solid var(--card-border);z-index:0;}
+  .joy-tanlangan td{background:var(--blue-light);}
+  @media (max-width:700px){ #joyXarita{height:340px;} }
+  /* Parol maydoni va "ko'zcha" tugmasi */
+  .parol-quti{position:relative;margin-bottom:16px;}
+  .parol-quti .f-input{margin-bottom:0;padding-right:46px;}
+  .parol-kozcha{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:none;
+    background:transparent;color:var(--text-muted);cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .parol-kozcha:hover{color:var(--blue);background:var(--blue-light);}
+  .parol-kozcha:focus-visible{outline:2px solid var(--blue);}
+  /* Rahbariyat bosh sahifasi */
+  .rah-diqqat{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:8px;
+    font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid transparent;}
+  .rah-diqqat:last-child{margin-bottom:0;}
+  .rah-diqqat.qizil{background:var(--red-light);color:var(--red);border-color:var(--red-border);}
+  .rah-diqqat.sariq{background:var(--orange-light);color:var(--orange);border-color:var(--orange-border);}
+  .rah-diqqat.info{background:var(--blue-light);color:var(--blue);border-color:var(--blue-border);}
+  .rah-diqqat:hover{filter:brightness(.96);}
+  .rah-satr{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;
+    border-bottom:1px solid var(--card-border);font-size:13.5px;}
+  .rah-satr:last-child{border-bottom:none;}
+  /* Narxnoma tarmoq va bo'lim yorliqlari */
+  .narx-tab{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
+  .narx-tab:empty{display:none;}
+  .narx-tab-btn{border:1.5px solid var(--card-border);background:#fff;color:var(--text-secondary);border-radius:999px;padding:8px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
+  .narx-tab-btn.sub{padding:6px 14px;font-size:12.5px;}
+  .narx-tab-btn:hover{border-color:var(--blue);color:var(--blue);}
+  .narx-tab-btn.active{background:var(--blue);border-color:var(--blue);color:#fff;}
   :root{
     --bg-top:#e9f1fd; --bg-bottom:#f8fbff;
     --card-bg:#ffffff; --card-border:#e7edf6;
@@ -258,6 +288,22 @@
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
   @media (max-width:900px){.two-col{grid-template-columns:1fr;} .kanban{grid-template-columns:1fr 1fr;}}
   @media (max-width:640px){.kanban{grid-template-columns:1fr;}}
+  /* Telefonda forma maydonlari va kartalar ixcham; 16px shrift iOS yaqinlashtirmasligi uchun */
+  @media (max-width:640px){
+    html,body{overflow-x:hidden;max-width:100%;}
+    .f-input,.f-select,input,select,textarea{font-size:16px;}
+    .f-input,.f-select{padding:9px 12px;margin-bottom:11px;border-radius:10px;}
+    .xodim-form .f-input,.xodim-form .f-select{margin-bottom:10px;}
+    .parol-quti{margin-bottom:11px;}
+    .f-label{margin-bottom:4px;}
+    .card{padding:16px;border-radius:16px;}
+    .card + .card{margin-top:14px;}
+    /* Jadvallar ekranga siqilmaydi: o'z ichida yonga suriladi, ustun sarlavhalari yopishmaydi */
+    table.data-table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    table.data-table th{padding-right:16px;white-space:nowrap;}
+    table.data-table td{padding-right:16px;vertical-align:top;}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  }
 </style>
 </head>
 <body>
@@ -274,7 +320,20 @@
       <input class="f-input" type="tel" id="loginTelefon" autocomplete="username"
              placeholder="+998901234567" value="+998" maxlength="13">
       <label class="f-label" for="loginParol">Parol</label>
-      <input class="f-input" type="password" id="loginParol" autocomplete="current-password">
+      <div class="parol-quti">
+        <input class="f-input" type="password" id="loginParol" autocomplete="current-password">
+        <!-- Ko'zcha: parolni ko'rib tekshirish. Bosilganda ochiladi, qayta bosilsa yashiriladi -->
+        <button type="button" class="parol-kozcha" id="parolKozcha" aria-label="Parolni ko'rsatish" aria-pressed="false"
+                title="Parolni ko'rsatish">
+          <svg class="kz-och" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="kz-yop" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none;">
+            <path d="M17.94 17.94A10.9 10.9 0 0 1 12 19c-6.4 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 5c6.4 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/>
+            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>
+        </button>
+      </div>
       <p id="loginXato" class="auth-xato"></p>
       <button type="submit" class="auth-btn" id="loginBtn">Kirish</button>
     </form>
@@ -305,21 +364,26 @@
       <div class="sb-logo"><div class="box"><i class="ti ti-flame"></i></div><span>Soar Gaz · Admin</span></div>
 
       <div class="sb-group-label">Umumiy</div>
-      <button class="sb-item active" data-page="home"><i class="ti ti-layout-dashboard"></i>Bosh sahifa</button>
+      <button class="sb-item active" data-page="rahbariyat"><i class="ti ti-building-bank"></i>Rahbariyat</button>
+      <button class="sb-item" data-page="home"><i class="ti ti-layout-dashboard"></i>Bosh sahifa</button>
 
       <div class="sb-group-label">Operatsion</div>
       <button class="sb-item" data-page="orders"><i class="ti ti-clipboard-list"></i>Arizalar</button>
       <button class="sb-item" data-page="dispatch"><i class="ti ti-route"></i>Vazifalar taqsimoti</button>
       <button class="sb-item" data-page="staff"><i class="ti ti-users"></i>Xodimlar</button>
+      <button class="sb-item" data-page="joy"><i class="ti ti-map-pin"></i>Xodimlar xaritasi</button>
+      <button class="sb-item" data-page="msg"><i class="ti ti-message"></i>Xodimlarga xabar</button>
       <button class="sb-item" data-page="crm"><i class="ti ti-address-book"></i>Mijozlar (CRM)</button>
 
       <div class="sb-group-label">Kontent</div>
       <button class="sb-item" data-page="services"><i class="ti ti-apps"></i>Xizmatlar</button>
-      <button class="sb-item" data-page="pricing"><i class="ti ti-calculator"></i>Narxlar</button>
+      <button class="sb-item" data-page="nn"><i class="ti ti-list-details"></i>Xizmatlar narxnomasi</button>
+      <button class="sb-item" data-page="pricing"><i class="ti ti-receipt"></i>Narxlar</button>
       <button class="sb-item" data-page="reviews"><i class="ti ti-star"></i>Sharhlar va reyting</button>
 
       <div class="sb-group-label">Moliya</div>
       <button class="sb-item" data-page="finance"><i class="ti ti-report-money"></i>Moliya va hisobotlar</button>
+      <button class="sb-item" data-page="cash"><i class="ti ti-cash"></i>Xodimlar tushumi <span class="tag red" id="tushBelgi" style="display:none;margin-left:6px;padding:1px 7px;"></span></button>
       <button class="sb-item" data-page="certs"><i class="ti ti-certificate"></i>Sertifikatlar</button>
 
       <div class="sb-group-label">Tizim</div>
@@ -344,7 +408,46 @@
       <div class="content">
 
         <!-- ========== 1. BOSH SAHIFA ========== -->
-        <div class="page active" id="page-home">
+        <!-- ========== RAHBARIYAT (kirgandan keyin birinchi ochiladi) ========== -->
+        <div class="page active" id="page-rahbariyat">
+          <p class="page-title">Rahbariyat</p>
+          <p class="page-sub" id="rahSub">Umumiy ko'rinish: har daqiqada yangilanadi, faqat ko'rsatish uchun</p>
+
+          <div class="card" id="rahDiqqatKarta">
+            <div class="card-head"><h3><i class="ti ti-alert-circle"></i>Diqqat talab qiladi</h3></div>
+            <div id="rahDiqqat"><p class="bosh-holat" style="padding:10px 0;margin:0;">Yuklanmoqda…</p></div>
+          </div>
+
+          <p class="page-sub" style="margin:22px 0 10px;font-weight:700;">Tushum (bu oy)</p>
+          <div class="stat-grid" id="rahTushum"></div>
+
+          <div class="two-col">
+            <div class="card">
+              <div class="card-head"><h3><i class="ti ti-clipboard-list"></i>Buyurtmalar</h3></div>
+              <div id="rahBuyurtma"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3><i class="ti ti-users"></i>Xodimlar</h3></div>
+              <div id="rahXodim"></div>
+            </div>
+          </div>
+
+          <div class="two-col" style="margin-top:18px;">
+            <div class="card table-wrap">
+              <div class="card-head"><h3><i class="ti ti-cash"></i>Kim qancha pul topshirmagan</h3></div>
+              <table class="data-table">
+                <thead><tr><th>Xodim</th><th>Summa</th><th>Yozuv</th><th>Eng eskisi</th></tr></thead>
+                <tbody id="rahQarz"><tr class="holat-qator"><td colspan="4">Yuklanmoqda…</td></tr></tbody>
+              </table>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3><i class="ti ti-history"></i>So'nggi faoliyat</h3></div>
+              <div id="rahFaoliyat"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" id="page-home">
           <p class="page-title">Bosh sahifa</p>
           <p class="page-sub">Platformaning umumiy holati</p>
           <!-- Raqamlar /api/buyurtmalar/statistika/ dan keladi -->
@@ -523,6 +626,105 @@
         </div>
 
         <!-- ========== 5. MIJOZLAR CRM ========== -->
+        <!-- ========== XODIMLAR XARITASI ========== -->
+        <div class="page" id="page-joy">
+          <p class="page-title">Xodimlar xaritasi</p>
+          <p class="page-sub" id="joySoni">Faqat hozir smenada bo'lgan xodimlar ko'rinadi</p>
+          <div class="ogoh" style="color:#1e40af;background:#eff6ff;border-color:#bfdbfe;">
+            <i class="ti ti-shield-lock"></i>
+            <span>Joylashuv faqat xodim <b>smenani boshlagan</b> va <b>rozilik bergan</b> bo'lsa olinadi.
+              Har bir ko'rish <b>Faoliyat jurnaliga</b> yoziladi. Nuqtalar 30 kundan keyin o'chiriladi.
+              Xarita har 15 soniyada yangilanadi.</span>
+          </div>
+          <div class="card">
+            <div id="joyXarita"></div>
+          </div>
+          <div class="card table-wrap" style="margin-top:20px;">
+            <table class="data-table">
+              <thead><tr><th>Xodim</th><th>Lavozim</th><th>Smena boshi</th><th>Oxirgi nuqta</th><th>Aloqa</th><th></th></tr></thead>
+              <tbody id="joyTana">
+                <tr class="holat-qator"><td colspan="6">Yuklanmoqda…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========== XODIMLARGA XABAR ========== -->
+        <div class="page" id="page-msg">
+          <p class="page-title">Xodimlarga xabar</p>
+          <p class="page-sub">Xabar xodimning portalida qo'ng'iroqcha belgisida ko'rinadi (har 30 soniyada yangilanadi)</p>
+          <div class="card">
+            <form id="xabarForm">
+              <label class="f-label" for="xabarMatn">Xabar matni * <span id="xabarSanoq" style="color:var(--text-muted);font-weight:400;">0/500</span></label>
+              <textarea class="f-input" id="xabarMatn" rows="3" maxlength="500" required
+                        placeholder="Masalan: Ertaga 8:00 da ofisda yig'ilish."></textarea>
+              <label class="f-label">Kimga *</label>
+              <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-weight:600;">
+                <input type="checkbox" id="xabarHammasi"> Barcha faol xodimlarga
+              </label>
+              <div id="xabarXodimlar" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 16px;margin-bottom:16px;"></div>
+              <button class="btn-primary" type="submit" id="xabarBtn">Yuborish</button>
+              <p class="xodim-xato" id="xabarXato"></p>
+            </form>
+          </div>
+          <div class="card table-wrap" style="margin-top:20px;">
+            <div class="card-head"><h3><i class="ti ti-history"></i>Yuborilgan xabarlar</h3></div>
+            <table class="data-table">
+              <thead><tr><th>Vaqt</th><th>Xodim</th><th>Xabar</th><th>Holat</th></tr></thead>
+              <tbody id="xabarTana"><tr class="holat-qator"><td colspan="4">Yuklanmoqda…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========== XODIMLAR TUSHUMI ========== -->
+        <div class="page" id="page-cash">
+          <p class="page-title">Xodimlar tushumi</p>
+          <p class="page-sub" id="tushSoni">Xodimlar mijozlardan olgan pul va uni topshirishi</p>
+          <div class="ogoh" style="color:#1e40af;background:#eff6ff;border-color:#bfdbfe;">
+            <i class="ti ti-info-circle"></i>
+            <span>Xodim pulni kiritadi, siz esa <b>pulni qo'lingizga olgach</b> "Qabul qilish"ni bosing.
+              Xato kiritilgan yozuvni sabab yozib rad eting. Qabul va rad <b>qaytarilmaydi</b>
+              va Faoliyat jurnaliga yoziladi.</span>
+          </div>
+
+          <!-- Tarmoqlar bo'yicha tushum: tarmoq ish turidan yoki buyurtmadan olinadi -->
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-chart-pie"></i>Tarmoqlar bo'yicha</h3></div>
+            <div id="tushTarmoqKartalar" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;"></div>
+          </div>
+
+          <div class="card table-wrap" style="margin-top:20px;">
+            <div class="card-head"><h3><i class="ti ti-users"></i>Xodimlar bo'yicha</h3></div>
+            <table class="data-table">
+              <thead><tr><th>Xodim</th><th>Topshirishi kerak</th><th>Bu oy qabul qilingan</th><th>Jami qabul qilingan</th></tr></thead>
+              <tbody id="tushXodimTana"><tr class="holat-qator"><td colspan="4">Yuklanmoqda…</td></tr></tbody>
+            </table>
+          </div>
+
+          <div class="card table-wrap" style="margin-top:20px;">
+            <div class="card-head">
+              <h3><i class="ti ti-list"></i>Tushumlar</h3>
+              <span style="display:flex;gap:8px;flex-wrap:wrap;">
+                <select class="f-select" id="tushTarmoqFiltr" style="width:auto;margin:0;" aria-label="Tarmoq">
+                  <option value="">Barcha tarmoqlar</option>
+                  <option value="aholi">Aholi</option>
+                  <option value="ulgurji">Ulgurji</option>
+                </select>
+                <select class="f-select" id="tushFiltr" style="width:auto;margin:0;" aria-label="Holat">
+                  <option value="kutilmoqda">Kutilmoqda</option>
+                  <option value="">Hammasi</option>
+                  <option value="qabul">Qabul qilingan</option>
+                  <option value="rad">Rad etilgan</option>
+                </select>
+              </span>
+            </div>
+            <table class="data-table">
+              <thead><tr><th>Sana</th><th>Xodim</th><th>Summa</th><th>Usul</th><th>Buyurtma</th><th>Holat</th><th></th></tr></thead>
+              <tbody id="tushTana"><tr class="holat-qator"><td colspan="7">Yuklanmoqda…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="page" id="page-crm">
           <p class="page-title">Mijozlar (CRM)</p>
           <p class="page-sub">Barcha mijozlar bazasi</p>
@@ -530,7 +732,7 @@
                bu yerda qo'lda kiritilmaydi. -->
           <div class="card table-wrap">
             <table class="data-table">
-              <thead><tr><th>Ism</th><th>Telefon</th><th>Tuman</th><th>Ro'yxatdan o'tgan</th><th>Buyurtmalar</th></tr></thead>
+              <thead><tr><th>Ism</th><th>Telefon</th><th>Tuman</th><th>Ro'yxatdan o'tgan</th><th>Buyurtmalar</th><th></th></tr></thead>
               <tbody id="crmTana">
                 <tr class="holat-qator"><td colspan="5">Yuklanmoqda…</td></tr>
               </tbody>
@@ -551,14 +753,14 @@
             <div class="svc-edit-card"><h5>Rezervuarli tizim</h5><p>500–10 000 litrlik rezervuarlar bilan avtonom gaz ta'minoti</p></div>
             <div class="svc-edit-card"><h5>Montaj qilish</h5><p>Gaz quvurlari va uskunalarini xavfsiz o'rnatish</p></div>
             <div class="svc-edit-card"><h5>Servis xizmatlar</h5><p>Texnik ko'rik, ta'mirlash va 24/7 yordam</p></div>
-            <div class="svc-edit-card"><h5>Metrologiya xizmatlari</h5><p>Davlat tekshiruvi, kalibrovka va attestatsiya</p></div>
+            <div class="svc-edit-card"><h5>Metrologiya xizmatlari</h5><p>Kalibrovka, almashtirish va davlat qiyoslov ko'rigi</p></div>
             <div class="add-svc-card"><i class="ti ti-plus" style="font-size:22px;"></i>Yangi xizmat qo'shish</div>
           </div>
         </div>
 
         <!-- ========== 7. NARXLAR ========== -->
         <div class="page" id="page-pricing">
-          <p class="page-title">Narxlar va kalkulyatorlar</p>
+          <p class="page-title">Narxlar</p>
           <p class="page-sub">Barcha xizmatlar uchun narx sozlamalari</p>
           <div class="ogoh">
             <i class="ti ti-alert-triangle"></i>
@@ -591,6 +793,80 @@
               <tr><td>Qulay</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="700 000"></td><td><button class="btn-sm">Saqlash</button></td></tr>
               <tr><td>Premium</td><td><input class="f-input" style="margin:0;padding:6px 10px;width:120px;" value="1 200 000"></td><td><button class="btn-sm">Saqlash</button></td></tr>
             </table></div>
+          </div>
+        </div>
+
+        <!-- ========== XIZMATLAR NARXNOMASI ========== -->
+        <div class="page" id="page-nn">
+          <p class="page-title">Xizmatlar narxnomasi</p>
+          <p class="page-sub" id="nnSub">Yuklanmoqda…</p>
+          <div class="ogoh" style="color:#1e40af;background:#eff6ff;border-color:#bfdbfe;">
+            <i class="ti ti-info-circle"></i>
+            <span>Bu narxlar <b>xodimlar portalida</b> ko'rinadi. Qatorda "Saqlash"ni bosganingizda
+              o'zgarish darhol kuchga kiradi va <b>Faoliyat jurnaliga</b> yoziladi (eski va yangi narx).
+              Qatorni olib tashlash o'rniga "Faol" belgisini o'chiring, shunda u xodimlarga ko'rinmaydi.
+              Oraliq narx uchun "dan" va "gacha" ni to'ldiring; raqam o'rniga matn kerak bo'lsa, narxlarni
+              bo'sh qoldirib "Izoh"ga yozing.</span>
+          </div>
+
+          <div class="narx-tab" id="nnTarmoqTab"></div>
+          <div class="narx-tab" id="nnBolimTab"></div>
+
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-file-text"></i>Narxnoma ma'lumotlari</h3></div>
+            <div class="xodim-form">
+              <div style="grid-column:1/-1;">
+                <label class="f-label" for="nnSarlavha">Sarlavha</label>
+                <input class="f-input" id="nnSarlavha" maxlength="300">
+              </div>
+              <div>
+                <label class="f-label" for="nnU1">1-narx ustuni nomi</label>
+                <input class="f-input" id="nnU1" maxlength="200">
+              </div>
+              <div>
+                <label class="f-label" for="nnU1q">1-ustun qisqa nomi (xizmat yonida chiqadi)</label>
+                <input class="f-input" id="nnU1q" maxlength="40" placeholder="masalan: profilaktika">
+              </div>
+              <div>
+                <label class="f-label" for="nnU2">2-narx ustuni nomi (bo'sh — bitta narx)</label>
+                <input class="f-input" id="nnU2" maxlength="200">
+              </div>
+              <div>
+                <label class="f-label" for="nnU2q">2-ustun qisqa nomi</label>
+                <input class="f-input" id="nnU2q" maxlength="40" placeholder="masalan: reviziya">
+              </div>
+              <div style="grid-column:1/-1;">
+                <label class="f-label" for="nnEslatma">Eslatma (jadval tagida ko'rinadi)</label>
+                <textarea class="f-input" id="nnEslatma" rows="3" maxlength="2000"></textarea>
+              </div>
+            </div>
+            <button class="btn-primary" id="nnSarlavhaSaqla">Saqlash</button>
+            <span id="nnSarlavhaXabar" style="margin-left:12px;font-size:13px;font-weight:600;"></span>
+          </div>
+
+          <div class="card table-wrap" style="margin-top:20px;">
+            <div class="card-head">
+              <h3><i class="ti ti-list-details"></i>Narxlar</h3>
+              <input class="f-input" id="nnQidir" type="search" placeholder="Qidirish..." style="width:220px;margin:0;">
+            </div>
+            <table class="data-table">
+              <thead id="nnThead"></thead>
+              <tbody id="nnTana"><tr class="holat-qator"><td colspan="9">Yuklanmoqda…</td></tr></tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:20px;">
+            <div class="card-head"><h3><i class="ti ti-plus"></i>Yangi xizmat qo'shish</h3></div>
+            <div class="xodim-form">
+              <div style="grid-column:1/-1;"><label class="f-label" for="nnYNomi">Xizmat nomi *</label>
+                <input class="f-input" id="nnYNomi" maxlength="400"></div>
+              <div><label class="f-label" for="nnYPd" id="nnYPdLabel">Narx (so'm)</label>
+                <input class="f-input" id="nnYPd" inputmode="numeric"></div>
+              <div id="nnYRdWrap"><label class="f-label" for="nnYRd" id="nnYRdLabel">2-narx (so'm)</label>
+                <input class="f-input" id="nnYRd" inputmode="numeric"></div>
+            </div>
+            <button class="btn-primary" id="nnYQosh">Qo'shish</button>
+            <p class="xodim-xato" id="nnYXato"></p>
           </div>
         </div>
 
@@ -634,9 +910,9 @@
             <div class="card-head">
               <h3><i class="ti ti-list-details"></i>Batafsil</h3>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn-sm" onclick="hisobotYukla('csv')">
+                <button class="btn-sm" data-h-click="h1">
                   <i class="ti ti-file-type-csv"></i> Excel (CSV)</button>
-                <button class="btn-sm" onclick="hisobotYukla('chop')">
+                <button class="btn-sm" data-h-click="h2">
                   <i class="ti ti-printer"></i> PDF / Chop etish</button>
               </div>
             </div>
@@ -746,904 +1022,9 @@
   </div>
 </div>
 
-<script>
-// ═══════ Backend ═══════
-// Sayt server orqali ochilsa nisbiy manzil, fayl sifatida ochilsa dev backend.
-// Diqqat: bu sahifa admin ROLI uchun (/api/auth/admin/login/), Django'ning
-// o'z /admin/ paneli bilan aralashtirmang.
-const API = location.protocol === 'file:' ? 'http://localhost:8001/api' : '/api';
-const TOKEN_KALIT = 'soargaz_admin_token';
-
-let token = null;
-let profil = null;
-// Arizalar bir marta yuklanadi, chiplar shu ro'yxatni filtrlaydi
-let arizalar = [];
-let xodimlar = [];
-let tanlanganHolat = '';
-
-function tokenSaqla(t){ token = t; try { sessionStorage.setItem(TOKEN_KALIT, t); } catch(e){} }
-function tokenYukla(){ try { token = sessionStorage.getItem(TOKEN_KALIT); } catch(e){} }
-function tokenOchir(){ token = null; try { sessionStorage.removeItem(TOKEN_KALIT); } catch(e){} }
-
-async function apiSorov(yol, sozlama = {}){
-  const javob = await fetch(API + yol, {
-    ...sozlama,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-      ...(sozlama.headers || {})
-    }
-  });
-  if (javob.status === 401) { chiqish(); throw new Error('Sessiya tugadi'); }
-  const matn = await javob.text();
-  const malumot = matn ? JSON.parse(matn) : null;
-  if (!javob.ok) throw new Error(xatoMatni(malumot));
-  return malumot;
-}
-
-// Django REST forma xatolarini {maydon: ["sabab"]} ko'rinishida qaytaradi —
-// faqat `detail` ni o'qisak, foydalanuvchi "Server xatosi" dan boshqa
-// hech narsa ko'rmaydi va nimani noto'g'ri kiritganini bilmaydi.
-function xatoMatni(malumot){
-  if (!malumot) return 'Server xatosi';
-  if (typeof malumot === 'string') return malumot;
-  if (malumot.detail) return malumot.detail;
-  const satrlar = [];
-  for (const [maydon, qiymat] of Object.entries(malumot)){
-    const matn = Array.isArray(qiymat) ? qiymat.join(' ') : String(qiymat);
-    satrlar.push(maydon === 'non_field_errors' ? matn : `${maydon}: ${matn}`);
-  }
-  return satrlar.join('\n') || 'Server xatosi';
-}
-
-// "Aziz Karimov" -> "AK"; bitta so'z bo'lsa birinchi ikki harf
-function boshHarflar(ism){
-  const b = (ism || '').trim().split(/\s+/).filter(Boolean);
-  if (!b.length) return '?';
-  if (b.length === 1) return b[0].slice(0, 2).toUpperCase();
-  return (b[0][0] + b[b.length - 1][0]).toUpperCase();
-}
-
-function sanaFormat(iso){
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d)) return '—';
-  const ikki = n => String(n).padStart(2, '0');
-  return `${ikki(d.getDate())}.${ikki(d.getMonth() + 1)}.${d.getFullYear()}`;
-}
-
-function xavfsiz(matn){
-  const el = document.createElement('div');
-  el.textContent = matn == null ? '' : String(matn);
-  return el.innerHTML;
-}
-
-// ═══════ Kirish / chiqish ═══════
-function xatoKorsat(matn){
-  const el = document.getElementById('loginXato');
-  el.textContent = matn || '';
-  el.classList.toggle('bor', !!matn);
-}
-
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const tugma = document.getElementById('loginBtn');
-  const telefon = document.getElementById('loginTelefon').value.replace(/\s/g, '');
-  const parol = document.getElementById('loginParol').value;
-
-  if (telefon.length < 13) { xatoKorsat("Telefon raqamni to'liq kiriting: +998 XX XXX XX XX"); return; }
-  if (!parol) { xatoKorsat('Parolni kiriting'); return; }
-
-  xatoKorsat('');
-  tugma.disabled = true;
-  tugma.textContent = 'Tekshirilmoqda…';
-  try {
-    const javob = await apiSorov('/auth/admin/login/', {
-      method: 'POST',
-      body: JSON.stringify({ telefon, parol })
-    });
-    document.getElementById('loginParol').value = '';
-
-    // 2FA yoqilgan bo'lsa parol bosqichi token bermaydi — kod so'raladi
-    if (javob.otp_kerak) { otpBosqichiniOch(javob); return; }
-
-    kirishYakunla(javob);
-  } catch (xato) {
-    xatoKorsat(xato.message);
-  } finally {
-    tugma.disabled = false;
-    tugma.textContent = 'Kirish';
-  }
-});
-
-// ═══════ Ikki bosqichli kirish (2FA) ═══════
-// Chipta — parol bosqichidan o'tilganini isbotlaydigan vaqtinchalik kalit.
-// Usiz OTP bosqichi qabul qilinmaydi, ya'ni ikkala bosqich ham majburiy.
-let otpChipta = null;
-
-function otpXatoKorsat(matn){
-  const el = document.getElementById('otpXato');
-  el.textContent = matn || '';
-  el.classList.toggle('bor', !!matn);
-}
-
-function otpBosqichiniOch(javob){
-  otpChipta = javob.chipta;
-  document.getElementById('loginForm').style.display = 'none';
-  document.getElementById('otpForm').style.display = 'block';
-  document.getElementById('otpTelefon').textContent = javob.telefon_maskasi || '—';
-  document.getElementById('otpMuddat').textContent = javob.muddat_daqiqa || 5;
-
-  // Dev rejimda SMS provayder ulanmagan — kod javobda keladi, aks holda
-  // lokal ishlab chiqishda panelga kirib bo'lmaydi. Serverda bu bo'lmaydi.
-  otpXatoKorsat('');
-  if (javob.dev_kod) {
-    document.getElementById('otpKod').value = javob.dev_kod;
-    otpXatoKorsat(`Dev rejim: SMS ulanmagan, kod — ${javob.dev_kod}`);
-  } else if (javob.ogohlantirish) {
-    otpXatoKorsat(javob.ogohlantirish);
-  }
-  document.getElementById('otpKod').focus();
-}
-
-function otpBosqichiniYop(){
-  otpChipta = null;
-  document.getElementById('otpForm').style.display = 'none';
-  document.getElementById('loginForm').style.display = 'block';
-  document.getElementById('otpKod').value = '';
-  otpXatoKorsat('');
-}
-
-function kirishYakunla(javob){
-  tokenSaqla(javob.access);
-  profil = javob.user;
-  if (javob.sessiya_daqiqa) sessiyaDaqiqa = javob.sessiya_daqiqa;
-  otpBosqichiniYop();
-  sessiyaYangila();
-  panelniOch();
-}
-
-document.getElementById('otpOrtga').addEventListener('click', otpBosqichiniYop);
-
-document.getElementById('otpForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const kod = document.getElementById('otpKod').value.trim();
-  if (kod.length !== 6) { otpXatoKorsat('6 xonali kodni kiriting'); return; }
-
-  const tugma = document.getElementById('otpBtn');
-  otpXatoKorsat('');
-  tugma.disabled = true;
-  tugma.textContent = 'Tekshirilmoqda…';
-  try {
-    const javob = await apiSorov('/auth/admin/otp/', {
-      method: 'POST',
-      body: JSON.stringify({ chipta: otpChipta, kod })
-    });
-    kirishYakunla(javob);
-  } catch (xato) {
-    otpXatoKorsat(xato.message);
-    // Chipta kuchdan qolgan bo'lsa — birinchi bosqichga qaytaramiz
-    if (/qaytadan|muddati/i.test(xato.message || '')) {
-      setTimeout(() => { otpBosqichiniYop(); xatoKorsat(xato.message); }, 1800);
-    }
-  } finally {
-    tugma.disabled = false;
-    tugma.textContent = 'Tasdiqlash';
-  }
-});
-
-function chiqish(sabab){
-  clearTimeout(sessiyaTaymer);
-  otpBosqichiniYop();
-  tokenOchir();
-  profil = null;
-  arizalar = [];
-  document.getElementById('dashView').style.display = 'none';
-  document.getElementById('authView').style.display = 'flex';
-  xatoKorsat(sabab || '');
-}
-document.getElementById('chiqishBtn').addEventListener('click', () => chiqish());
-
-// ═══════ Sessiya nazorati ═══════
-// Server tokeni ADMIN_SESSIYA_DAQIQA dan keyin kuchini yo'qotadi. Panel ham
-// o'sha vaqt harakatsizlikdan keyin o'zi chiqadi — ochiq qolgan kompyuterda
-// panel egasiz turmasin. Har qanday harakat hisobni qaytadan boshlaydi.
-let sessiyaDaqiqa = 30;
-let sessiyaTaymer = null;
-
-function sessiyaYangila(){
-  if (!token) return;
-  clearTimeout(sessiyaTaymer);
-  sessiyaTaymer = setTimeout(() => {
-    chiqish(`${sessiyaDaqiqa} daqiqa harakatsizlikdan keyin sessiya yakunlandi. Qaytadan kiring.`);
-  }, sessiyaDaqiqa * 60 * 1000);
-}
-
-['click', 'keydown', 'scroll', 'touchstart'].forEach(hodisa => {
-  document.addEventListener(hodisa, sessiyaYangila, { passive: true });
-});
-
-async function panelniOch(){
-  document.getElementById('authView').style.display = 'none';
-  document.getElementById('dashView').style.display = 'block';
-  profilChiz();
-  await Promise.all([
-    statistikaYukla(), arizalarYukla(), xodimlarYukla(),
-    mijozlarYukla(), moliyaYukla(), jurnalYukla(),
-  ]);
-}
-
-function profilChiz(){
-  const ism = (profil && (profil.ism || profil.telefon)) || 'Admin';
-  document.getElementById('profilIsm').textContent = ism;
-  document.getElementById('profilHarf').textContent = boshHarflar(ism);
-}
-
-// ═══════ Bosh sahifa ═══════
-async function statistikaYukla(){
-  let s;
-  try { s = await apiSorov('/buyurtmalar/statistika/'); } catch (e) { return; }
-  document.getElementById('statYangi').textContent = s.yangi;
-  document.getElementById('statJarayon').textContent = s.qabul + s.jarayonda;
-  document.getElementById('statBajarildi').textContent = s.bajarildi;
-  document.getElementById('statXodim').textContent = s.xodimlar_soni;
-}
-
-const HAFTA_NOM = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'];
-
-// Oxirgi 7 kunlik ustunlar — arizalarning 'yaratilgan' sanasidan sanaladi
-function haftalikChiz(){
-  const kunlar = [];
-  const bugun = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(bugun);
-    d.setDate(bugun.getDate() - i);
-    kunlar.push({ nom: HAFTA_NOM[d.getDay()], kalit: d.toDateString(), soni: 0 });
-  }
-  const indeks = new Map(kunlar.map(k => [k.kalit, k]));
-  arizalar.forEach(a => {
-    const kun = indeks.get(new Date(a.yaratilgan).toDateString());
-    if (kun) kun.soni++;
-  });
-
-  const svg = ustunGrafik(
-    kunlar.map(k => ({ nom: k.nom, qiymat: k.soni })), GRAFIK_RANG[0]);
-
-  document.getElementById('haftaBars').innerHTML = svg || boshGrafik(
-    "Bu hafta ariza kelmagan",
-    "Saytdan ariza kelganda kunlar bo'yicha taqsimot shu yerda ko'rinadi.",
-    'ti-chart-bar');
-
-  // Holatlar bo'yicha halqa — arizalar qaysi bosqichda turganini bir qarashda
-  const holatQuti = document.getElementById('holatHalqa');
-  if (holatQuti) {
-    const bolaklar = Object.keys(HOLAT_NOM).map(h => ({
-      nom: HOLAT_NOM[h],
-      qiymat: arizalar.filter(a => a.holat === h).length,
-      rang: HOLAT_RANGI[h],
-    }));
-    holatQuti.innerHTML = halqaGrafik(bolaklar, 'jami ariza') || boshGrafik(
-      'Ariza yo\'q',
-      'Arizalar kelganda ular holati bo\'yicha shu yerda taqsimlanadi.',
-      'ti-chart-donut');
-  }
-}
-
-const FAOLIYAT_IKON = {
-  yangi: 'ti-file-plus', qabul: 'ti-user-check',
-  bajarilmoqda: 'ti-progress', bajarildi: 'ti-checkbox', bekor: 'ti-x'
-};
-
-function nechaVaqtOldin(iso){
-  const daqiqa = Math.floor((Date.now() - new Date(iso)) / 60000);
-  if (daqiqa < 1) return 'hozirgina';
-  if (daqiqa < 60) return `${daqiqa} daqiqa oldin`;
-  const soat = Math.floor(daqiqa / 60);
-  if (soat < 24) return `${soat} soat oldin`;
-  const kun = Math.floor(soat / 24);
-  return kun === 1 ? 'kecha' : `${kun} kun oldin`;
-}
-
-function faoliyatChiz(){
-  const oxirgi = arizalar.slice(0, 5);
-  const royxat = document.getElementById('faoliyatRoyxat');
-  if (!oxirgi.length) {
-    royxat.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0;">Hozircha ariza yo\'q</p>';
-    return;
-  }
-  royxat.innerHTML = oxirgi.map(a => `
-    <div class="activity-item">
-      <div class="act-icon"><i class="ti ${FAOLIYAT_IKON[a.holat] || 'ti-file'}"></i></div>
-      <div>
-        <p>Ariza #${a.id} — ${xavfsiz(a.xizmat_nomi)}</p>
-        <span>${nechaVaqtOldin(a.yangilangan || a.yaratilgan)}</span>
-      </div>
-    </div>`).join('');
-}
-
-// ═══════ Arizalar ═══════
-const HOLAT_NOM = {
-  yangi: 'Yangi', qabul: 'Qabul qilindi', bajarilmoqda: 'Bajarilmoqda',
-  bajarildi: 'Bajarildi', bekor: 'Bekor qilindi'
-};
-const HOLAT_RANG = {
-  yangi: 'orange', qabul: 'blue', bajarilmoqda: 'blue',
-  bajarildi: 'green', bekor: 'red'
-};
-
-async function arizalarYukla(){
-  try {
-    arizalar = await apiSorov('/buyurtmalar/');
-  } catch (xato) {
-    document.getElementById('arizaTana').innerHTML =
-      `<tr class="holat-qator"><td colspan="7">${xavfsiz(xato.message)}</td></tr>`;
-    return;
-  }
-  arizalarChiz();
-  haftalikChiz();
-  faoliyatChiz();
-  kanbanChiz();
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  GRAFIKLAR — tashqi kutubxonasiz, sof SVG
-//  Loyihada barcha resurs lokal (index.html:29), shuning uchun Chart.js
-//  kabi CDN kutubxona ishlatilmaydi. Bu funksiyalar SVG matnini qaytaradi.
-// ════════════════════════════════════════════════════════════════════
-
-// Ranglar tekshiruvdan o'tgan: ranglar ko'rlikda ham ajraladi (ΔE ≥ 14).
-// Tartib QAT'IY — rang ma'lumotga biriktirilgan, o'rin almashtirilmaydi.
-const GRAFIK_RANG = ['#2563eb', '#0891b2', '#f59e0b', '#7c3aed', '#65a30d'];
-
-// Ariza holatlari — bular holat ranglari, kategoriya emas: har biri
-// ma'noga biriktirilgan (yashil = bajarildi) va boshqa joyda ishlatilmaydi.
-const HOLAT_RANGI = {
-  yangi:        '#2563eb',
-  qabul:        '#0891b2',
-  bajarilmoqda: '#f59e0b',
-  bajarildi:    '#16a34a',
-  bekor:        '#94a3b8',
-};
-
-function boshGrafik(matn, izoh, ikon){
-  return `<div class="bosh-holat"><i class="ti ${ikon || 'ti-chart-bar'}"></i>
-    <b>${xavfsiz(matn)}</b><span>${xavfsiz(izoh || '')}</span></div>`;
-}
-
-/* Ustunli grafik. qatorlar: [{nom, qiymat}]
-   Qiymat har ustun tepasida yozib qo'yiladi — o'qish uchun y o'qi shart emas. */
-function ustunGrafik(qatorlar, rang){
-  if (!qatorlar.length || qatorlar.every(q => !q.qiymat)) return null;
-
-  const EN = 560, BALAND = 200, PAST = 34, TEPA = 22;
-  const eng = Math.max(...qatorlar.map(q => q.qiymat), 1);
-  const kengUst = EN / qatorlar.length;
-  const ustEn = Math.min(38, kengUst * 0.55);
-
-  const ustunlar = qatorlar.map((q, i) => {
-    const h = Math.round((BALAND - TEPA - PAST) * (q.qiymat / eng));
-    const x = i * kengUst + (kengUst - ustEn) / 2;
-    const y = BALAND - PAST - h;
-    return `
-      <g class="gr-ustun">
-        <title>${xavfsiz(q.nom)}: ${q.qiymat}</title>
-        ${h > 0 ? `<rect x="${x}" y="${y}" width="${ustEn}" height="${h}" rx="4" fill="${rang}"/>` : ''}
-        <text x="${x + ustEn / 2}" y="${(h > 0 ? y : BALAND - PAST) - 6}" class="gr-son">${q.qiymat}</text>
-        <text x="${x + ustEn / 2}" y="${BALAND - PAST + 17}" class="gr-belgi">${xavfsiz(q.nom)}</text>
-      </g>`;
-  }).join('');
-
-  return `<svg viewBox="0 0 ${EN} ${BALAND}" class="gr-svg" role="img">
-    <line x1="0" y1="${BALAND - PAST}" x2="${EN}" y2="${BALAND - PAST}" class="gr-oq"/>
-    ${ustunlar}
-  </svg>`;
-}
-
-/* Halqa (donut) diagramma. bolaklar: [{nom, qiymat, rang}]
-   Markazda jami son — asosiy raqam darhol o'qiladi. */
-function halqaGrafik(bolaklar, markazBelgi){
-  const jami = bolaklar.reduce((s, b) => s + b.qiymat, 0);
-  if (!jami) return null;
-
-  const R = 62, ICH = 42, MARKAZ = 80;
-  let burchak = -Math.PI / 2;   // yuqoridan boshlanadi
-
-  const nuqta = (r, a) => [MARKAZ + r * Math.cos(a), MARKAZ + r * Math.sin(a)];
-
-  const yoylar = bolaklar.filter(b => b.qiymat > 0).map(b => {
-    const ulush = b.qiymat / jami;
-    // Ikki bo'lak orasida 2px tirqish — chegara aniq ko'rinadi
-    const tirqish = bolaklar.filter(x => x.qiymat > 0).length > 1 ? 0.03 : 0;
-    const bosh = burchak + tirqish / 2;
-    const oxir = burchak + ulush * Math.PI * 2 - tirqish / 2;
-    burchak += ulush * Math.PI * 2;
-
-    const katta = (oxir - bosh) > Math.PI ? 1 : 0;
-    const [x1, y1] = nuqta(R, bosh),   [x2, y2] = nuqta(R, oxir);
-    const [x3, y3] = nuqta(ICH, oxir), [x4, y4] = nuqta(ICH, bosh);
-
-    return `<path d="M${x1} ${y1} A${R} ${R} 0 ${katta} 1 ${x2} ${y2}
-      L${x3} ${y3} A${ICH} ${ICH} 0 ${katta} 0 ${x4} ${y4} Z" fill="${b.rang}">
-      <title>${xavfsiz(b.nom)}: ${b.qiymat} (${Math.round(ulush * 100)}%)</title></path>`;
-  }).join('');
-
-  const izoh = bolaklar.filter(b => b.qiymat > 0).map(b => `
-    <div class="gr-izoh-qator">
-      <span class="gr-nuqta" style="background:${b.rang}"></span>
-      <span class="gr-izoh-nom">${xavfsiz(b.nom)}</span>
-      <b>${b.qiymat}</b>
-    </div>`).join('');
-
-  return `
-    <div class="gr-halqa-quti">
-      <svg viewBox="0 0 160 160" class="gr-halqa" role="img">
-        ${yoylar}
-        <text x="80" y="76" class="gr-markaz-son">${jami}</text>
-        <text x="80" y="94" class="gr-markaz-belgi">${xavfsiz(markazBelgi || '')}</text>
-      </svg>
-      <div class="gr-izoh">${izoh}</div>
-    </div>`;
-}
-
-// ═══════ Vazifalar taqsimoti (kanban) ═══════
-// Ustunlar aynan shu arizalar ro'yxatidan chiziladi — alohida so'rov yo'q,
-// demak jadval bilan kanban hech qachon bir-biriga zid bo'lmaydi.
-function kanbanChiz(){
-  const ustunlar = [
-    ['yangi',        'kanbanYangi'],
-    ['qabul',        'kanbanQabul'],
-    ['bajarilmoqda', 'kanbanJarayon'],
-    ['bajarildi',    'kanbanBajarildi'],
-  ];
-
-  ustunlar.forEach(([holat, id]) => {
-    const royxat = arizalar.filter(a => a.holat === holat);
-    const quti = document.getElementById(id);
-    const soni = document.getElementById(id + 'Soni');
-    if (soni) soni.textContent = royxat.length;
-    if (!quti) return;
-    quti.innerHTML = royxat.map(a => `
-      <div class="kcard">
-        <h5>#${a.id} · ${xavfsiz(a.xizmat_nomi)}</h5>
-        <p>${xavfsiz(a.mijoz_malumot ? (a.mijoz_malumot.ism || a.mijoz_malumot.telefon) : '—')}${
-          a.tuman ? ', ' + xavfsiz(a.tuman) : ''}</p>
-        ${a.xodim_malumot
-          ? `<p style="font-weight:700">${xavfsiz(a.xodim_malumot.ism)}</p>`
-          : ''}
-      </div>`).join('');
-  });
-
-  // Umuman ariza bo'lmasa — tushuntirish, aks holda uni yashiramiz
-  const bosh = document.getElementById('kanbanBosh');
-  if (bosh) bosh.style.display = arizalar.length ? 'none' : '';
-}
-
-// ═══════ Mijozlar (CRM) ═══════
-// Ro'yxat /api/auth/mijozlar/ dan keladi. Mijoz saytda ro'yxatdan o'tganda
-// avtomatik qo'shiladi — bu yerdan qo'lda kiritilmaydi.
-async function mijozlarYukla(){
-  const tana = document.getElementById('crmTana');
-  if (!tana) return;
-  let royxat;
-  try {
-    royxat = await apiSorov('/auth/mijozlar/');
-  } catch (e) {
-    tana.innerHTML = `<tr class="holat-qator"><td colspan="5">${xavfsiz(e.message)}</td></tr>`;
-    return;
-  }
-  if (!royxat.length) {
-    tana.innerHTML = '<tr class="holat-qator"><td colspan="5">' +
-      'Hali mijoz ro\'yxatdan o\'tmagan</td></tr>';
-    return;
-  }
-  tana.innerHTML = royxat.map(m => `
-    <tr>
-      <td>${xavfsiz(m.ism || '—')}</td>
-      <td>${xavfsiz(m.telefon)}</td>
-      <td>${xavfsiz(m.tuman || m.viloyat || '—')}</td>
-      <td>${sanaFormat(m.yaratilgan)}</td>
-      <td>${m.buyurtmalar_soni}</td>
-    </tr>`).join('');
-}
-
-// ═══════ Hisobot eksporti ═══════
-// Kutubxonasiz: CSV — brauzerning o'zi yaratadi, PDF — chop etish oynasi
-// orqali (har bir brauzerda "PDF ga saqlash" varianti bor). Shu sababli
-// serverga ham, tashqi paketga ham ehtiyoj yo'q.
-let moliyaMalumot = [];   // [{nom, summa}] — moliyaYukla() to'ldiradi
-
-function hisobotYukla(tur){
-  if (!moliyaMalumot.length) { alert("Hisobot uchun ma'lumot yo'q."); return; }
-
-  if (tur === 'csv') {
-    // BOM — Excel faylni UTF-8 deb tanishi uchun, aks holda o'zbekcha
-    // harflar buziladi. Ajratgich `;` — rus/o'zbek Excel shu bilan ishlaydi.
-    const qatorlar = [['Xizmat turi', "Summa (so'm)"]]
-      .concat(moliyaMalumot.map(m => [m.nom, m.summa]));
-    const matn = '﻿' + qatorlar
-      .map(q => q.map(k => `"${String(k).replace(/"/g, '""')}"`).join(';'))
-      .join('\r\n');
-
-    const havola = document.createElement('a');
-    havola.href = URL.createObjectURL(new Blob([matn], { type: 'text/csv;charset=utf-8' }));
-    const bugun = new Date().toISOString().slice(0, 10);
-    havola.download = `soargaz-daromad-${bugun}.csv`;
-    havola.click();
-    URL.revokeObjectURL(havola.href);
-    return;
-  }
-
-  window.print();
-}
-
-// ═══════ Faoliyat jurnali (audit) ═══════
-// Yozuvlar serverda avtomatik yaratiladi, bu yerdan qo'shib bo'lmaydi.
-const JURNAL_RANG = {
-  kirish: 'green', kirish_xato: 'orange', kirish_blok: 'red',
-  ruxsat_rad: 'red', xodim_qoshildi: 'blue', xodim_holat: 'blue',
-  xodim_kod: 'blue', ariza_tayinlandi: 'blue',
-};
-
-function vaqtFormat(iso){
-  const d = new Date(iso);
-  if (isNaN(d)) return '—';
-  const ikki = n => String(n).padStart(2, '0');
-  return `${ikki(d.getDate())}.${ikki(d.getMonth() + 1)}.${d.getFullYear()}, ${ikki(d.getHours())}:${ikki(d.getMinutes())}`;
-}
-
-async function jurnalYukla(){
-  const tana = document.getElementById('jurnalTana');
-  if (!tana) return;
-  let royxat;
-  try {
-    royxat = await apiSorov('/auth/jurnal/');
-  } catch (e) {
-    tana.innerHTML = `<tr class="holat-qator"><td colspan="5">${xavfsiz(e.message)}</td></tr>`;
-    return;
-  }
-  if (!royxat.length) {
-    tana.innerHTML = '<tr class="holat-qator"><td colspan="5">Jurnal bo\'sh</td></tr>';
-    return;
-  }
-  tana.innerHTML = royxat.map(y => `
-    <tr>
-      <td style="white-space:nowrap">${vaqtFormat(y.vaqt)}</td>
-      <td>${xavfsiz(y.kim)}</td>
-      <td><span class="tag ${JURNAL_RANG[y.amal] || 'gray'}">${xavfsiz(y.amal_nomi)}</span></td>
-      <td>${xavfsiz(y.tafsilot || '—')}</td>
-      <td style="color:var(--text-muted)">${xavfsiz(y.ip || '—')}</td>
-    </tr>`).join('');
-}
-
-// ═══════ Moliya ═══════
-// Barcha raqam to'lov so'rovlaridan hisoblanadi (/api/tolovlar/).
-// Hech qanday summa qo'lda yozilmaydi.
-function pulFormat(son){
-  return (son || 0).toLocaleString('ru-RU').replace(/ /g, ' ') + " so'm";
-}
-
-async function moliyaYukla(){
-  const quti = document.getElementById('molXizmatlar');
-  if (!quti) return;
-  let sorovlar;
-  try {
-    sorovlar = await apiSorov('/tolovlar/');
-  } catch (e) {
-    quti.innerHTML = `<div class="bosh-holat"><b>${xavfsiz(e.message)}</b></div>`;
-    return;
-  }
-
-  const tolangan = sorovlar.filter(s => s.holat === 'tolandi');
-  const kutilmoqda = sorovlar.filter(s => s.holat === 'kutilmoqda');
-  const hozir = new Date();
-
-  const jami = tolangan.reduce((s, t) => s + (t.summa || 0), 0);
-  const oylik = tolangan.reduce((s, t) => {
-    const d = new Date(t.yaratilgan);
-    return (d.getFullYear() === hozir.getFullYear() && d.getMonth() === hozir.getMonth())
-      ? s + (t.summa || 0) : s;
-  }, 0);
-
-  document.getElementById('molJami').textContent  = pulFormat(jami);
-  document.getElementById('molOy').textContent    = pulFormat(oylik);
-  document.getElementById('molKutil').textContent =
-    pulFormat(kutilmoqda.reduce((s, t) => s + (t.summa || 0), 0));
-  document.getElementById('molSoni').textContent  = tolangan.length;
-
-  // Xizmat turi bo'yicha taqsimot
-  const guruh = {};
-  tolangan.forEach(t => {
-    const nom = t.xizmat_turi || 'Boshqa';
-    guruh[nom] = (guruh[nom] || 0) + (t.summa || 0);
-  });
-  const qatorlar = Object.entries(guruh).sort((a, b) => b[1] - a[1]);
-
-  if (!qatorlar.length) {
-    quti.innerHTML = `
-      <div class="bosh-holat">
-        <i class="ti ti-report-money"></i>
-        <b>To'langan buyurtma yo'q</b>
-        <span>Daromad to'lov so'rovlaridan hisoblanadi. To'lov "To'landi"
-              holatiga o'tgach, raqamlar shu yerda paydo bo'ladi.</span>
-      </div>`;
-    return;
-  }
-
-  moliyaMalumot = qatorlar.map(([nom, summa]) => ({ nom, summa }));
-
-  const eng = qatorlar[0][1] || 1;
-  quti.innerHTML = qatorlar.map(([nom, summa]) => `
-    <div class="hbar-row">
-      <div class="hbar-top"><span>${xavfsiz(nom)}</span><b>${pulFormat(summa)}</b></div>
-      <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(summa / eng * 100)}%"></div></div>
-    </div>`).join('');
-
-  // Halqa: xizmat turlari ulushi. 5 tadan ortig'i "Boshqa" ga yig'iladi —
-  // rang ro'yxati cheklangan, yangi rang o'ylab topilmaydi.
-  const halqaQuti = document.getElementById('molHalqa');
-  if (halqaQuti) {
-    const asosiy = qatorlar.slice(0, 4).map(([nom, summa], i) => ({
-      nom, qiymat: summa, rang: GRAFIK_RANG[i],
-    }));
-    const qolgan = qatorlar.slice(4).reduce((s, [, v]) => s + v, 0);
-    if (qolgan) asosiy.push({ nom: 'Boshqa', qiymat: qolgan, rang: GRAFIK_RANG[4] });
-    halqaQuti.innerHTML = halqaGrafik(asosiy, 'xizmat turi') || '';
-  }
-
-  // Oxirgi 6 oy bo'yicha ustunlar
-  const oyQuti = document.getElementById('molOylik');
-  if (oyQuti) {
-    const OY_NOM = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
-    const oylar = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(hozir.getFullYear(), hozir.getMonth() - i, 1);
-      oylar.push({ nom: OY_NOM[d.getMonth()], yil: d.getFullYear(), oy: d.getMonth(), qiymat: 0 });
-    }
-    tolangan.forEach(t => {
-      const d = new Date(t.yaratilgan);
-      const o = oylar.find(x => x.yil === d.getFullYear() && x.oy === d.getMonth());
-      if (o) o.qiymat += Math.round((t.summa || 0) / 1000000 * 10) / 10;  // mln so'm
-    });
-    oyQuti.innerHTML = ustunGrafik(oylar, GRAFIK_RANG[1]) ||
-      boshGrafik("Bu davrda to'lov bo'lmagan", 'Raqamlar million so\'mda ko\'rsatiladi.', 'ti-chart-line');
-  }
-}
-
-function arizalarChiz(){
-  const royxat = tanlanganHolat
-    ? arizalar.filter(a => a.holat === tanlanganHolat)
-    : arizalar;
-
-  const tana = document.getElementById('arizaTana');
-  if (!royxat.length) {
-    tana.innerHTML = '<tr class="holat-qator"><td colspan="7">Ariza topilmadi</td></tr>';
-    return;
-  }
-  tana.innerHTML = royxat.map(a => `
-    <tr>
-      <td>#${a.id}</td>
-      <td>${xavfsiz(a.mijoz_malumot ? (a.mijoz_malumot.ism || a.mijoz_malumot.telefon) : '—')}</td>
-      <td>${xavfsiz(a.xizmat_nomi)}</td>
-      <td>${xavfsiz(a.tuman || '—')}</td>
-      <td>${xavfsiz(a.xodim_malumot ? a.xodim_malumot.ism : 'Tayinlanmagan')}</td>
-      <td>${sanaFormat(a.yaratilgan)}</td>
-      <td><span class="tag ${HOLAT_RANG[a.holat] || 'gray'}">${HOLAT_NOM[a.holat] || a.holat}</span></td>
-    </tr>`).join('');
-}
-
-// ═══════ Viloyat → tuman bog'lanishi ═══════
-// Tuman ro'yxati <optgroup> bo'lib guruhlangan, guruh sarlavhasi — viloyat
-// nomi. Shu sababli alohida ma'lumot ro'yxati kerak emas: viloyat ro'yxati
-// ham, filtrlash ham o'sha sarlavhalardan kelib chiqadi.
-function viloyatTumanUla(viloyatSel, tumanSel){
-  if (!viloyatSel || !tumanSel || tumanSel.dataset.ulangan) return;
-  tumanSel.dataset.ulangan = '1';
-
-  const guruhlar = Array.from(tumanSel.getElementsByTagName('optgroup'));
-
-  // Viloyat ro'yxatini guruh sarlavhalaridan to'ldiramiz
-  viloyatSel.innerHTML = '<option value="">— tanlang —</option>' +
-    guruhlar.map(g => `<option>${g.label}</option>`).join('');
-
-  function filtrla(tozala){
-    const v = viloyatSel.value;
-    guruhlar.forEach(g => {
-      const mos = !v || g.label === v;
-      g.style.display = mos ? '' : 'none';
-      // Viloyat almashsa, boshqa viloyatdagi tanlov qolib ketmasin
-      if (!mos && tozala && tumanSel.selectedOptions[0] &&
-          tumanSel.selectedOptions[0].parentElement === g) {
-        tumanSel.value = '';
-      }
-    });
-    tumanSel.disabled = !v;
-  }
-
-  viloyatSel.addEventListener('change', () => filtrla(true));
-
-  // Tuman oldindan tanlangan bo'lsa (tahrirlash), viloyatini topamiz
-  const tanlangan = tumanSel.selectedOptions[0];
-  if (tanlangan && tanlangan.parentElement.tagName === 'OPTGROUP') {
-    viloyatSel.value = tanlangan.parentElement.label;
-  }
-  filtrla(false);
-}
-
-viloyatTumanUla(document.getElementById('xf-viloyat'),
-                document.getElementById('xf-tuman'));
-
-// ═══════ Xodimlar ═══════
-// Ro'yxat /api/auth/xodimlar/ dan keladi. Yangi xodim shu yerdan kiritiladi —
-// Django admin paneli (/admin/auth_app/xodim/) ham ishlashda davom etadi.
-async function xodimlarYukla(){
-  const tana = document.getElementById('xodimJadval');
-  try {
-    xodimlar = await apiSorov('/auth/xodimlar/');
-  } catch (e) {
-    tana.innerHTML = `<tr class="holat-qator"><td colspan="7">Ro'yxatni yuklab bo'lmadi: ${xavfsiz(e.message)}</td></tr>`;
-    document.getElementById('xodimSoni').textContent = '—';
-    return;
-  }
-  xodimlarChiz();
-}
-
-function xodimlarChiz(){
-  const tana = document.getElementById('xodimJadval');
-  const soni = document.getElementById('xodimSoni');
-  const faol = xodimlar.filter(x => x.holat === 'faol').length;
-
-  soni.textContent = xodimlar.length
-    ? `Jami ${xodimlar.length} nafar xodim · ${faol} tasi faol`
-    : 'Hozircha xodim kiritilmagan';
-
-  if (!xodimlar.length){
-    tana.innerHTML = `<tr class="holat-qator"><td colspan="7">
-      Ro'yxat bo'sh. Yuqoridagi forma orqali birinchi xodimni kiriting.</td></tr>`;
-    return;
-  }
-
-  tana.innerHTML = xodimlar.map(x => `
-    <tr>
-      <td>${xavfsiz(x.ism || '—')}</td>
-      <td>${xavfsiz(x.lavozim || '—')}</td>
-      <td>${xavfsiz(x.telefon)}</td>
-      <td><code class="kod-katak">${xavfsiz(x.kirish_kodi || '—')}</code>
-          <button class="btn-sm ghost" onclick="kodYangila(${x.id})"
-                  title="Yangi kod berish">↻</button></td>
-      <td>${xavfsiz(x.tuman || '—')}</td>
-      <td><span class="tag ${x.holat === 'faol' ? 'green' : 'gray'}">${x.holat === 'faol' ? 'Faol' : 'Nofaol'}</span></td>
-      <td>${x.holat === 'faol' && !egasimi()
-            ? '<span style="color:#94a3b8;font-size:13px">—</span>'
-            : `<button class="btn-sm ${x.holat === 'faol' ? 'danger' : 'ok'}"
-                 onclick="xodimHolat(${x.id}, '${x.holat === 'faol' ? 'nofaol' : 'faol'}')">
-                 ${x.holat === 'faol' ? 'Nofaol qilish' : 'Faollashtirish'}</button>`}</td>
-    </tr>`).join('');
-}
-
-// Tizim egasimi? Faqat egasi xodimni nofaol qila oladi — boshqa adminlar
-// (direktor) xodimlarni ko'radi va qo'shadi, lekin faolligini to'xtata olmaydi.
-// Serverda ham shu tekshiruv bor (XodimDetailView.update) — bu faqat interfeys.
-function egasimi(){ return !!(profil && profil.egasi); }
-
-// Xodim o'chirilmaydi — nomi eski buyurtmalarda qolishi kerak.
-// Nofaol xodim portalga kira olmaydi.
-async function xodimHolat(id, holat){
-  const x = xodimlar.find(v => v.id === id);
-  const nom = (x && x.ism) || 'Xodim';
-  if (holat === 'nofaol' && !confirm(`${nom} nofaol qilinsinmi? U portalga kira olmaydi.`)) return;
-  try {
-    await apiSorov('/auth/xodimlar/' + id + '/', {
-      method: 'PATCH', body: JSON.stringify({ holat })
-    });
-    if (x) x.holat = holat;
-    xodimlarChiz();
-  } catch (e) {
-    alert('Xatolik: ' + e.message);
-  }
-}
-
-// Yangi xodim qo'shilgach kodini ko'rsatamiz — admin uni xodimga aytadi.
-// Kod parolning o'rnini bosadi, shuning uchun e'tiborni tortadigan qilib.
-function kodKorsat(x){
-  const el = document.getElementById('xodimKod');
-  el.innerHTML = `<i class="ti ti-key"></i>
-    <span><b>${xavfsiz(x.ism)}</b> qo'shildi. Kirish kodi:
-    <code class="kod-katak">${xavfsiz(x.kirish_kodi)}</code>
-    — telefon <b>${xavfsiz(x.telefon)}</b> bilan birga xodimga ayting.</span>`;
-  el.classList.add('bor');
-}
-
-async function kodYangila(id){
-  const x = xodimlar.find(v => v.id === id);
-  if (!confirm(`${(x && x.ism) || 'Xodim'} uchun yangi kod berilsinmi?\n` +
-               'Eski kod darhol ishlamay qoladi.')) return;
-  try {
-    const j = await apiSorov('/auth/xodimlar/' + id + '/kod/', { method: 'POST' });
-    if (x) { x.kirish_kodi = j.kirish_kodi; xodimlarChiz(); kodKorsat(x); }
-  } catch (e) {
-    alert('Xatolik: ' + e.message);
-  }
-}
-
-function xodimXato(matn){
-  const el = document.getElementById('xodimXato');
-  el.textContent = matn || '';
-  el.classList.toggle('bor', !!matn);
-}
-
-document.getElementById('xodimForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const tugma = document.getElementById('xodimSaqlaBtn');
-  const q = id => document.getElementById(id).value.trim();
-  const telefon = q('xf-telefon').replace(/[\s-]/g, '');
-
-  if (!/^\+998\d{9}$/.test(telefon)) {
-    xodimXato('Telefon raqam +998 bilan boshlanib, 12 ta raqamdan iborat bo\'lishi kerak');
-    return;
-  }
-
-  xodimXato('');
-  tugma.disabled = true;
-  const asl = tugma.innerHTML;
-  tugma.textContent = 'Saqlanmoqda…';
-  try {
-    const yangi = await apiSorov('/auth/xodimlar/', {
-      method: 'POST',
-      body: JSON.stringify({
-        ism: q('xf-ism'), telefon,
-        lavozim: q('xf-lavozim'),
-        viloyat: q('xf-viloyat'), tuman: q('xf-tuman'),
-        mahalla: q('xf-mahalla'),
-        // Bo'sh sana null bo'lishi kerak — bo'sh satrni Django qabul qilmaydi
-        ishga_kirgan: q('xf-sana') || null,
-      })
-    });
-    xodimlar.push(yangi);
-    xodimlar.sort((a, b) => (a.ism || '').localeCompare(b.ism || ''));
-    xodimlarChiz();
-    kodKorsat(yangi);
-    e.target.reset();
-    // reset() dan keyin viloyat bo'shaydi — tuman ro'yxatini qayta filtrlaymiz
-    document.getElementById('xf-viloyat').dispatchEvent(new Event('change'));
-  } catch (xato) {
-    xodimXato(xato.message);
-  } finally {
-    tugma.disabled = false;
-    tugma.innerHTML = asl;
-  }
-});
-
-// ═══════ Navigatsiya ═══════
-document.querySelectorAll('.sb-item[data-page]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.sb-item[data-page]').forEach(b=>b.classList.toggle('active', b===btn));
-    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active', p.id==='page-'+btn.dataset.page));
-  });
-});
-
-document.querySelectorAll('.fchip').forEach(c=>{
-  c.addEventListener('click', ()=>{
-    c.parentElement.querySelectorAll('.fchip').forEach(x=>x.classList.remove('active'));
-    c.classList.add('active');
-    // Arizalar chiplari ro'yxatni filtrlaydi, qolganlari hozircha faqat ko'rinish
-    if (c.dataset.holat !== undefined) {
-      tanlanganHolat = c.dataset.holat;
-      arizalarChiz();
-    }
-  });
-});
-
-// ═══════ Boshlash ═══════
-// Sahifa yangilanganda sessiya saqlanib qolgan bo'lsa to'g'ridan-to'g'ri panel
-(async function(){
-  tokenYukla();
-  if (!token) return;
-  try {
-    profil = await apiSorov('/auth/profil/');
-    if (profil.rol !== 'admin') { chiqish(); return; }
-    await panelniOch();
-  } catch (e) { chiqish(); }
-})();
-</script>
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/scripts/hodisa-boshqaruvchi.js?v=1"></script>
+<script src="/scripts/admin-asosiy.js?v=1"></script>
+<script src="/scripts/admin-hodisalar.js?v=1"></script>
 </body>
 </html>

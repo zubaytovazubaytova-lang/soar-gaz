@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="/assets/inter.css">
 <link rel="stylesheet" href="/assets/manrope.css">
 <link rel="stylesheet" href="/vendor/tabler-icons/tabler-icons.min.css?v=2">
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<script src="/vendor/leaflet/leaflet.js"></script>
 <style>
   :root{
     --bg-top:#e9f1fd; --bg-bottom:#f8fbff;
@@ -107,6 +109,7 @@
   .sb-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;color:#8b93a7;font-size:13.5px;font-weight:600;cursor:pointer;border:none;background:none;text-align:left;width:100%;}
   .sb-item i{font-size:17px;width:18px;}
   .sb-item:hover{background:#1a2436;color:#cdd6e5;}
+  a.sb-item,a.dd-item{text-decoration:none;}
   .sb-item.active{background:var(--blue);color:#fff;}
   .sb-logout{margin-top:12px;border-top:1px solid #1e2839;padding-top:14px;}
 
@@ -183,6 +186,9 @@
   .cert-card .cc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
   .cert-card .cc-icon{width:36px;height:36px;border-radius:10px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
   .cert-card.warn .cc-icon{background:var(--orange);}
+  .cert-card.tugagan{border-color:#f3b4b4;background:#fdf0f0;}
+  .cert-card.tugagan .cc-icon{background:#dc2626;}
+  .cert-card .cc-raqam{font-size:11.5px;color:var(--text-muted);margin-top:4px;}
   .cert-card h5{font-size:13.5px;font-weight:700;margin:0;}
   .cert-card p{font-size:12px;color:var(--text-secondary);margin:0;}
 
@@ -221,7 +227,142 @@
   .bosh-holat{font-size:13px;color:var(--text-muted);text-align:center;padding:24px 0;margin:0;}
   .f-input:disabled{background:#f4f7fb;color:var(--text-secondary);cursor:not-allowed;}
   .f-hint{font-size:11.5px;color:var(--text-muted);margin:-10px 0 16px;}
-  .demo-belgi{font-size:11px;font-weight:700;color:var(--orange);background:var(--orange-light);border:1px solid var(--orange-border);padding:3px 9px;border-radius:999px;}
+  /* Smena va joylashuv kartasi */
+  .smena-matn{font-size:13.5px;color:var(--text-muted);margin:0 0 14px;line-height:1.55;}
+  .smena-rozilik{background:var(--orange-light);border:1px solid var(--orange-border);border-radius:var(--radius-sm);padding:14px 16px;margin:0 0 14px;font-size:13px;line-height:1.6;}
+  .smena-rozilik label{display:flex;gap:9px;align-items:flex-start;margin-top:10px;font-weight:600;cursor:pointer;}
+  .smena-rozilik input{margin-top:3px;}
+  .smena-xato{display:none;color:#b91c1c;font-size:13px;font-weight:600;margin:12px 0 0;}
+  .smena-xato.show{display:block;}
+  .smena-btn{padding:10px 18px;font-size:13.5px;}
+  .mini-btn.qizil{background:#dc2626;color:#fff;}
+  /* Tushum formasida narxnomadan ish turini tanlash */
+  .ish-tanla{position:relative;}
+  .ish-tozala{position:absolute;right:10px;top:9px;border:none;background:none;font-size:20px;line-height:1;color:var(--text-muted);cursor:pointer;}
+  .ish-panel{position:absolute;left:0;right:0;top:calc(100% - 4px);z-index:30;background:#fff;border:1px solid var(--card-border);border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,.18);max-height:320px;overflow-y:auto;}
+  .ish-qator{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--card-border);font-size:13px;}
+  .ish-qator:last-child{border-bottom:none;}
+  .ish-qator .nom{flex:1;min-width:0;color:var(--text-primary);}
+  .ish-qator .nom b{color:var(--text-muted);margin-right:6px;}
+  .ish-qator .chiplar{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+  .ish-chip{border:1px solid var(--card-border);background:var(--blue-light);color:var(--text-primary);border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .ish-chip:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .ish-chip small{font-weight:600;opacity:.7;margin-right:4px;}
+  .ish-guruh{position:sticky;top:0;background:var(--bg-bottom);padding:7px 12px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);border-bottom:1px solid var(--card-border);}
+  .ish-bosh{padding:16px;text-align:center;color:var(--text-muted);font-size:13px;}
+  @media (max-width:700px){ .ish-qator{flex-direction:column;align-items:stretch;} .ish-qator .chiplar{justify-content:flex-start;} }
+  /* Vazifa kartasidagi xizmatlar va hisob-kitob */
+  .task-xizmatlar{margin-top:8px;font-size:12.5px;border-top:1px dashed var(--card-border);padding-top:8px;}
+  .task-xizmatlar .xq{display:flex;gap:8px;align-items:flex-start;padding:2px 0;color:var(--text-secondary);}
+  .task-xizmatlar .xq span.nom{flex:1;min-width:0;}
+  .task-xizmatlar .xq button{border:none;background:none;color:#dc2626;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;}
+  .task-xizmatlar .hisob{font-weight:800;margin-top:4px;color:var(--text-primary);}
+  .task-row.belgilangan{outline:2px solid var(--blue);outline-offset:4px;border-radius:10px;}
+  /* «Uning ko'zi bilan ko'rish» (egasi, faqat o'qish) */
+  #korishBanner{display:none;position:fixed;top:0;left:0;right:0;z-index:10000;background:#dc2626;color:#fff;
+    padding:10px 16px;text-align:center;font-weight:700;font-size:14px;box-shadow:0 2px 10px rgba(0,0,0,.25);}
+  #korishBanner button{margin-left:10px;border:1.5px solid #fff;background:transparent;color:#fff;border-radius:8px;
+    padding:3px 12px;font-weight:700;cursor:pointer;}
+  #korishBanner button:hover{background:#fff;color:#dc2626;}
+  body.korish{padding-top:46px;}
+  /* O'zgartiruvchi tugmalar o'chiq (yangilash, nusxa olish va tozalash ishlayveradi) */
+  body.korish .mini-btn:not(#yangilashBtn):not(#narxNusxa):not(#narxTozala),
+  body.korish .btn-save{opacity:.45;pointer-events:none;}
+  /* Shartnoma va kvitansiya */
+  .aloqa-dialog{border:none;border-radius:16px;padding:24px 26px;width:min(480px,92vw);box-shadow:0 20px 60px rgba(15,23,42,.35);}
+  .aloqa-dialog::backdrop{background:rgba(15,23,42,.55);}
+  .aloqa-dialog h3{margin:0 0 4px;}
+  .task-hujjat{margin-top:8px;font-size:12.5px;border-top:1px dashed var(--card-border);padding-top:8px;}
+  .task-hujjat .qator{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;}
+  .task-hujjat input{width:110px;padding:6px 9px;border:1.5px solid var(--card-border);border-radius:8px;font-size:14px;letter-spacing:3px;text-align:center;}
+  a.havola{color:var(--blue);font-weight:700;text-decoration:none;white-space:nowrap;}
+  a.havola:hover{text-decoration:underline;}
+  .sms-ok{color:var(--green);font-weight:700;} .sms-xato{color:#b91c1c;font-weight:700;}
+  /* Lavozimga qarab kabinet: <body class="kabinet-oddiy|qongiroq|hujjat|kadrlar"> (profil.kabinet.tur) */
+  .sb-item[hidden]{display:none;}
+  .kadr-blok{display:none;}
+  body.kabinet-kadrlar .kadr-blok{display:block;}
+  body.kabinet-kadrlar .smena-blok,body.kabinet-kadrlar .hisobot-karta{display:none;}
+  /* Buyurtma vazifalari bloki: Kadrlar kabinetida yo'q */
+  body.kabinet-kadrlar .vazifa-blok{display:none !important;}
+  .op-blok{display:none;}
+  body.kabinet-qongiroq .op-blok,body.kabinet-kadrlar .op-blok{display:block;}
+  .sb-son{margin-left:auto;background:#dc2626;color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:2px 8px;min-width:22px;text-align:center;}
+  .sb-son[hidden]{display:none;}
+  .op-xarita{height:300px;border-radius:12px;border:1px solid var(--card-border);margin-bottom:8px;z-index:0;}
+  .joy-blok{margin:4px 0 12px;}
+  .op-chek{display:flex;gap:9px;align-items:center;font-size:13.5px;font-weight:600;margin:6px 0 10px;cursor:pointer;}
+  .op-chek input:disabled + span{opacity:.5;}
+  .yaqin-dialog{width:min(680px,94vw);max-height:92vh;overflow-y:auto;}
+  .yq-xarita{height:230px;border-radius:12px;border:1px solid var(--card-border);margin:10px 0;}
+  .yq-qator{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--card-border);border-radius:10px;margin-bottom:8px;}
+  .yq-qator.eng{border-color:var(--green-border);background:var(--green-light);}
+  .yq-qator small{display:block;color:var(--text-muted);font-size:12px;margin-top:2px;}
+  .yq-km{font-size:16px;font-weight:800;white-space:nowrap;}
+  @media (max-width:560px){ .yq-qator{grid-template-columns:1fr auto;} .yq-qator > div:nth-child(3){grid-column:1 / -1;} }
+  .ish-qator-m{margin:0 0 4px;font-size:13.5px;}
+  .ish-yuklash{border-top:1px solid var(--card-border);margin-top:14px;padding-top:14px;}
+  .davomat-qollanma{background:var(--blue-light);border:1px solid var(--blue-border);border-radius:var(--radius-sm);padding:12px 16px;font-size:12.5px;line-height:1.55;color:var(--text-secondary);margin-top:14px;}
+  .davomat-qollanma ul{margin:6px 0 0;padding-left:18px;} .davomat-qollanma li{margin-bottom:3px;}
+  .dav-tugma{display:flex;gap:6px;align-items:center;}
+  .mini-btn.tor{padding:7px 10px;}
+  .mini-btn.bosh{background:var(--bg-bottom);color:var(--text-secondary);}
+  .tag.kech{background:#fdf0f0;color:#b91c1c;border:1px solid #f3b4b4;display:block;width:fit-content;margin-top:5px;}
+  .op-tayinla{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  table.data-table td.amal-keng{min-width:190px;}
+  #page-op-arizalar table.data-table td.matn-keng,#page-op-qongiroq table.data-table td.matn-keng{min-width:120px;}
+  .op-tayinla .f-select{width:100%;min-width:0;margin:0;padding:6px 10px;font-size:13px;}
+  td.matn-keng small{display:block;color:var(--text-muted);}
+  #page-kadr-davomat table.data-table td.matn-keng{min-width:130px;max-width:210px;}
+  /* Yangi bo'limlardagi jadvallar: ustunlar orasida bo'sh joy */
+  #page-kadr-davomat .data-table :is(th,td),#page-kadr-hisobot .data-table :is(th,td),
+  #page-kadr-hujjat .data-table :is(th,td),#page-kadr-tushum .data-table :is(th,td),
+  #page-op-arizalar .data-table :is(th,td),#page-op-qongiroq .data-table :is(th,td){padding-right:14px;}
+  #page-kadr-davomat .data-table :is(th,td):last-child,#page-kadr-hisobot .data-table :is(th,td):last-child,
+  #page-kadr-hujjat .data-table :is(th,td):last-child,#page-kadr-tushum .data-table :is(th,td):last-child,
+  #page-op-arizalar .data-table :is(th,td):last-child,#page-op-qongiroq .data-table :is(th,td):last-child{padding-right:0;}
+  .tag.red{background:#fdf0f0;color:#b91c1c;border:1px solid #f3b4b4;}
+  .kun-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+  .kun-nav .f-input,.kun-nav .f-select{width:auto;margin:0;}
+  /* Uzun matnli kataklar qatorga o'raladi (jadvalning umumiy `nowrap` qoidasidan kuchliroq bo'lishi uchun selektor to'liq) */
+  table.data-table td.matn-keng{white-space:normal;min-width:200px;max-width:360px;line-height:1.4;}
+  table.data-table td.amal-keng{white-space:normal;}
+  table.data-table td.amal-tugma{white-space:nowrap;text-align:right;}
+  table.data-table td.qizil-qator,table.data-table td.qizil-qator:first-child{color:#b91c1c;}
+  .hq-ok{color:var(--green);font-weight:800;} .hq-yaqin{color:var(--orange);font-weight:800;}
+  .hq-tugagan{color:#b91c1c;font-weight:800;} .hq-yoq{color:#cbd5e1;font-weight:800;}
+  table.data-table td.markaz,table.data-table th.markaz{text-align:center;padding-left:8px;padding-right:8px;}
+  .hujjat-forma{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 14px;}
+  .hisobot-karta textarea.f-input{resize:vertical;min-height:70px;font-family:inherit;}
+  /* Narxnoma tarmoq va bo'lim yorliqlari */
+  .narx-tab{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+  .narx-tab:empty{display:none;}
+  .narx-tab-btn{border:1.5px solid var(--card-border);background:#fff;color:var(--text-secondary);border-radius:999px;padding:8px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
+  .narx-tab-btn.sub{padding:6px 14px;font-size:12.5px;}
+  .narx-tab-btn:hover{border-color:var(--blue);color:var(--blue);}
+  .narx-tab-btn.active{background:var(--blue);border-color:var(--blue);color:#fff;}
+  /* Narxnoma sahifasi: oynaning to'liq kengligi va sig'adigan jadval */
+  .content.keng{max-width:none;}
+  table.narx-jadval{table-layout:fixed;}
+  table.narx-jadval th{white-space:normal;text-transform:none;letter-spacing:0;font-size:12px;line-height:1.35;padding:0 10px 10px;vertical-align:bottom;}
+  table.narx-jadval td{white-space:normal;overflow-wrap:anywhere;padding:10px;vertical-align:middle;}
+  table.narx-jadval td.narx-tanla{white-space:nowrap;font-weight:700;text-align:right;cursor:pointer;user-select:none;border-left:1px solid var(--card-border);}
+  table.narx-jadval th.narx-ustun{text-align:right;}
+  table.narx-jadval td.narx-tanla:hover{background:var(--blue-light);}
+  table.narx-jadval td.narx-tanla:focus-visible{outline:2px solid var(--blue);outline-offset:-2px;}
+  table.narx-jadval td.narx-tanla.tanlangan{background:var(--blue);color:#fff;}
+  table.narx-jadval td.narx-matn{text-align:right;color:var(--text-muted);font-style:italic;font-size:12px;border-left:1px solid var(--card-border);}
+  .narx-panel{position:sticky;bottom:12px;z-index:5;margin-top:16px;background:#fff;border:1px solid var(--blue);border-radius:var(--radius-lg);box-shadow:0 8px 28px rgba(15,23,42,.18);padding:16px 20px;}
+  .narx-panel .jami{font-size:20px;font-weight:800;margin:0;}
+  .narx-panel .royxat{max-height:200px;overflow-y:auto;margin:12px 0;}
+  .narx-panel .qator{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--card-border);font-size:13px;}
+  .narx-panel .qator .nom{flex:1;min-width:0;}
+  .narx-panel .qator input{width:58px;padding:5px 7px;border:1.5px solid var(--card-border);border-radius:8px;font-size:13px;}
+  .narx-panel .qator button{border:none;background:none;color:#dc2626;font-size:18px;cursor:pointer;line-height:1;}
+  @media (max-width:700px){
+    table.narx-jadval th,table.narx-jadval td{padding-left:6px;padding-right:6px;}
+    table.narx-jadval td.narx-tanla{font-size:12px;}
+  }
 
   /* Yon panel mobil rejimda yopiladi — burger tugma ochadi */
   .sb-backdrop{display:none;position:fixed;inset:0;background:rgba(15,27,45,.45);z-index:35;}
@@ -242,6 +383,9 @@
     html,body{overflow-x:hidden;max-width:100%;}
     /* iOS input'ga bosilganda sahifani kattalashtirmasin */
     .f-input,.f-select,input,select,textarea{font-size:16px;}
+    /* Forma maydonlari ixcham: kichikroq ichki bo'shliq va oraliq */
+    .f-input,.f-select{padding:9px 12px;margin-bottom:11px;border-radius:10px;}
+    .f-label{margin-bottom:4px;}
     .auth-card{padding:26px 20px;border-radius:16px;}
     .content{padding:14px;}
     .card{padding:16px;border-radius:16px;}
@@ -257,7 +401,15 @@
     .task-row{flex-wrap:wrap;}
     .task-amal{width:100%;justify-content:flex-end;}
     .mini-btn,.btn-save,.sb-item{min-height:40px;}
-    table.data-table td{white-space:normal;overflow-wrap:anywhere;}
+    /* Jadval o'z o'lchamida qoladi, ekranga sig'masa o'z ichida yonga suriladi:
+       ustunlar siqilib, so'zlar harf-harf bo'linib ketmasin */
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px;}
+    table.data-table:not(.narx-jadval){min-width:620px;}
+    table.data-table.keng:not(.narx-jadval){min-width:900px;}
+    table.data-table:not(.narx-jadval) th{padding-right:16px;}
+    table.data-table:not(.narx-jadval) td{padding-right:16px;white-space:normal;overflow-wrap:break-word;word-break:normal;vertical-align:top;max-width:230px;}
+    table.data-table:not(.narx-jadval) td:first-child{white-space:nowrap;}
+    table.data-table.narx-jadval td{white-space:normal;overflow-wrap:anywhere;}
 
     @supports (padding:max(0px)){
       .content{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));}
@@ -266,6 +418,32 @@
 </style>
 </head>
 <body>
+
+<!-- Mijoz ma'lumoti: kvitansiya va shartnoma uchun. Telefon va turar joy majburiy; SMS shu raqamga boradi -->
+<dialog id="aloqaDialog" class="aloqa-dialog">
+  <form id="aloqaForma" autocomplete="off">
+    <h3 id="aloqaSarlavha">Mijoz ma'lumoti</h3>
+    <p class="f-hint" id="aloqaIzoh" style="margin:0 0 14px;">Bu ma'lumot hujjatda chiqadi.</p>
+    <label class="f-label" for="aloqaIsm">Mijoz ismi *</label>
+    <input class="f-input" id="aloqaIsm" maxlength="120" required>
+    <label class="f-label" for="aloqaTel">Telefon raqami * (SMS shu raqamga boradi)</label>
+    <input class="f-input" id="aloqaTel" type="tel" inputmode="tel" placeholder="+998 90 123 45 67" required>
+    <label class="f-label" for="aloqaManzil">Turar joyi (manzil) *</label>
+    <input class="f-input" id="aloqaManzil" maxlength="300" required>
+    <label class="eslab-qol" id="aloqaSmsQator" style="margin-bottom:6px;">
+      <input type="checkbox" id="aloqaSms" checked><span>Mijozga SMS yuborilsin (kvitansiya raqami va havolasi)</span>
+    </label>
+    <p class="smena-xato" id="aloqaXato"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+      <button type="button" class="mini-btn" id="aloqaBekor" style="background:var(--bg-bottom);">Bekor</button>
+      <button type="submit" class="mini-btn asosiy" id="aloqaTasdiq">Davom etish</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="korishBanner" role="alert">
+  Siz <b id="korishIsm"></b> nomidan ko'ryapsiz (faqat o'qish) · <button type="button" id="korishChiqish">Chiqish</button>
+</div>
 
 <!-- ===================== AUTH VIEW ===================== -->
 <div id="authView">
@@ -279,7 +457,7 @@
       <input class="f-input" type="tel" id="loginTelefon" placeholder="+998901234567" autocomplete="username" required>
       <label class="f-label" for="loginKod">Kirish kodi</label>
       <input class="f-input kod-maydon" type="text" id="loginKod" maxlength="12"
-             placeholder="A1B2C3" autocomplete="one-time-code"
+             placeholder="XD-A1B2C3" autocomplete="one-time-code"
              autocapitalize="characters" spellcheck="false" required>
       <p class="kod-izoh">Kodni administrator beradi. Unutgan bo'lsangiz, administratordan yangisini so'rang.</p>
       <label class="eslab-qol">
@@ -308,14 +486,8 @@
     -->
 
     <a class="auth-back" href="/" id="qaytishHavola"><i class="ti ti-arrow-left"></i> Asosiy saytga qaytish</a>
-    <script>
-      if (location.protocol === 'file:') {
-        document.getElementById('qaytishHavola').href = 'index.html';
-        // Boshqaruv havolasi vaqtincha yashirilgan — bo'lmasligi mumkin
-        const bh = document.getElementById('boshqaruvHavola');
-        if (bh) bh.href = 'admin.html';
-      }
-    </script>
+    <script src="/scripts/hodisa-boshqaruvchi.js?v=1"></script>
+<script src="/scripts/xodimlar-asosiy1.js?v=1"></script>
   </div>
 </div>
 
@@ -327,16 +499,30 @@
 
     <div class="sidebar" id="sidebar">
       <div class="sb-logo"><div class="box"><i class="ti ti-flame"></i></div><span>Soar Gaz</span></div>
-      <div class="sb-nav">
+      <div class="sb-nav" id="sbNav">
         <button class="sb-item active" data-page="overview"><i class="ti ti-layout-dashboard"></i>Bosh sahifa</button>
+        <!-- Kadrlar bo'yicha mutaxassis menyusi (boshqa lavozimlarda yashirin; tartibni menyuQur() belgilaydi) -->
+        <button class="sb-item" data-page="hj-ishlar" hidden><i class="ti ti-file-plus"></i>Kelgan hujjatlar</button>
+        <button class="sb-item" data-page="hj-yuborish" hidden><i class="ti ti-send"></i>Mijozga yuborish</button>
+        <button class="sb-item" data-page="topshiriq" hidden><i class="ti ti-checklist"></i>Topshiriqlar <span id="tsNavSoni" class="tag red" style="display:none;margin-left:6px;"></span></button>
+        <button class="sb-item" data-page="kadr-davomat" hidden><i class="ti ti-calendar-check"></i>Davomat</button>
+        <button class="sb-item" data-page="kadr-hisobot" hidden><i class="ti ti-clipboard-check"></i>Kunlik hisobotlar</button>
+        <button class="sb-item" data-page="kadr-tushum" hidden><i class="ti ti-report-money"></i>Tushumlarni qabul qilish<span class="sb-son" id="ktBelgi" hidden></span></button>
+        <button class="sb-item" data-page="op-arizalar" hidden><i class="ti ti-phone-call"></i>Arizalar</button>
+        <button class="sb-item" data-page="op-qongiroq" hidden><i class="ti ti-headset"></i>Chiquvchi qo'ng'iroqlar</button>
+        <button class="sb-item" data-page="kadr-hujjat" hidden><i class="ti ti-file-text"></i>Xodimlar hujjatlari</button>
         <button class="sb-item" data-page="tasks"><i class="ti ti-clipboard-list"></i>Vazifalarim</button>
         <button class="sb-item" data-page="history"><i class="ti ti-history"></i>Ish tarixi</button>
         <button class="sb-item" data-page="certs"><i class="ti ti-certificate"></i>Sertifikatlarim</button>
+        <button class="sb-item" data-page="cash"><i class="ti ti-cash"></i>Pul tushumi</button>
+        <button class="sb-item" data-page="docs"><i class="ti ti-file-text"></i>Hujjatlarim</button>
+        <button class="sb-item" data-page="price"><i class="ti ti-list-details"></i>Narxnoma</button>
         <button class="sb-item" data-page="pay"><i class="ti ti-wallet"></i>Ish haqi</button>
         <button class="sb-item" data-page="team"><i class="ti ti-users"></i>Jamoa</button>
         <button class="sb-item" data-page="settings"><i class="ti ti-settings"></i>Sozlamalar</button>
       </div>
       <div class="sb-logout">
+        <a class="sb-item" href="/" data-asosiy-sayt><i class="ti ti-home"></i>Asosiy saytga chiqish</a>
         <button class="sb-item" id="logoutBtn"><i class="ti ti-logout"></i>Chiqish</button>
       </div>
     </div>
@@ -346,12 +532,10 @@
         <button class="burger" id="burgerBtn"><i class="ti ti-menu-2"></i></button>
         <div class="search-box"><i class="ti ti-search"></i><input type="text" placeholder="Qidirish..."></div>
         <div class="topbar-right">
-          <button class="bell-btn" id="bellBtn"><i class="ti ti-bell"></i><span class="bell-dot"></span></button>
-          <div class="dropdown" id="bellDropdown">
-            <div class="dd-head"><b>Bildirishnomalar</b><span>3 ta yangi</span></div>
-            <div class="dd-item"><i class="ti ti-clipboard-check"></i>Yangi vazifa tayinlandi — Chilonzor</div>
-            <div class="dd-item"><i class="ti ti-star"></i>Mijozdan 5 yulduzli baho oldingiz</div>
-            <div class="dd-item"><i class="ti ti-alert-triangle"></i>Sertifikat muddati yaqinlashmoqda</div>
+          <button class="bell-btn" id="bellBtn"><i class="ti ti-bell"></i><span class="bell-dot" id="bellDot" style="display:none;"></span></button>
+          <div class="dropdown" id="bellDropdown" style="max-height:70vh;overflow-y:auto;">
+            <div class="dd-head"><b>Xabarlar</b><span id="bellSoni">Yuklanmoqda...</span></div>
+            <div id="bellRoyxat"></div>
           </div>
 
           <div class="profile-chip" id="profileChip">
@@ -362,6 +546,7 @@
           <div class="dropdown" id="profileDropdown" style="right:0;">
             <div class="dd-item" data-page="overview"><i class="ti ti-user"></i>Profilim</div>
             <div class="dd-item" data-page="settings"><i class="ti ti-settings"></i>Sozlamalar</div>
+            <a class="dd-item" href="/" data-asosiy-sayt><i class="ti ti-home"></i>Asosiy saytga chiqish</a>
             <div class="dd-item" id="logoutBtn2"><i class="ti ti-logout"></i>Chiqish</div>
           </div>
         </div>
@@ -376,7 +561,7 @@
               <div class="avatar lg" data-bosh-harf>AK</div>
               <div class="info" style="flex:1;">
                 <h2 data-toliq-ism>Aziz Karimov</h2>
-                <p class="role"><span data-lavozim>Katta montaj ustasi</span> · Montaj xizmati bo'limi</p>
+                <p class="role"><span data-lavozim>Katta montaj ustasi</span> · <span id="bolimNomi">Montaj xizmati bo'limi</span></p>
                 <div class="meta-row">
                   <span><i class="ti ti-map-pin"></i><span data-filial>—</span></span>
                   <span><i class="ti ti-calendar"></i>Ish boshlagan: <span data-ishga-kirgan>—</span></span>
@@ -385,7 +570,7 @@
               <span class="status-pill" id="holatPill"><i class="ti ti-circle-filled" style="font-size:8px;"></i>Faol</span>
             </div>
             <!-- Raqamlar /api/buyurtmalar/ dan hisoblanadi -->
-            <div class="stat-grid">
+            <div class="stat-grid vazifa-blok">
               <div class="stat-box"><p class="n" id="statOyBajarildi">—</p><p class="l">Bu oy bajarilgan buyurtma</p></div>
               <div class="stat-box"><p class="n" id="statJamiBajarildi">—</p><p class="l">Jami bajarilgan buyurtma</p></div>
               <div class="stat-box"><p class="n" id="statOySoat">—</p><p class="l">Bu oy ishlangan soat</p></div>
@@ -393,7 +578,76 @@
             </div>
           </div>
 
-          <div class="card">
+          <!-- ---------- KADRLAR: bugungi xulosa (faqat Kadrlar mutaxassisi) ---------- -->
+          <div class="card kadr-blok">
+            <div class="card-head">
+              <h3><i class="ti ti-calendar-check"></i>Bugungi holat</h3>
+              <button class="mini-btn asosiy" type="button" data-kun-yangila><i class="ti ti-refresh"></i> Yangilash</button>
+            </div>
+            <div class="stat-grid" style="margin-top:0;">
+              <div class="stat-box"><p class="n" id="kxJami">—</p><p class="l">Kuzatuvdagi xodimlar</p></div>
+              <div class="stat-box"><p class="n" id="kxKeldi">—</p><p class="l">Ishga kelgan</p></div>
+              <div class="stat-box"><p class="n" id="kxIshda">—</p><p class="l">Hozir smenada</p></div>
+              <div class="stat-box"><p class="n" id="kxKelmadi">—</p><p class="l">Kelmagan</p></div>
+              <div class="stat-box"><p class="n" id="kxHisobotsiz">—</p><p class="l">Hisobot bermagan</p></div>
+              <div class="stat-box"><p class="n" id="kxTushum">—</p><p class="l">Qabul kutayotgan pul (so'm)</p></div>
+            </div>
+            <p class="smena-matn" style="margin:14px 0 0;">Davomat xodimning «Ishni boshlash» tugmasidan hisoblanadi. Batafsil — «Davomat» va «Kunlik hisobotlar» bo'limlarida.</p>
+          </div>
+
+          <!-- ---------- OPERATORLAR: arizalar xulosasi ---------- -->
+          <div class="card op-blok">
+            <div class="card-head">
+              <h3><i class="ti ti-phone-call"></i>Arizalar holati</h3>
+              <button class="mini-btn asosiy" type="button" data-arizalar-yangila><i class="ti ti-refresh"></i> Yangilash</button>
+            </div>
+            <div class="stat-grid" style="margin-top:0;">
+              <div class="stat-box"><p class="n" data-ox="tayinlanmagan">—</p><p class="l">Xodimi yo'q (tayinlanmagan)</p></div>
+              <div class="stat-box"><p class="n" data-ox="faol">—</p><p class="l">Faol arizalar</p></div>
+              <div class="stat-box"><p class="n" data-ox="kechikkan">—</p><p class="l">Kechikkan (24 soatdan oshgan)</p></div>
+              <div class="stat-box"><p class="n" data-ox="bugun">—</p><p class="l">Bugun kelgan arizalar</p></div>
+            </div>
+            <p class="smena-matn" style="margin:14px 0 0;">Qo'ng'iroq bilan kelgan arizani «Arizalar» bo'limida kiriting va mutaxassisga biriktiring.</p>
+          </div>
+
+          <!-- ---------- KUNLIK HISOBOT (Kadrlar mutaxassisidan boshqa hamma to'ldiradi) ---------- -->
+          <div class="card hisobot-karta" id="hisobotKarta">
+            <div class="card-head">
+              <h3><i class="ti ti-clipboard-check"></i>Bugungi ish hisoboti</h3>
+              <span class="tag wait" id="hisobotBelgi">Topshirilmagan</span>
+            </div>
+            <p class="smena-matn">Har kuni yozing: qayerda ishlayapsiz va qanday ish qildingiz. Kadrlar bo'limi shu hisobotni ko'radi. Kun davomida tuzatishingiz mumkin.</p>
+            <label class="f-label" for="hisobotJoy">Qayerda ishladingiz? *</label>
+            <input class="f-input" id="hisobotJoy" type="text" maxlength="200" placeholder="Masalan: Kogon, Navoiy ko'chasi 5-uy">
+            <label class="f-label" for="hisobotIsh">Qanday ish qildingiz? *</label>
+            <textarea class="f-input" id="hisobotIsh" maxlength="500" rows="3" placeholder="Masalan: hisoblagich o'rnatildi, gaz quvuri tekshirildi"></textarea>
+            <button class="btn-save" type="button" id="hisobotBtn">Hisobotni saqlash</button>
+            <p class="smena-xato" id="hisobotXato"></p>
+          </div>
+
+          <!-- ---------- SMENA VA JOYLASHUV ---------- -->
+          <div class="card smena-blok" id="smenaKarta">
+            <div class="card-head">
+              <h3><i class="ti ti-map-pin"></i>Ish smenasi va joylashuv</h3>
+              <span class="tag wait" id="smenaBelgi">Smena yopiq</span>
+            </div>
+            <p class="smena-matn" id="smenaMatn">Yuklanmoqda...</p>
+
+            <div class="smena-rozilik" id="smenaRozilik" style="display:none;">
+              <b>Joylashuvni kuzatishga rozilik</b><br>
+              Men smena davomida (<i>Ishni boshlash</i> va <i>Ishni tugatish</i> tugmalari oralig'ida)
+              telefonimning joylashuvi kompaniya administratorlariga ko'rinishiga rozilik beraman.
+              Smenadan tashqarida joylashuv olinmaydi. Ma'lumot 30 kun saqlanadi va keyin o'chiriladi,
+              uni kim ko'rgani jurnalga yoziladi. Kuzatuvni istalgan vaqtda
+              <i>Ishni tugatish</i> tugmasi bilan to'xtata olaman.
+              <label><input type="checkbox" id="roziBelgi"> Roziman</label>
+            </div>
+
+            <button class="mini-btn yashil smena-btn" id="smenaBtn" disabled>Ishni boshlash</button>
+            <p class="smena-xato" id="smenaXato"></p>
+          </div>
+
+          <div class="card vazifa-blok">
             <div class="card-head"><h3><i class="ti ti-clock"></i>Bugungi vazifalar</h3></div>
             <div id="bugunRoyxat"></div>
             <p class="bosh-holat" id="bugunHolat">Yuklanmoqda...</p>
@@ -431,41 +685,643 @@
         <!-- ---------- CERTS ---------- -->
         <div class="page" id="page-certs">
           <div class="card">
-            <div class="card-head"><h3><i class="ti ti-certificate"></i>Sertifikatlarim</h3><span class="demo-belgi">Namuna</span></div>
-            <div class="cert-grid">
-              <div class="cert-card">
-                <div class="cc-head"><div class="cc-icon"><i class="ti ti-bolt"></i></div><h5>Payvandlash bo'yicha attestatsiya</h5></div>
-                <p>Amal qiladi: 2027 yilgacha</p>
+            <div class="card-head"><h3><i class="ti ti-certificate"></i>Sertifikatlarim <span id="sertSoni" style="color:var(--text-muted);font-weight:600;"></span></h3></div>
+            <!-- Ro'yxat admin panelidan (Xodim sahifasi → Sertifikatlar) keladi -->
+            <div class="cert-grid" id="sertGrid"></div>
+            <p class="bosh-holat" id="sertHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+
+        <!-- ---------- PRICE (xizmatlar narxnomasi) ---------- -->
+        <div class="page" id="page-price">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-list-details"></i><span id="narxSarlavha">Narxnoma</span></h3></div>
+            <p class="smena-matn" id="narxTavsif">Yuklanmoqda...</p>
+            <div class="narx-tab" id="narxTarmoqTab"></div>
+            <div class="narx-tab" id="narxBolimTab"></div>
+            <p class="smena-matn" style="margin-bottom:10px;"><i class="ti ti-pointer"></i> Narxni bosing, xizmat tanlanadi va jami summa pastda hisoblanadi. Qayta bossangiz, tanlov olib tashlanadi.</p>
+            <input class="f-input" id="narxQidir" type="search" placeholder="Xizmat nomi yoki raqami bo'yicha qidirish..." style="margin-bottom:14px;">
+            <div class="table-wrap">
+              <table class="data-table narx-jadval">
+                <colgroup id="narxCols"><col style="width:52px"><col><col style="width:min(24%,230px)"><col style="width:min(24%,230px)"></colgroup>
+                <thead><tr><th>№</th><th>Ish va xizmatlar nomi</th><th class="narx-ustun" id="narxU1">Profilaktika (so'm)</th><th class="narx-ustun" id="narxU2">Texnik ko'rik (so'm)</th></tr></thead>
+                <tbody id="narxTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="narxHolat">Yuklanmoqda...</p>
+            <p class="smena-matn" id="narxEslatma" style="margin-top:14px;white-space:pre-line;"></p>
+          </div>
+
+          <div class="narx-panel" id="narxPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div>
+                <p class="smena-matn" style="margin:0;" id="narxPanelSoni"></p>
+                <p class="jami" id="narxJami"></p>
               </div>
-              <div class="cert-card">
-                <div class="cc-head"><div class="cc-icon"><i class="ti ti-tool"></i></div><h5>Gaz uskunalari montaji sertifikati</h5></div>
-                <p>Amal qiladi: 2028 yilgacha</p>
-              </div>
-              <div class="cert-card warn">
-                <div class="cc-head"><div class="cc-icon"><i class="ti ti-shield-check"></i></div><h5>Xavfsizlik texnikasi guvohnomasi</h5></div>
-                <p>Muddati yaqinlashmoqda: 2026 yil oxirigacha</p>
+              <div style="display:flex;gap:8px;">
+                <button class="mini-btn asosiy" id="narxNusxa" type="button"><i class="ti ti-copy"></i> Nusxa olish</button>
+                <button class="mini-btn" id="narxTozala" type="button" style="background:var(--bg-bottom);">Tozalash</button>
               </div>
             </div>
+            <div class="royxat" id="narxTanlanganRoyxat"></div>
+            <p class="smena-matn" id="narxPanelIzoh" style="margin:0;font-size:12px;"></p>
+            <div class="vazifa-blok" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--card-border);">
+              <select class="f-select" id="narxVazifa" style="margin:0;flex:1;min-width:200px;max-width:420px;" aria-label="Qaysi vazifaga"></select>
+              <button class="mini-btn yashil" id="narxBiriktir" type="button"><i class="ti ti-clipboard-check"></i> Vazifaga biriktirish</button>
+            </div>
+            <p class="smena-xato" id="narxXato"></p>
+          </div>
+        </div>
+
+        <!-- ---------- DOCS (shartnoma va kvitansiyalar) ---------- -->
+        <div class="page" id="page-docs">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-receipt"></i>Kvitansiyalarim</h3>
+              <button class="mini-btn asosiy" id="hujjatYangila" type="button"><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Mijozdan pul olgach, "Pul tushumi" bo'limida kvitansiya chiqariladi: mijozning telefoni va turar joyi unda yoziladi, mijozga SMS boradi.</p>
+            <div class="table-wrap">
+              <table class="data-table keng">
+                <thead><tr><th>Raqam</th><th>Sana</th><th>Mijoz</th><th>Telefon</th><th>Turar joyi</th><th>Summa</th><th>SMS</th><th></th></tr></thead>
+                <tbody id="kvTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="kvHolat">Yuklanmoqda...</p>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-file-certificate"></i>Shartnomalarim</h3></div>
+            <p class="smena-matn">Shartnoma "Vazifalarim" bo'limida, buyurtma summasi tasdiqlangandan keyin tuziladi.</p>
+            <div class="table-wrap">
+              <table class="data-table keng">
+                <thead><tr><th>Raqam</th><th>Mijoz</th><th>Telefon</th><th>Turar joyi</th><th>Summa</th><th>Holat</th><th></th></tr></thead>
+                <tbody id="shTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="shHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+
+        <!-- ---------- CASH (mijozdan olingan pul) ---------- -->
+        <div class="page" id="page-cash">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-cash"></i>Mijozdan olingan pul</h3></div>
+            <p class="smena-matn">Mijozdan pul olgan zahoti shu yerga kiriting, so'ng pulni administratorga topshiring. Administrator qabul qilgach, summa "Topshirishim kerak"dan chiqadi. Kiritilgan yozuvni o'zgartirib bo'lmaydi: xato bo'lsa, administrator rad etadi va to'g'risini qayta kiritasiz.</p>
+            <div class="stat-grid" style="margin-top:0;">
+              <div class="stat-box"><p class="n" id="tushKutilmoqda">—</p><p class="l">Topshirishim kerak</p></div>
+              <div class="stat-box"><p class="n" id="tushOyQabul">—</p><p class="l">Bu oy topshirilgan</p></div>
+              <div class="stat-box"><p class="n" id="tushJamiQabul">—</p><p class="l">Jami topshirilgan</p></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-plus"></i>Yangi tushum kiritish</h3></div>
+            <form id="tushumForm" autocomplete="off">
+              <!-- Tushum turi = narx tarmog'i + bo'lim (bosqich). Ro'yxat narxnomalardan quriladi. -->
+              <label class="f-label" for="tushTuri">Tushum turi *</label>
+              <select class="f-select" id="tushTuri" style="margin-bottom:6px;"><option value="">— tanlang —</option></select>
+              <p class="f-hint" id="tushTuriIzoh" style="margin:0 0 16px;"></p>
+              <div id="tushBuyurtmaBlok" style="display:none;">
+                <label class="f-label" for="tushBuyurtma" id="tushBuyurtmaLabel">Buyurtma *</label>
+                <select class="f-select" id="tushBuyurtma" style="margin-bottom:6px;"><option value="">— buyurtmani tanlang —</option></select>
+                <p class="f-hint" id="tushBuyurtmaIzoh" style="margin:0 0 16px;"></p>
+              </div>
+              <div id="tushIshBlok" style="display:none;">
+                <label class="f-label" for="tushIsh">Ish turi (narxnomadan)</label>
+                <div class="ish-tanla" id="ishTanla">
+                  <input class="f-input" id="tushIsh" type="text" autocomplete="off" role="combobox" aria-expanded="false"
+                         placeholder="Bosing va qilingan ish turini tanlang yoki yozib qidiring..." style="margin-bottom:6px;">
+                  <button type="button" class="ish-tozala" id="ishTozala" aria-label="Tanlovni tozalash" style="display:none;">×</button>
+                  <div class="ish-panel" id="ishPanel" style="display:none;"></div>
+                </div>
+                <p class="f-hint" id="ishIzoh" style="margin:0 0 16px;"></p>
+              </div>
+              <label class="f-label" for="tushSumma">Summa (so'm) *</label>
+              <input class="f-input" id="tushSumma" type="text" inputmode="numeric" placeholder="150 000" required>
+              <label class="f-label" for="tushUsul">Qanday olindi *</label>
+              <select class="f-select" id="tushUsul">
+                <option value="naqd">Naqd</option>
+                <option value="karta">Karta</option>
+                <option value="otkazma">Pul o'tkazmasi</option>
+              </select>
+              <label class="f-label" for="tushIzoh">Izoh (ixtiyoriy)</label>
+              <input class="f-input" id="tushIzoh" type="text" maxlength="255" placeholder="Masalan: avans, qolgan qismi">
+              <button class="btn-save" type="submit" id="tushBtn">Kiritish</button>
+              <p class="smena-xato" id="tushXato"></p>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-list"></i>Kiritilgan tushumlar</h3></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Sana</th><th>Summa</th><th>Usul</th><th>Buyurtma</th><th>Holat</th><th>Kvitansiya</th></tr></thead>
+                <tbody id="tushTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="tushHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+
+        <!-- ---------- KADRLAR: DAVOMAT ---------- -->
+        <div class="page" id="page-kadr-davomat">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-calendar-check"></i>Davomat <span class="kun-sarlavha" style="color:var(--text-muted);font-weight:600;"></span></h3></div>
+            <div class="kun-nav">
+              <button class="mini-btn asosiy kun-oldingi" type="button" aria-label="Oldingi kun">←</button>
+              <input class="f-input kun-sana" type="date" aria-label="Sana">
+              <button class="mini-btn asosiy kun-keyingi" type="button" aria-label="Keyingi kun">→</button>
+              <button class="mini-btn kun-bugun" type="button" style="background:var(--bg-bottom);">Bugun</button>
+              <select class="f-select" id="davomatFiltr" aria-label="Filtr">
+                <option value="">Hammasi</option>
+                <option value="kelmadi">Kelmaganlar</option>
+                <option value="ishda">Hozir smenada</option>
+                <option value="keldi">Kelib ketganlar</option>
+              </select>
+              <button class="mini-btn asosiy" type="button" data-kun-yangila><i class="ti ti-refresh"></i> Yangilash</button>
+            </div>
+            <div class="stat-grid" style="margin-top:0;margin-bottom:18px;">
+              <div class="stat-box"><p class="n" data-kx="keldi">—</p><p class="l">Ishga kelgan</p></div>
+              <div class="stat-box"><p class="n" data-kx="ishda">—</p><p class="l">Hozir smenada</p></div>
+              <div class="stat-box"><p class="n" data-kx="kelmadi">—</p><p class="l">Kelmagan</p></div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Xodim</th><th>Lavozim</th><th>Holat</th><th>Vaqti</th><th>Belgilash</th></tr></thead>
+                <tbody id="davomatTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="davomatHolat">Yuklanmoqda...</p>
+            <div class="davomat-qollanma">
+              <b>Davomat qanday qo'yiladi?</b>
+              <ul>
+                <li><b>Avtomatik:</b> xodim kabinetida «Ishni boshlash» ni bossa — shu kuni <b>Keldi</b>, bosmasa — <b>Kelmadi</b>. Smenasini tugatmagan va 16 soatdan oshgan bo'lsa, tizim o'zi yopadi.</li>
+                <li><b>Qo'lda:</b> smena ochmaydigan xodimlar (ofis, rahbar) uchun yoki xato bo'lsa, qatordagi <b>Keldi</b> / <b>Kelmadi</b> tugmasini bosing. «Kelmadi» da sababni tanlang (kasal, ta'til, ruxsat...). Qo'lda qo'yilgan belgi avtomatikdan <b>ustun</b> turadi; <b>↺</b> bilan bekor qilinadi.</li>
+                <li>O'tgan kunlarni ham o'zgartirish mumkin: yuqoridan sanani tanlang.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <dialog class="aloqa-dialog" id="kelmadiDialog">
+          <h3 id="kdSarlavha">Kelmadi</h3>
+          <p class="smena-matn" id="kdSana" style="margin:0 0 10px;"></p>
+          <label class="f-label" for="kdSabab">Kelmagan sababi</label>
+          <select class="f-select" id="kdSabab">
+            <option value="sababsiz">Sababsiz</option><option value="kasal">Kasal</option>
+            <option value="tatil">Ta'tilda</option><option value="ruxsat">Ruxsat bilan</option>
+            <option value="safar">Xizmat safarida</option>
+          </select>
+          <label class="f-label" for="kdIzoh">Izoh (ixtiyoriy)</label>
+          <input class="f-input" id="kdIzoh" type="text" maxlength="200" placeholder="Masalan: shifokor ko'rigi">
+          <p class="smena-xato" id="kdXato"></p>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button class="mini-btn" type="button" id="kdYopish" style="background:var(--bg-bottom);">Bekor</button>
+            <button class="mini-btn qizil" type="button" id="kdSaqlash">Kelmadi deb belgilash</button>
+          </div>
+        </dialog>
+
+        <!-- ---------- KADRLAR: KUNLIK HISOBOTLAR ---------- -->
+        <div class="page" id="page-kadr-hisobot">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-clipboard-check"></i>Kunlik hisobotlar <span class="kun-sarlavha" style="color:var(--text-muted);font-weight:600;"></span></h3></div>
+            <div class="kun-nav">
+              <button class="mini-btn asosiy kun-oldingi" type="button" aria-label="Oldingi kun">←</button>
+              <input class="f-input kun-sana" type="date" aria-label="Sana">
+              <button class="mini-btn asosiy kun-keyingi" type="button" aria-label="Keyingi kun">→</button>
+              <button class="mini-btn kun-bugun" type="button" style="background:var(--bg-bottom);">Bugun</button>
+              <button class="mini-btn yashil" type="button" id="eslatmaBtn"><i class="ti ti-send"></i> Hisobotsizlarga eslatma</button>
+              <button class="mini-btn asosiy" type="button" data-kun-yangila><i class="ti ti-refresh"></i> Yangilash</button>
+            </div>
+            <div class="stat-grid" style="margin-top:0;margin-bottom:18px;">
+              <div class="stat-box"><p class="n" data-kx="hisobotli">—</p><p class="l">Hisobot bergan</p></div>
+              <div class="stat-box"><p class="n" data-kx="hisobotsiz">—</p><p class="l">Hisobot bermagan</p></div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Xodim</th><th>Qayerda ishladi</th><th>Qanday ish qildi</th><th>Holat</th></tr></thead>
+                <tbody id="hisobotTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="hisobotHolat">Yuklanmoqda...</p>
+            <p class="smena-xato" id="eslatmaXabar"></p>
+          </div>
+        </div>
+
+        <!-- ---------- KADRLAR: XODIMLAR HUJJATLARI ---------- -->
+        <div class="page" id="page-kadr-hujjat">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-file-text"></i>Hujjatlar holati <span id="hujjatSoni" style="color:var(--text-muted);font-weight:600;"></span></h3>
+              <button class="mini-btn asosiy" type="button" id="hujjatYangilaBtn"><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Har bir xodimda bo'lishi kerak bo'lgan hujjatlar. <span class="hq-ok">✓</span> — tayyor, <span class="hq-yaqin">✓</span> — muddati tugayapti, <span class="hq-tugagan">✓</span> — muddati o'tgan, <span class="hq-yoq">—</span> — hali yo'q.</p>
+            <div class="table-wrap">
+              <table class="data-table" id="hujjatMatritsa">
+                <thead id="hujjatBosh"></thead>
+                <tbody id="hujjatMatTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="hujjatHolat">Yuklanmoqda...</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-plus"></i>Hujjat tayyor bo'ldi</h3></div>
+            <form id="hujjatForma" autocomplete="off">
+              <div class="hujjat-forma">
+                <div><label class="f-label" for="hfXodim">Xodim *</label>
+                  <select class="f-select" id="hfXodim" required></select></div>
+                <div><label class="f-label" for="hfTuri">Hujjat turi *</label>
+                  <select class="f-select" id="hfTuri" required></select></div>
+                <div><label class="f-label" for="hfRaqam">Raqami</label>
+                  <input class="f-input" id="hfRaqam" type="text" maxlength="60" placeholder="Masalan: 24/07"></div>
+                <div><label class="f-label" for="hfSana">Tayyorlangan sana *</label>
+                  <input class="f-input" id="hfSana" type="date" required></div>
+                <div><label class="f-label" for="hfAmal">Amal qilish muddati</label>
+                  <input class="f-input" id="hfAmal" type="date"></div>
+                <div><label class="f-label" for="hfIzoh">Izoh</label>
+                  <input class="f-input" id="hfIzoh" type="text" maxlength="200"></div>
+              </div>
+              <button class="btn-save" type="submit" id="hfBtn">Qo'shish</button>
+              <p class="smena-xato" id="hfXato"></p>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-file-plus"></i>Kiritilgan hujjatlar</h3></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Xodim</th><th>Hujjat</th><th>Raqami</th><th>Sana</th><th>Amal qiladi</th><th>Izoh</th><th></th></tr></thead>
+                <tbody id="hujjatRoyxatTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="hujjatRoyxatHolat">Hozircha hujjat kiritilmagan.</p>
+          </div>
+        </div>
+
+        <!-- ---------- KADRLAR: XODIMLARDAN PUL QABUL QILISH ---------- -->
+        <div class="page" id="page-kadr-tushum">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-report-money"></i>Xodimlardan pul qabul qilish</h3>
+              <button class="mini-btn asosiy" type="button" id="tushumKadrYangila"><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Xodim mijozdan olgan pulini topshirganda, summani tekshirib <b>Qabul qilish</b> bosing. Summa mos kelmasa — <b>Rad etish</b> va sababini yozing: xodim to'g'risini qayta kiritadi.</p>
+            <div class="stat-grid" style="margin-top:0;">
+              <div class="stat-box"><p class="n" id="ktKutilmoqda">—</p><p class="l">Qabul kutilayotgan (so'm)</p></div>
+              <div class="stat-box"><p class="n" id="ktSoni">—</p><p class="l">Kutilayotgan yozuvlar</p></div>
+              <div class="stat-box"><p class="n" id="ktOy">—</p><p class="l">Bu oy qabul qilingan (so'm)</p></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-users"></i>Xodimlar bo'yicha</h3></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Xodim</th><th>Topshirishi kerak</th><th>Yozuvlar</th><th>Bu oy topshirgan</th></tr></thead>
+                <tbody id="ktXodimTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="ktXodimHolat">Yuklanmoqda...</p>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-file-invoice"></i>Tushum yozuvlari</h3>
+              <select class="f-select" id="ktFiltr" style="width:auto;margin:0;" aria-label="Holat">
+                <option value="kutilmoqda">Qabul kutilayotganlar</option>
+                <option value="qabul">Qabul qilinganlar</option>
+                <option value="rad">Rad etilganlar</option>
+                <option value="">Hammasi</option>
+              </select></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Sana</th><th>Xodim</th><th>Summa</th><th>Usul</th><th>Nima uchun</th><th>Holat</th><th></th></tr></thead>
+                <tbody id="ktTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="ktHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+
+        <!-- ---------- OPERATORLAR: ARIZALAR ---------- -->
+        <div class="page" id="page-op-arizalar">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-phone-call"></i>Yangi ariza (qo'ng'iroq)</h3></div>
+            <form id="arizaForma" autocomplete="off">
+              <div class="hujjat-forma">
+                <div><label class="f-label" for="opIsm">Mijoz yoki tashkilot nomi *</label>
+                  <input class="f-input" id="opIsm" type="text" maxlength="100" required></div>
+                <div><label class="f-label" for="opTelefon">Telefon *</label>
+                  <input class="f-input" id="opTelefon" type="tel" placeholder="90 123-45-67" required></div>
+                <div><label class="f-label" for="opXizmat">Xizmat *</label>
+                  <select class="f-select" id="opXizmat" required>
+                    <option value="montaj">Montaj</option><option value="servis">Servis</option>
+                    <option value="loyiha">Loyihalashtirish</option><option value="uskunalar">Uskunalar</option>
+                    <option value="metrologiya">Metrologiya</option>
+                  </select></div>
+                <div class="op-faqat-callcenter"><label class="f-label" for="opTarmoq">Kim *</label>
+                  <select class="f-select" id="opTarmoq">
+                    <option value="aholi">Aholi (jismoniy shaxs)</option>
+                    <option value="ulgurji">Tashkilot (ulgurji)</option>
+                  </select></div>
+                <div><label class="f-label" for="opTuman">Tuman / shahar</label>
+                  <input class="f-input" id="opTuman" type="text" maxlength="50" placeholder="Masalan: Kogon"></div>
+                <div><label class="f-label" for="opManzil">Manzil *</label>
+                  <input class="f-input" id="opManzil" type="text" maxlength="255" required></div>
+                <div><label class="f-label" for="opTavsif">Nima kerak (izoh)</label>
+                  <input class="f-input" id="opTavsif" type="text" maxlength="500"></div>
+                <div><label class="f-label" for="opXodim">Mutaxassisga yo'naltirish</label>
+                  <select class="f-select" id="opXodim"><option value="">— keyin biriktiraman —</option></select></div>
+              </div>
+              <div class="joy-blok">
+                <label class="f-label">Ariza joylashuvi — manzil yozsangiz xarita o'zi topadi, kerak bo'lsa xaritada bosib to'g'rilang</label>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+                  <button class="mini-btn asosiy" type="button" id="opGeoBtn"><i class="ti ti-search"></i> Manzildan topish</button>
+                  <span class="f-hint" id="opGeoMatn" style="margin:0;"></span>
+                </div>
+                <select class="f-select" id="opGeoVariant" style="display:none;" aria-label="Boshqa variantlar"></select>
+                <div id="opXarita" class="op-xarita"></div>
+                <p class="f-hint" id="opJoyMatn" style="margin:0 0 8px;"></p>
+                <label class="op-chek"><input type="checkbox" id="opYaqinYubor" disabled><span>Ariza saqlanishi bilan eng yaqin xodimga o'zi yuborilsin (yuqorida mutaxassis tanlansa — o'sha olinadi)</span></label>
+                <button class="mini-btn" type="button" id="opJoyTozala" style="background:var(--bg-bottom);">Joyni tozalash</button>
+              </div>
+              <button class="btn-save" type="submit" id="arizaBtn">Arizani qabul qilish</button>
+              <p class="smena-xato" id="arizaXato"></p>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-clipboard-list"></i>Arizalar va bajarilishi nazorati <span id="arizaSoni" style="color:var(--text-muted);font-weight:600;"></span></h3>
+              <button class="mini-btn asosiy" type="button" data-arizalar-yangila><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <div class="kun-nav">
+              <select class="f-select" id="arizaFiltr" aria-label="Filtr">
+                <option value="faol">Faol arizalar</option>
+                <option value="tayinlanmagan">Xodimi yo'q</option>
+                <option value="kechikkan">Kechikkanlar (nazorat)</option>
+                <option value="bajarildi">Bajarilganlar</option>
+                <option value="hammasi">Barchasi</option>
+              </select>
+              <input class="f-input" id="arizaQidir" type="search" placeholder="Ism, telefon, manzil yoki #raqam" style="min-width:230px;">
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>№</th><th>Sana</th><th>Mijoz</th><th>Xizmat</th><th>Manzil</th><th>Holat</th><th>Mutaxassis</th></tr></thead>
+                <tbody id="arizaTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="arizaHolat">Yuklanmoqda...</p>
+            <p class="smena-xato" id="tayinXato"></p>
+          </div>
+        </div>
+
+        <!-- ---------- HUJJATLAR: MIJOZLARDAN KELGAN ISHLAR ---------- -->
+        <div class="page" id="page-hj-ishlar">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-file-plus"></i>Mijozlardan kelgan hujjatlar va ishlar</h3>
+              <button class="mini-btn asosiy" type="button" data-ish-yangila><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Saytdan kelgan <b>metrologiya arizalari</b> va mijozlarning <b>loyihalashtirish / metrologiya buyurtmalari</b>. Ishni qabul qiling, hujjatini tayyorlab yuklang va tayyor hujjatni mijozga yuboring: u mijozning kabinetidagi «Hujjatlar»ga tushadi va SMS boradi.</p>
+            <div class="stat-grid" style="margin-top:0;">
+              <div class="stat-box"><p class="n" data-hx="yangi">—</p><p class="l">Yangi (qabul qilinmagan)</p></div>
+              <div class="stat-box"><p class="n" data-hx="qabul">—</p><p class="l">Qabul qilingan, hujjat tayyorlanadi</p></div>
+              <div class="stat-box"><p class="n" data-hx="tayyor">—</p><p class="l">Tayyor, mijozga yuborilmagan</p></div>
+              <div class="stat-box"><p class="n" data-hx="bugun_yuborilgan">—</p><p class="l">Bugun yuborilgan hujjatlar</p></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="kun-nav">
+              <select class="f-select" id="ishBosqich" aria-label="Bosqich">
+                <option value="faol">Faol ishlar</option>
+                <option value="yangi">Yangilari</option>
+                <option value="qabul">Qabul qilinganlar</option>
+                <option value="tayyor">Yuborilmagan hujjati borlar</option>
+                <option value="yakun">Yakunlanganlar</option>
+                <option value="hammasi">Barchasi</option>
+              </select>
+              <select class="f-select" id="ishTur" aria-label="Turi">
+                <option value="">Arizalar va buyurtmalar</option>
+                <option value="ariza">Faqat metrologiya arizalari</option>
+                <option value="buyurtma">Faqat buyurtmalar</option>
+              </select>
+              <input class="f-input" id="ishQidir" type="search" placeholder="Ism, telefon, manzil yoki A12 / B34" style="min-width:240px;">
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>№</th><th>Sana</th><th>Mijoz</th><th>Ish</th><th>Manzil</th><th>Holat</th><th>Hujjatlar</th><th></th></tr></thead>
+                <tbody id="ishTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="ishHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+
+        <!-- ---------- Mijozga yuborish: tayyor hujjatlar ro'yxati (hamma ishlar bo'yicha) ---------- -->
+        <div class="page" id="page-hj-yuborish">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-send"></i>Tayyor hujjatlarni mijozga yuborish</h3>
+              <button class="mini-btn asosiy" type="button" data-hy-yangila><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Tayyorlab yuklangan hujjatlar shu yerda turadi. «Mijozga yuborish» bosilgach hujjat mijozning kabinetidagi «Hujjatlar»ga tushadi va unga SMS boradi. Yuborilgan hujjatni o'chirib bo'lmaydi. Yangi hujjat yuklash uchun «Kelgan hujjatlar» bo'limida ishni oching.</p>
+            <div class="stat-grid" style="margin-top:0;">
+              <div class="stat-box"><p class="n" data-hy="tayyor">—</p><p class="l">Tayyor, mijozga yuborilmagan</p></div>
+              <div class="stat-box"><p class="n" data-hy="bugun_yuborilgan">—</p><p class="l">Bugun yuborilgan hujjatlar</p></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="kun-nav">
+              <select class="f-select" id="hyHolat" aria-label="Holat">
+                <option value="tayyor">Yuborilmaganlar</option>
+                <option value="yuborilgan">Yuborilganlar</option>
+                <option value="hammasi">Barchasi</option>
+              </select>
+              <input class="f-input" id="hyQidir" type="search" placeholder="Hujjat nomi, mijoz ismi yoki telefoni" style="min-width:240px;">
+            </div>
+            <p class="smena-xato" id="hyXabar"></p>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Hujjat</th><th>Mijoz</th><th>Ish</th><th>Tayyorladi</th><th>Holat</th><th></th></tr></thead>
+                <tbody id="hyTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="hyBosh">Yuklanmoqda...</p>
+          </div>
+        </div>
+
+        <!-- ---------- Topshiriqlar: Kadrlar/call center -> hujjatchi, hujjatchi -> o'ziga ---------- -->
+        <div class="page" id="page-topshiriq">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-checklist"></i>Topshiriqlar</h3>
+              <button class="mini-btn asosiy" type="button" data-ts-yangila><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn" id="tsIzoh"></p>
+            <div class="stat-grid" style="margin-top:0;">
+              <div class="stat-box"><p class="n" data-ts="yangi">—</p><p class="l">Menga yangi topshiriq</p></div>
+              <div class="stat-box"><p class="n" data-ts="jarayonda">—</p><p class="l">Jarayonda</p></div>
+              <div class="stat-box"><p class="n" data-ts="kechikkan">—</p><p class="l">Muddati o'tgan</p></div>
+              <div class="stat-box"><p class="n" data-ts="yuborganlarim_faol">—</p><p class="l">Yuborganlarim (bajarilmagan)</p></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3 id="tsFormaSarlavha">Yangi topshiriq</h3></div>
+            <form id="tsForma" autocomplete="off">
+              <div class="hujjat-forma">
+                <div id="tsKimgaBlok"><label class="f-label" for="tsKimga">Kimga *</label>
+                  <select class="f-select" id="tsKimga"></select></div>
+                <div><label class="f-label" for="tsSarlavha">Topshiriq *</label>
+                  <input class="f-input" id="tsSarlavha" type="text" maxlength="200" required></div>
+                <div><label class="f-label" for="tsMuddat">Muddat</label>
+                  <input class="f-input" id="tsMuddat" type="date"></div>
+              </div>
+              <label class="f-label" for="tsMatn">Tafsilot</label>
+              <textarea class="f-input" id="tsMatn" maxlength="2000" rows="3" placeholder="Nima qilish kerakligini yozing"></textarea>
+              <label class="f-label" for="tsFayl">Fayl biriktirish (ixtiyoriy: PDF, Word, Excel, rasm, DWG — 30 MB gacha)</label>
+              <input class="f-input" id="tsFayl" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.dwg">
+              <button class="btn-save" type="submit" id="tsBtn">Yuborish</button>
+            </form>
+            <p class="smena-xato" id="tsXabar"></p>
+          </div>
+          <div class="card">
+            <div class="kun-nav">
+              <select class="f-select" id="tsHolat" aria-label="Holat">
+                <option value="faol">Faol topshiriqlar</option>
+                <option value="yopiq">Bajarilgan va bekor qilinganlar</option>
+                <option value="hammasi">Barchasi</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Topshiriq</th><th>Kimdan → kimga</th><th>Muddat</th><th>Holat</th><th></th></tr></thead>
+                <tbody id="tsTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="tsBosh">Yuklanmoqda...</p>
+          </div>
+        </div>
+
+        <!-- Topshiriqni bajarish oynasi: natija fayli -->
+        <dialog class="aloqa-dialog yaqin-dialog" id="tsDialog">
+          <h3 id="tsDialogSarlavha">Topshiriqni bajarildi deb belgilash</h3>
+          <form id="tsBajarForma" autocomplete="off">
+            <label class="f-label" for="tsNatijaFayl">Natija fayli (ixtiyoriy: PDF, Word, Excel, rasm, DWG — 30 MB gacha)</label>
+            <input class="f-input" id="tsNatijaFayl" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.dwg">
+            <label class="f-label" for="tsNatijaIzoh">Izoh (yuboruvchiga ko'rinadi)</label>
+            <input class="f-input" id="tsNatijaIzoh" type="text" maxlength="255">
+            <p class="smena-xato" id="tsDialogXabar"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+              <button class="mini-btn" type="button" id="tsDialogYopish" style="background:var(--bg-bottom);">Bekor</button>
+              <button class="mini-btn yashil" type="submit" id="tsBajarBtn"><i class="ti ti-check"></i> Bajarildi</button>
+            </div>
+          </form>
+        </dialog>
+
+        <!-- ---------- Ish oynasi (hujjat tayyorlash va yuborish) ---------- -->
+        <dialog class="aloqa-dialog yaqin-dialog" id="ishDialog">
+          <h3 id="ishSarlavha">Ish</h3>
+          <div id="ishMalumot" style="margin:6px 0 10px;"></div>
+          <div id="ishHolatTugma" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;"></div>
+          <h4 style="margin:10px 0 8px;font-size:14px;">Hujjatlar</h4>
+          <div id="ishHujjatlar"></div>
+          <p class="bosh-holat" id="ishHujjatBosh" style="padding:10px 0;">Hali hujjat yuklanmagan.</p>
+          <p class="smena-matn" id="ishYuklashYopiq" style="display:none;margin:6px 0;"></p>
+          <form id="ishYuklashForma" class="ish-yuklash" autocomplete="off">
+            <label class="f-label" for="ishHujjatFayl">Tayyor hujjat fayli * (PDF, Word, Excel, rasm, DWG — 30 MB gacha)</label>
+            <input class="f-input" id="ishHujjatFayl" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.dwg">
+            <div class="hujjat-forma">
+              <div><label class="f-label" for="ishHujjatNom">Hujjat nomi</label>
+                <input class="f-input" id="ishHujjatNom" type="text" maxlength="200" placeholder="Bo'sh qolsa fayl nomi olinadi"></div>
+              <div><label class="f-label" for="ishHujjatTuri">Turi</label>
+                <select class="f-select" id="ishHujjatTuri">
+                  <option value="boshqa">Boshqa</option><option value="sertifikat">Metrologik sertifikat</option>
+                  <option value="hisobot">Texnik hisobot</option><option value="shartnoma">Shartnoma</option>
+                  <option value="faktura">Hisob-faktura</option>
+                </select></div>
+              <div><label class="f-label" for="ishHujjatIzoh">Izoh (mijozga ko'rinadi)</label>
+                <input class="f-input" id="ishHujjatIzoh" type="text" maxlength="255"></div>
+            </div>
+            <button class="btn-save" type="submit" id="ishYuklashBtn">Hujjatni saqlash</button>
+          </form>
+          <p class="smena-xato" id="ishXabar"></p>
+          <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+            <button class="mini-btn" type="button" id="ishYopish" style="background:var(--bg-bottom);">Yopish</button>
+          </div>
+        </dialog>
+
+        <!-- ---------- Eng yaqin xodim oynasi ---------- -->
+        <dialog class="aloqa-dialog yaqin-dialog" id="yaqinDialog">
+          <h3 id="yqSarlavha">Eng yaqin xodim</h3>
+          <p class="smena-matn" style="margin:2px 0 0;"><i class="ti ti-map-pin"></i> <span id="yqManzil"></span></p>
+          <div id="yqXarita" class="yq-xarita"></div>
+          <p class="f-hint" style="margin:0 0 10px;">Joy noto'g'ri bo'lsa, xaritada to'g'ri joyni bosing — ro'yxat yangilanadi. Masofa to'g'ri chiziq bo'yicha (taxminiy).</p>
+          <p class="smena-xato" id="yqXabar"></p>
+          <div id="yqRoyxat"></div>
+          <p class="f-hint" id="yqNomalum" style="margin:6px 0 14px;"></p>
+          <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+            <button class="mini-btn" type="button" id="yqYopish" style="background:var(--bg-bottom);">Yopish</button>
+            <button class="mini-btn yashil" type="button" id="yqEngYaqin"><i class="ti ti-send"></i> Eng yaqiniga yuborish</button>
+          </div>
+        </dialog>
+
+        <!-- ---------- CALL CENTER: CHIQUVCHI QO'NG'IROQLAR ---------- -->
+        <div class="page" id="page-op-qongiroq">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-headset"></i>Qo'ng'iroq qaydi <span id="qBugun" style="color:var(--text-muted);font-weight:600;"></span></h3></div>
+            <p class="smena-matn">Tashkilot va fuqarolarga qo'ng'iroq qilib kompaniya xizmatlarini taklif qilganingizni shu yerga yozing. Mijoz ariza bersa — natijada «Ariza olindi» ni tanlang, ariza formasi o'zi ochiladi.</p>
+            <form id="qongiroqForma" autocomplete="off">
+              <div class="hujjat-forma">
+                <div><label class="f-label" for="qShaxs">Kim bilan gaplashdingiz *</label>
+                  <select class="f-select" id="qShaxs">
+                    <option value="yuridik">Yuridik shaxs / tashkilot</option>
+                    <option value="jismoniy">Jismoniy shaxs</option>
+                  </select></div>
+                <div><label class="f-label" for="qNomi">Tashkilot yoki shaxs nomi *</label>
+                  <input class="f-input" id="qNomi" type="text" maxlength="150" required></div>
+                <div><label class="f-label" for="qTelefon">Telefon *</label>
+                  <input class="f-input" id="qTelefon" type="tel" placeholder="90 123-45-67" required></div>
+                <div><label class="f-label" for="qNatija">Natija *</label>
+                  <select class="f-select" id="qNatija">
+                    <option value="qiziqdi">Qiziqish bildirdi</option>
+                    <option value="ariza">Ariza olindi</option>
+                    <option value="keyinroq">Keyinroq qo'ng'iroq qilish</option>
+                    <option value="rad">Rad etdi</option>
+                    <option value="javob_yoq">Javob bermadi</option>
+                  </select></div>
+                <div><label class="f-label" for="qQayta">Qayta qo'ng'iroq sanasi</label>
+                  <input class="f-input" id="qQayta" type="date"></div>
+                <div><label class="f-label" for="qIzoh">Izoh</label>
+                  <input class="f-input" id="qIzoh" type="text" maxlength="300"></div>
+              </div>
+              <button class="btn-save" type="submit" id="qBtn">Qayd etish</button>
+              <p class="smena-xato" id="qXato"></p>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-calendar-event"></i>Qayta qo'ng'iroq qilish kerak <span id="qQaytaSoni" style="color:var(--text-muted);font-weight:600;"></span></h3></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Kim</th><th>Telefon</th><th>Sana</th><th>Izoh</th></tr></thead>
+                <tbody id="qQaytaTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="qQaytaHolat">Qayta qo'ng'iroq qilinadiganlar yo'q.</p>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-file-text"></i>So'nggi qo'ng'iroqlar</h3>
+              <button class="mini-btn asosiy" type="button" id="qYangila"><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Sana</th><th>Kim</th><th>Telefon</th><th>Natija</th><th>Izoh</th><th>Operator</th></tr></thead>
+                <tbody id="qTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="qHolat">Yuklanmoqda...</p>
           </div>
         </div>
 
         <!-- ---------- PAY ---------- -->
         <div class="page" id="page-pay">
           <div class="card">
-            <div class="card-head"><h3><i class="ti ti-wallet"></i>Bu oy uchun ish haqi</h3><span class="demo-belgi">Namuna</span></div>
-            <div class="pay-summary">
-              <div class="stat-box"><p class="n">4 000 000 so'm</p><p class="l">Asosiy oylik</p></div>
-              <div class="stat-box"><p class="n">3 450 000 so'm</p><p class="l">Buyurtmalar bo'yicha bonus</p></div>
-              <div class="stat-box"><p class="n">7 450 000 so'm</p><p class="l">Jami (bu oy)</p></div>
+            <div class="card-head"><h3><i class="ti ti-wallet"></i>Ish haqi <span id="oyligOy" style="color:var(--text-muted);font-weight:600;"></span></h3></div>
+            <div class="pay-summary" id="oyligXulosa" style="display:none;">
+              <div class="stat-box"><p class="n" id="oyligAsosiy">—</p><p class="l">Asosiy oylik</p></div>
+              <div class="stat-box"><p class="n" id="oyligBonus">—</p><p class="l">Bonus</p></div>
+              <div class="stat-box"><p class="n" id="oyligJami">—</p><p class="l">Jami</p></div>
             </div>
-            <div class="table-wrap">
+            <div class="table-wrap" id="oyligJadvalBlok" style="display:none;">
               <table class="data-table">
-                <tr><th>Oy</th><th>Asosiy</th><th>Bonus</th><th>Jami</th></tr>
-                <tr><td>Iyul 2026</td><td>4 000 000 so'm</td><td>3 450 000 so'm</td><td>7 450 000 so'm</td></tr>
-                <tr><td>Iyun 2026</td><td>4 000 000 so'm</td><td>2 980 000 so'm</td><td>6 980 000 so'm</td></tr>
-                <tr><td>May 2026</td><td>4 000 000 so'm</td><td>3 120 000 so'm</td><td>7 120 000 so'm</td></tr>
+                <thead><tr><th>Oy</th><th>Asosiy</th><th>Bonus</th><th>Jami</th><th>Izoh</th></tr></thead>
+                <tbody id="oyligTana"></tbody>
               </table>
             </div>
+            <p class="bosh-holat" id="oyligHolat">Yuklanmoqda...</p>
           </div>
         </div>
 
@@ -498,12 +1354,6 @@
             <button class="btn-save" id="saqlashBtn">Saqlash</button>
             <span id="saqlandiBelgi" style="display:none;margin-left:12px;font-size:13px;font-weight:600;color:var(--green);"><i class="ti ti-check"></i> Saqlandi</span>
           </div>
-          <div class="card">
-            <div class="card-head"><h3><i class="ti ti-bell-cog"></i>Bildirishnomalar</h3></div>
-            <div class="toggle-row"><div><h5>SMS orqali xabar</h5><p>Yangi vazifa tayinlanganda SMS keladi</p></div><label class="switch"><input type="checkbox" checked><span class="slider-tg"></span></label></div>
-            <div class="toggle-row"><div><h5>Push bildirishnoma</h5><p>Ilova orqali darhol xabar</p></div><label class="switch"><input type="checkbox" checked><span class="slider-tg"></span></label></div>
-            <div class="toggle-row"><div><h5>Email xabarnoma</h5><p>Haftalik hisobot email orqali</p></div><label class="switch"><input type="checkbox"><span class="slider-tg"></span></label></div>
-          </div>
         </div>
 
       </div>
@@ -511,472 +1361,7 @@
   </div>
 </div>
 
-<script>
-// ═══════ Backend ═══════
-// Barcha ma'lumot Django API dan keladi. Xodim hisobi va jamoa ro'yxati
-// faqat Django admin panelida (/admin/auth_app/xodim/) boshqariladi.
-// Sayt server orqali ochilsa nisbiy manzil, fayl sifatida ochilsa dev backend
-const API = location.protocol === 'file:' ? 'http://localhost:8001/api' : '/api';
-const TOKEN_KALIT = 'soargaz_xodim_token';
-const TELEFON_KALIT = 'soargaz_xodim_telefon';
-const ESLAB_KALIT = 'soargaz_xodim_eslab';
-
-let token = null;
-let profil = null;
-
-// "Ma'lumotlarimni saqlab qol" belgilansa — localStorage (brauzer yopilsa ham qoladi),
-// belgilanmasa — sessionStorage (faqat shu oyna ochiq turganda saqlanadi).
-function tokenYukla(){
-  try { token = localStorage.getItem(TOKEN_KALIT) || sessionStorage.getItem(TOKEN_KALIT); } catch (e) {}
-}
-function tokenSaqla(t, eslab){
-  token = t;
-  try {
-    if (eslab) { localStorage.setItem(TOKEN_KALIT, t); sessionStorage.removeItem(TOKEN_KALIT); }
-    else       { sessionStorage.setItem(TOKEN_KALIT, t); localStorage.removeItem(TOKEN_KALIT); }
-  } catch (e) {}
-}
-function tokenOchir(){
-  token = null;
-  try { localStorage.removeItem(TOKEN_KALIT); sessionStorage.removeItem(TOKEN_KALIT); } catch (e) {}
-}
-
-// Telefon raqam va belgi holati keyingi kirish uchun eslab qolinadi
-function eslabQolYukla(){
-  try {
-    const belgi = localStorage.getItem(ESLAB_KALIT);
-    const eslab = belgi === null ? true : belgi === '1';
-    document.getElementById('eslabQol').checked = eslab;
-    if (eslab) document.getElementById('loginTelefon').value = localStorage.getItem(TELEFON_KALIT) || '';
-  } catch (e) {}
-}
-function eslabQolSaqla(eslab, telefon){
-  try {
-    localStorage.setItem(ESLAB_KALIT, eslab ? '1' : '0');
-    if (eslab) localStorage.setItem(TELEFON_KALIT, telefon);
-    else       localStorage.removeItem(TELEFON_KALIT);
-  } catch (e) {}
-}
-
-async function apiSorov(yol, sozlama = {}){
-  const javob = await fetch(API + yol, {
-    ...sozlama,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-      ...(sozlama.headers || {})
-    }
-  });
-  if (javob.status === 401) { chiqish(); throw new Error('Sessiya tugadi'); }
-  const matn = await javob.text();
-  const malumot = matn ? JSON.parse(matn) : null;
-  if (!javob.ok) throw new Error((malumot && malumot.detail) || 'Server xatosi');
-  return malumot;
-}
-
-// "Aziz Karimov" -> "AK"; bitta so'z bo'lsa birinchi ikki harf
-function boshHarflar(ism){
-  const b = (ism || '').trim().split(/\s+/).filter(Boolean);
-  if (!b.length) return '?';
-  if (b.length === 1) return b[0].slice(0, 2).toUpperCase();
-  return (b[0][0] + b[b.length - 1][0]).toUpperCase();
-}
-
-function sanaFormat(iso){
-  if (!iso) return '—';
-  const [y, o, k] = iso.split('-');
-  return `${k}.${o}.${y}`;
-}
-
-// ═══════ Profil ═══════
-function profilChiz(){
-  if (!profil) return;
-  const ism = profil.ism || profil.telefon;
-  document.querySelectorAll('[data-toliq-ism]').forEach(el => el.textContent = ism);
-  document.querySelectorAll('[data-lavozim]').forEach(el => el.textContent = profil.lavozim || 'Xodim');
-  document.querySelectorAll('[data-filial]').forEach(el => el.textContent = profil.tuman || '—');
-  document.querySelectorAll('[data-ishga-kirgan]').forEach(el => el.textContent = sanaFormat(profil.ishga_kirgan));
-  document.querySelectorAll('[data-bosh-harf]').forEach(el => el.textContent = boshHarflar(ism));
-
-  document.getElementById('setIsm').value = ism;
-  document.getElementById('setLavozim').value = profil.lavozim || '';
-  document.getElementById('setTelefon').value = profil.telefon || '';
-  document.getElementById('setEmail').value = profil.email || '';
-  document.getElementById('setQoshimchaTelefon').value = profil.qoshimcha_telefon || '';
-}
-
-// Sozlamalar -> Saqlash (faqat email va qo'shimcha telefon o'zgaradi)
-document.getElementById('saqlashBtn').addEventListener('click', async (e)=>{
-  const btn = e.currentTarget;
-  btn.disabled = true;
-  try {
-    profil = await apiSorov('/auth/xodim/profil/', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        email: document.getElementById('setEmail').value.trim(),
-        qoshimcha_telefon: document.getElementById('setQoshimchaTelefon').value.trim()
-      })
-    });
-    profilChiz();
-    const belgi = document.getElementById('saqlandiBelgi');
-    belgi.style.display = 'inline';
-    setTimeout(()=> belgi.style.display = 'none', 2500);
-  } catch (xato) {
-    alert('Saqlanmadi: ' + xato.message);
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-// ═══════ Jamoa ro'yxati (Django admin panelidan) ═══════
-async function jamoaYukla(){
-  const grid = document.getElementById('jamoaGrid');
-  const holat = document.getElementById('jamoaHolat');
-  const soni = document.getElementById('jamoaSoni');
-  try {
-    const javob = await apiSorov('/auth/xodimlar/');
-    const royxat = Array.isArray(javob) ? javob : (javob.results || []);
-    grid.innerHTML = '';
-    if (!royxat.length) {
-      holat.textContent = 'Hozircha xodim kiritilmagan. Xodimlar Django admin panelida qo\'shiladi.';
-      holat.style.display = 'block';
-      soni.textContent = '';
-      return;
-    }
-    holat.style.display = 'none';
-    soni.textContent = `(${royxat.length} nafar xodim)`;
-    royxat.forEach(x => {
-      const ism = x.ism || x.telefon;
-      const karta = document.createElement('div');
-      karta.className = 'team-card';
-      karta.innerHTML =
-        `<div class="avatar"></div>` +
-        `<div><p class="tname"></p><p class="trole"><span class="dot ${x.holat === 'faol' ? 'on' : 'off'}"></span><span class="lav"></span></p></div>`;
-      karta.querySelector('.avatar').textContent = boshHarflar(ism);
-      karta.querySelector('.tname').textContent = ism;
-      karta.querySelector('.lav').textContent = x.lavozim || 'Xodim';
-      grid.appendChild(karta);
-    });
-  } catch (xato) {
-    holat.textContent = 'Ro\'yxatni yuklab bo\'lmadi: ' + xato.message;
-    holat.style.display = 'block';
-  }
-}
-
-// ═══════ Vazifalar (buyurtmalar) ═══════
-// GET /api/buyurtmalar/ — backend rol='xodim' bo'lsa faqat shu xodimga
-// tayinlangan buyurtmalarni qaytaradi, shuning uchun qo'shimcha filtr shart emas.
-const FAOL_HOLATLAR = ['yangi', 'qabul', 'bajarilmoqda'];
-const HOLAT_MATN = {
-  yangi: 'Kutilmoqda', qabul: 'Qabul qilindi',
-  bajarilmoqda: 'Jarayonda', bajarildi: 'Bajarildi', bekor: 'Bekor qilindi'
-};
-const HOLAT_TAG = {
-  yangi: 'wait', qabul: 'progress',
-  bajarilmoqda: 'progress', bajarildi: 'done', bekor: 'plan'
-};
-
-let vazifalar = [];
-
-function sanaVaqt(iso){
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d)) return '—';
-  const p = n => String(n).padStart(2, '0');
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
-}
-function soatMinut(iso){
-  const d = new Date(iso);
-  if (isNaN(d)) return '—';
-  const p = n => String(n).padStart(2, '0');
-  return `${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-function bugunmi(iso){
-  const d = new Date(iso), h = new Date();
-  return !isNaN(d) && d.getFullYear() === h.getFullYear()
-      && d.getMonth() === h.getMonth() && d.getDate() === h.getDate();
-}
-function shuOymi(iso){
-  const d = new Date(iso), h = new Date();
-  return !isNaN(d) && d.getFullYear() === h.getFullYear() && d.getMonth() === h.getMonth();
-}
-
-// Bitta vazifa qatori. amallar=true bo'lsa qabul/yakunlash tugmalari qo'shiladi.
-function vazifaQator(b, amallar){
-  const qator = document.createElement('div');
-  qator.className = 'task-row';
-
-  const vaqt = document.createElement('div');
-  vaqt.className = 'task-time';
-  vaqt.textContent = b.vaqt_istagi || soatMinut(b.yaratilgan);
-
-  const info = document.createElement('div');
-  info.className = 'task-info';
-  const sarlavha = document.createElement('h5');
-  sarlavha.textContent = `#${b.id} ${b.xizmat_nomi || b.xizmat}`;
-  const tavsif = document.createElement('p');
-  const joy = [b.manzil, b.tuman].filter(Boolean).join(', ') || 'Manzil ko\'rsatilmagan';
-  const mijoz = b.mijoz_malumot ? ` · ${b.mijoz_malumot.ism || b.mijoz_malumot.telefon}` : '';
-  tavsif.textContent = joy + mijoz;
-  info.append(sarlavha, tavsif);
-
-  const amal = document.createElement('div');
-  amal.className = 'task-amal';
-  const belgi = document.createElement('span');
-  belgi.className = 'tag ' + (HOLAT_TAG[b.holat] || 'plan');
-  belgi.textContent = HOLAT_MATN[b.holat] || b.holat;
-  amal.appendChild(belgi);
-
-  if (amallar && b.holat === 'yangi') {
-    const tugma = document.createElement('button');
-    tugma.className = 'mini-btn asosiy';
-    tugma.textContent = 'Qabul qilish';
-    tugma.addEventListener('click', ()=> vazifaQabul(b.id, tugma));
-    amal.appendChild(tugma);
-  }
-  if (amallar && (b.holat === 'qabul' || b.holat === 'bajarilmoqda')) {
-    const tugma = document.createElement('button');
-    tugma.className = 'mini-btn yashil';
-    tugma.textContent = 'Yakunlash';
-    tugma.addEventListener('click', ()=> vazifaYakunla(b.id, tugma));
-    amal.appendChild(tugma);
-  }
-
-  qator.append(vaqt, info, amal);
-  return qator;
-}
-
-function vazifalarChiz(){
-  const faol = vazifalar.filter(b => FAOL_HOLATLAR.includes(b.holat));
-  const tarix = vazifalar.filter(b => !FAOL_HOLATLAR.includes(b.holat));
-
-  // — Bosh sahifa: bugungi vazifalar
-  const bugunRoyxat = document.getElementById('bugunRoyxat');
-  const bugunHolat = document.getElementById('bugunHolat');
-  const bugun = faol.filter(b => bugunmi(b.yaratilgan));
-  bugunRoyxat.innerHTML = '';
-  if (!bugun.length) {
-    bugunHolat.textContent = faol.length
-      ? 'Bugunga vazifa yo\'q. Barcha faol vazifalar "Vazifalarim" bo\'limida.'
-      : 'Hozircha sizga vazifa tayinlanmagan.';
-    bugunHolat.style.display = 'block';
-  } else {
-    bugunHolat.style.display = 'none';
-    bugun.forEach(b => bugunRoyxat.appendChild(vazifaQator(b, true)));
-  }
-
-  // — Vazifalarim
-  const vazifaRoyxat = document.getElementById('vazifaRoyxat');
-  const vazifaHolat = document.getElementById('vazifaHolat');
-  document.getElementById('vazifaSoni').textContent = faol.length ? `(${faol.length} ta)` : '';
-  vazifaRoyxat.innerHTML = '';
-  if (!faol.length) {
-    vazifaHolat.textContent = 'Faol vazifa yo\'q. Yangi buyurtma tayinlanganda shu yerda ko\'rinadi.';
-    vazifaHolat.style.display = 'block';
-  } else {
-    vazifaHolat.style.display = 'none';
-    faol.forEach(b => vazifaRoyxat.appendChild(vazifaQator(b, true)));
-  }
-
-  // — Ish tarixi
-  const tana = document.getElementById('tarixTana');
-  const tarixHolat = document.getElementById('tarixHolat');
-  document.getElementById('tarixSoni').textContent = tarix.length ? `(${tarix.length} ta)` : '';
-  tana.innerHTML = '';
-  if (!tarix.length) {
-    tarixHolat.textContent = 'Yakunlangan ish hozircha yo\'q.';
-    tarixHolat.style.display = 'block';
-  } else {
-    tarixHolat.style.display = 'none';
-    tarix.forEach(b => {
-      const tr = document.createElement('tr');
-      [
-        sanaVaqt(b.natija_sana || b.yangilangan || b.yaratilgan),
-        b.xizmat_nomi || b.xizmat,
-        [b.manzil, b.tuman].filter(Boolean).join(', ') || '—',
-        b.natija_soat ? b.natija_soat + ' soat' : '—',
-        b.material || '—',
-        HOLAT_MATN[b.holat] || b.holat
-      ].forEach(matn => {
-        const td = document.createElement('td');
-        td.textContent = matn;
-        tr.appendChild(td);
-      });
-      tana.appendChild(tr);
-    });
-  }
-
-  // — Bosh sahifa statistikasi
-  const bajarildi = vazifalar.filter(b => b.holat === 'bajarildi');
-  const oyBajarildi = bajarildi.filter(b => shuOymi(b.natija_sana || b.yangilangan));
-  const oySoat = oyBajarildi.reduce((s, b) => s + (Number(b.natija_soat) || 0), 0);
-  document.getElementById('statOyBajarildi').textContent = oyBajarildi.length;
-  document.getElementById('statJamiBajarildi').textContent = bajarildi.length;
-  document.getElementById('statOySoat').textContent = oySoat ? oySoat.toFixed(1) : '0';
-  document.getElementById('statFaol').textContent = faol.length;
-}
-
-async function vazifalarYukla(){
-  try {
-    const javob = await apiSorov('/buyurtmalar/');
-    vazifalar = Array.isArray(javob) ? javob : (javob.results || []);
-    vazifalarChiz();
-  } catch (xato) {
-    ['bugunHolat', 'vazifaHolat', 'tarixHolat'].forEach(id => {
-      const el = document.getElementById(id);
-      el.textContent = 'Yuklab bo\'lmadi: ' + xato.message;
-      el.style.display = 'block';
-    });
-  }
-}
-
-async function vazifaQabul(id, tugma){
-  tugma.disabled = true;
-  try {
-    await apiSorov(`/buyurtmalar/${id}/qabul/`, { method: 'POST' });
-    await vazifalarYukla();
-  } catch (xato) {
-    alert('Qabul qilinmadi: ' + xato.message);
-    tugma.disabled = false;
-  }
-}
-
-async function vazifaYakunla(id, tugma){
-  const natija = prompt('Bajarilgan ish natijasi (mijozga SMS orqali yuboriladi):');
-  if (natija === null) return;
-  const soat = prompt('Ishga ketgan vaqt (soat), masalan 2.5:', '');
-  if (soat === null) return;
-  const material = prompt('Ishlatilgan material (bo\'sh qoldirish mumkin):', '') ?? '';
-  tugma.disabled = true;
-  try {
-    await apiSorov(`/buyurtmalar/${id}/natija/`, {
-      method: 'POST',
-      body: JSON.stringify({
-        natija: natija.trim(),
-        natija_soat: soat.trim().replace(',', '.') || null,
-        material: material.trim(),
-        holat: 'bajarildi'
-      })
-    });
-    await vazifalarYukla();
-  } catch (xato) {
-    alert('Yakunlanmadi: ' + xato.message);
-    tugma.disabled = false;
-  }
-}
-
-document.getElementById('yangilashBtn').addEventListener('click', async (e)=>{
-  const btn = e.currentTarget;
-  btn.disabled = true;
-  await vazifalarYukla();
-  btn.disabled = false;
-});
-
-// ═══════ Kirish / chiqish ═══════
-function kabinetOch(){
-  document.getElementById('authView').style.display = 'none';
-  document.getElementById('dashView').style.display = 'block';
-  profilChiz();
-  jamoaYukla();
-  vazifalarYukla();
-}
-
-function chiqish(){
-  tokenOchir();
-  profil = null;
-  document.getElementById('dashView').style.display = 'none';
-  document.getElementById('authView').style.display = 'flex';
-  document.getElementById('loginKod').value = '';
-  eslabQolYukla();   // saqlangan telefon raqam qaytadan qo'yiladi
-}
-
-// Kod har doim katta harfda ko'rinsin — admin uni katta harfda beradi
-document.getElementById('loginKod').addEventListener('input', (e)=>{
-  const joy = e.target.selectionStart;
-  e.target.value = e.target.value.toUpperCase();
-  e.target.setSelectionRange(joy, joy);
-});
-
-document.getElementById('loginForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const btn = document.getElementById('loginBtn');
-  const xatoEl = document.getElementById('loginXato');
-  xatoEl.classList.remove('show');
-  btn.disabled = true;
-  btn.textContent = 'Tekshirilmoqda...';
-  const telefon = document.getElementById('loginTelefon').value.replace(/\s/g, '');
-  const eslab = document.getElementById('eslabQol').checked;
-  try {
-    const javob = await fetch(API + '/auth/xodim/login/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telefon, kod: document.getElementById('loginKod').value.trim() })
-    });
-    const malumot = await javob.json();
-    if (!javob.ok) throw new Error(malumot.detail || 'Kirish amalga oshmadi');
-    tokenSaqla(malumot.access, eslab);
-    eslabQolSaqla(eslab, telefon);
-    profil = malumot.xodim;
-    kabinetOch();
-  } catch (xato) {
-    xatoEl.textContent = xato.message === 'Failed to fetch'
-      ? 'Serverga ulanib bo\'lmadi. Backend ishga tushirilganini tekshiring (backend\\start.bat).'
-      : xato.message;
-    xatoEl.classList.add('show');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Kirish';
-  }
-});
-
-document.getElementById('logoutBtn').addEventListener('click', chiqish);
-document.getElementById('logoutBtn2').addEventListener('click', chiqish);
-
-// Sahifa ochilganda saqlangan token bo'lsa avtomatik kirish
-(async function boshlash(){
-  eslabQolYukla();
-  tokenYukla();
-  if (!token) return;
-  try {
-    profil = await apiSorov('/auth/xodim/profil/');
-    kabinetOch();
-  } catch (e) { tokenOchir(); }
-})();
-
-// ═══════ Yon paneldagi bo'limlar ═══════
-document.querySelectorAll('.sb-item[data-page]').forEach(btn=>{
-  btn.addEventListener('click', ()=> showPage(btn.dataset.page));
-});
-document.querySelectorAll('.dropdown .dd-item[data-page]').forEach(btn=>{
-  btn.addEventListener('click', ()=> showPage(btn.dataset.page));
-});
-function showPage(key){
-  document.querySelectorAll('.sb-item[data-page]').forEach(b=>b.classList.toggle('active', b.dataset.page===key));
-  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active', p.id === 'page-'+key));
-  document.querySelectorAll('.dropdown').forEach(d=>d.classList.remove('open'));
-  closeSidebar();
-}
-
-// ═══════ Mobil yon panel ═══════
-const sidebar=document.getElementById('sidebar'), sbBackdrop=document.getElementById('sbBackdrop');
-function closeSidebar(){ sidebar.classList.remove('open'); sbBackdrop.classList.remove('open'); }
-document.getElementById('burgerBtn').addEventListener('click', (e)=>{
-  e.stopPropagation();
-  sidebar.classList.toggle('open');
-  sbBackdrop.classList.toggle('open', sidebar.classList.contains('open'));
-});
-sbBackdrop.addEventListener('click', closeSidebar);
-
-// ═══════ Yuqoridagi ochiluvchi menyular ═══════
-const bellBtn=document.getElementById('bellBtn'), bellDD=document.getElementById('bellDropdown');
-const profChip=document.getElementById('profileChip'), profDD=document.getElementById('profileDropdown');
-bellBtn.addEventListener('click', (e)=>{ e.stopPropagation(); profDD.classList.remove('open'); bellDD.classList.toggle('open'); });
-profChip.addEventListener('click', (e)=>{ e.stopPropagation(); bellDD.classList.remove('open'); profDD.classList.toggle('open'); });
-document.addEventListener('click', ()=>{ bellDD.classList.remove('open'); profDD.classList.remove('open'); });
-document.addEventListener('keydown', (e)=>{
-  if(e.key!=='Escape') return;
-  bellDD.classList.remove('open'); profDD.classList.remove('open'); closeSidebar();
-});
-</script>
+<script src="/scripts/xodimlar-asosiy2.js?v=1"></script>
+<script src="/scripts/xodimlar-hodisalar.js?v=1"></script>
 </body>
 </html>
