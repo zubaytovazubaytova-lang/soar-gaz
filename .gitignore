@@ -26,3 +26,7 @@ desktop.ini
 
 # Zaxira nusxalar
 *.bak
+
+# Qo'lda olingan zaxira nusxalar (baza, eski HTML/CSS/PY)
+backend/zaxira/
+*.sqlite3.*
