@@ -52,12 +52,29 @@ def tolov_sorovi_yarat(xarid):
             holat='kutilmoqda',
         )
 
+    eski = xarid.tolov_sorovi
     xarid.tolov_sorovi = sorov
     xarid.tolov_urinishlari = xarid.tolov_urinishlari + 1
     xarid.tolov_holati = 'kutilmoqda'
     xarid.save(update_fields=['tolov_sorovi', 'tolov_urinishlari',
                               'tolov_holati', 'yangilangan'])
+    # Eski havola endi to'lanmasligi kerak: aks holda mijoz eski sahifadan
+    # to'lasa, pul keladi-yu, buyurtma "to'lanmagan" qolardi (signal faqat
+    # JORIY so'rovni xaridga bog'laydi).
+    eski_sorovni_bekor(eski)
     return sorov
+
+
+def eski_sorovni_bekor(eski):
+    """Almashtirilgan to'lov so'rovini bekor qiladi (to'langan bo'lsa tegmaydi).
+
+    Chaqirishdan OLDIN xarid.tolov_sorovi yangi qiymatga o'tkazilgan bo'lishi
+    shart — aks holda bekor qilish signali xaridni «xato» holatiga tushiradi.
+    """
+    if eski is None or eski.holat in ('tolandi', 'bekor'):
+        return
+    from apps.tolovlar.payme import sorovni_bekor_qil
+    sorovni_bekor_qil(eski, 10)
 
 
 def tolov_url(xarid):

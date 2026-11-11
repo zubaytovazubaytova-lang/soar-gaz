@@ -8,7 +8,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.auth_app.models import Foydalanuvchi
+from apps.auth_app.models import Foydalanuvchi, audit_yoz
+from apps.narxnoma.models import TARMOQ_CHOICES
 from apps.sms_app.gateway import sms_yubor
 from apps.sms_app.models import SmsXabar
 from .models import Buyurtma, BuyurtmaFoto
@@ -35,7 +36,7 @@ def buyurtmalar_list(request):
     user = request.user
 
     if request.method == 'GET':
-        qs = Buyurtma.objects.select_related('mijoz', 'xodim')
+        qs = Buyurtma.objects.select_related('mijoz', 'xodim', 'tasdiq_kim').prefetch_related('xizmatlar', 'shartnomalar')
 
         if user.rol == 'admin':
             holat = request.query_params.get('holat')
@@ -52,7 +53,9 @@ def buyurtmalar_list(request):
         else:
             qs = qs.filter(mijoz=user)
 
-        ser = BuyurtmaSerializer(qs, many=True)
+        # Ichki narxlar (xizmatlar, tasdiqlangan summa) mijozga berilmaydi
+        ser = BuyurtmaSerializer(qs, many=True,
+                                 context={'narx_korsat': user.rol in ('admin', 'xodim')})
         return Response(ser.data)
 
     # POST — mijoz buyurtma beradi
@@ -67,7 +70,10 @@ def buyurtmalar_list(request):
         # profildagiga tenglash mumkin emas edi: `save(**kwargs)` argumentlari
         # validated_data ustidan yozilib, mijoz ariza uchun kiritgan boshqa
         # manzil jimgina yo'qolardi (ilovadagi manzil maydoni ishlamasdi).
-        b = ser.save(mijoz=user)
+        # Narx tarmog'ini mijoz tanlamaydi: korxona (sanoat, biznes) -> ulgurji, qolgani -> aholi.
+        # Administrator keyin o'zgartira oladi.
+        tarmoq = 'ulgurji' if getattr(user, 'mulk_turi', '') == 'korxona' else 'aholi'
+        b = ser.save(mijoz=user, tarmoq=tarmoq)
         _sms_yuborish(user, f"Buyurtmangiz qabul qilindi! #{b.id} — {b.xizmat_nomi}. Tez orada bog'lanamiz.")
         return Response(BuyurtmaSerializer(b).data, status=201)
     return Response(ser.errors, status=400)
@@ -161,10 +167,37 @@ def buyurtma_update(request, pk):
         if b.holat in ('bajarildi', 'bekor'):
             return Response({'detail': _('Bu buyurtmani bekor qilib bo\'lmaydi')}, status=400)
 
+    # Narx tarmog'ini faqat administrator o'zgartiradi. Buyurtmada boshqa tarmoq
+    # xizmatlari bo'lsa, o'zgartirib bo'lmaydi (narxlar aralashib ketmasin).
+    tarmoq = request.data.get('tarmoq')
+    if tarmoq is not None:
+        if not _admin_mi(user):
+            return _ruxsat_yoq()
+        if tarmoq not in dict(TARMOQ_CHOICES):
+            return Response({'detail': _("Tarmoq noto'g'ri")}, status=400)
+        if tarmoq != b.tarmoq:
+            if b.xizmatlar.exists():
+                return Response({'detail': _("Buyurtmada xizmatlar bor. Avval ularni olib tashlang")}, status=409)
+            b.tarmoq = tarmoq
+            b.save(update_fields=['tarmoq', 'yangilangan'])
+            audit_yoz(request, 'buyurtma_tarmoq', f'#{b.id}: tarmoq -> {tarmoq}')
+
     if holat:
         b.holat = holat
         b.save()
     return Response(BuyurtmaSerializer(b).data)
+
+
+def xodim_tayinla(request, b, xodim, izoh=""):
+    """Buyurtmani xodimga biriktiradi va xodim bilan mijozga xabar yuboradi.
+    Administrator ham, operatorlar ham (operator.py) shuni ishlatadi — qoida bitta."""
+    b.xodim = xodim
+    b.holat = 'yangi'
+    b.save()
+    audit_yoz(request, "buyurtma_tayinlandi", f"#{b.id} -> {xodim.ism or xodim.telefon}{izoh}")
+
+    _sms_yuborish(xodim, f"Sizga yangi buyurtma tayinlandi! #{b.id} — {b.xizmat_nomi}. Manzil: {b.manzil or b.tuman}")
+    _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangizga xodim tayinlandi: {xodim.ism}. Tez orada siz bilan bog'lanadi.")
 
 
 @api_view(['POST'])
@@ -184,13 +217,7 @@ def tayinlash(request, pk):
     except Foydalanuvchi.DoesNotExist:
         return Response({'detail': _('Xodim topilmadi')}, status=404)
 
-    b.xodim = xodim
-    b.holat = 'yangi'
-    b.save()
-
-    _sms_yuborish(xodim, f"Sizga yangi buyurtma tayinlandi! #{b.id} — {b.xizmat_nomi}. Manzil: {b.manzil or b.tuman}")
-    _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangizga xodim tayinlandi: {xodim.ism}. Tez orada siz bilan bog'lanadi.")
-
+    xodim_tayinla(request, b, xodim)
     return Response(BuyurtmaSerializer(b).data)
 
 

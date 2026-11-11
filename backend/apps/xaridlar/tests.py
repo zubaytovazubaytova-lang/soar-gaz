@@ -164,3 +164,158 @@ class BolibTolashTest(SimpleTestCase):
         _, oylik, xato = bolib_hisobla(500000, 6)
         self.assertEqual(oylik, 0)
         self.assertIn('1 000 000', xato)
+
+
+# ──────────────────────────────────────────────────────────────
+#  Narx mijozdan EMAS, serverdagi katalogdan olinishi
+# ──────────────────────────────────────────────────────────────
+import json
+import tempfile
+from pathlib import Path
+
+from rest_framework.test import APIClient
+
+from .models import Xarid
+
+
+class ServerNarxiTest(TestCase):
+    """Brauzer `price` ni qanday o'zgartirmasin, buyurtma katalog narxida hisoblanadi."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._papka = tempfile.TemporaryDirectory()
+        fayl = Path(cls._papka.name) / 'products.json'
+        fayl.write_text(json.dumps([
+            {'id': 'p-1', 'slug': 'plita', 'name': 'Plita', 'price': 500000, 'image': 'x'},
+            {'id': 'p-2', 'slug': 'kotel', 'name': 'Kotel', 'price': 300000, 'image': 'y'},
+        ]), encoding='utf-8')
+        cls._override = override_settings(XARID_MAHSULOTLAR_FAYL=str(fayl), **NARXLAR)
+        cls._override.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._override.disable()
+        cls._papka.cleanup()
+        super().tearDownClass()
+
+    def buyurtma(self, items, **qoshimcha):
+        data = {
+            'customer': {'name': 'Ali', 'phone': '+998901234567'},
+            'delivery': {'method': 'filialdan'},
+            'payment': {'method': 'naqd'},
+            'items': items,
+        }
+        data.update(qoshimcha)
+        return APIClient().post('/api/xaridlar/', data, format='json')
+
+    def test_soxta_narx_va_nom_e_tiborsiz_qoldiriladi(self):
+        r = self.buyurtma([{'productId': 'p-1', 'qty': 2, 'price': 1, 'name': 'Tekin'}])
+        self.assertEqual(r.status_code, 201, r.content)
+        xarid = Xarid.objects.get(raqam=r.json()['id'])
+        qator = xarid.qatorlar.get()
+        self.assertEqual(qator.narx, 500000)
+        self.assertEqual(qator.nomi, 'Plita')
+        self.assertEqual(xarid.mahsulotlar_summasi, 1000000)
+        self.assertEqual(xarid.jami, 1000000)
+
+    def test_total_ham_e_tiborsiz_qoldiriladi(self):
+        r = self.buyurtma([{'productId': 'p-2', 'qty': 1}], total=1)
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Xarid.objects.get(raqam=r.json()['id']).jami, 300000)
+
+    def test_notanish_mahsulot_rad_etiladi(self):
+        r = self.buyurtma([{'productId': 'yoq-mahsulot', 'qty': 1}])
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(Xarid.objects.count(), 0)
+
+    def test_bir_mahsulot_ikki_marta_kelsa_birlashtiriladi(self):
+        r = self.buyurtma([{'productId': 'p-2', 'qty': 1}, {'productId': 'p-2', 'qty': 2}])
+        self.assertEqual(r.status_code, 201, r.content)
+        xarid = Xarid.objects.get(raqam=r.json()['id'])
+        self.assertEqual(xarid.qatorlar.count(), 1)
+        self.assertEqual(xarid.mahsulotlar_summasi, 900000)
+
+    def test_nol_miqdor_rad_etiladi(self):
+        r = self.buyurtma([{'productId': 'p-1', 'qty': 0}])
+        self.assertEqual(r.status_code, 400)
+
+    def test_promokod_tekshiruvi_ham_server_narxida(self):
+        Promokod.objects.create(kod='YOZ10', tur='foiz', qiymat=10)
+        r = APIClient().post('/api/xaridlar/promokod/', {
+            'kod': 'YOZ10', 'delivery': 'filialdan',
+            'items': [{'productId': 'p-1', 'qty': 1, 'price': 1}],
+        }, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()['chegirma'], 50000)   # 500 000 ning 10%, soxta 1 emas
+
+
+# ──────────────────────────────────────────────────────────────
+#  Marketing sayti katalogi (index.html): narx KatalogNarx dan, `kalit` bo'yicha
+# ──────────────────────────────────────────────────────────────
+from apps.katalog.models import KatalogNarx
+
+
+@override_settings(**NARXLAR)
+class KatalogQatoriTest(TestCase):
+    def setUp(self):
+        KatalogNarx.objects.create(kalit='ugop-16', kategoriya='hisob', nomi='Hisoblagich G4',
+                                   narx=700000, birlik='dona')
+        KatalogNarx.objects.create(kalit='sorov-1', kategoriya='ventil', nomi='Kran', narx=500000,
+                                   sorovnoma=True)
+        KatalogNarx.objects.create(kalit='gorelka-1', kategoriya='gorelka', nomi='Gorelka',
+                                   narx=850000)
+        KatalogNarx.objects.create(kalit='nofaol-1', kategoriya='hisob', nomi='Eski', narx=1000,
+                                   faol=False)
+
+    def buyurtma(self, items):
+        return APIClient().post('/api/xaridlar/', {
+            'customer': {'name': 'Ali', 'phone': '+998901234567'},
+            'delivery': {'method': 'filialdan'}, 'payment': {'method': 'naqd'},
+            'items': items}, format='json')
+
+    def jami(self, items):
+        r = self.buyurtma(items)
+        self.assertEqual(r.status_code, 201, r.content)
+        return Xarid.objects.get(raqam=r.json()['id'])
+
+    def test_narx_bazadan_soxta_narx_e_tiborsiz(self):
+        x = self.jami([{'kalit': 'ugop-16', 'name': 'Boshqa nom', 'qty': 2, 'price': 1}])
+        q = x.qatorlar.get()
+        self.assertEqual((q.narx, q.nomi, q.mahsulot_id), (700000, 'Hisoblagich G4', 'kat:ugop-16'))
+        self.assertEqual(x.jami, 1400000)
+
+    def test_sorovnoma_narxsiz_hisoblanadi(self):
+        self.assertEqual(self.jami([{'kalit': 'sorov-1', 'name': 'Kran', 'qty': 3}]).jami, 0)
+
+    def test_yopiq_bolim_narxi_hisobga_olinmaydi(self):
+        self.assertEqual(self.jami([{'kalit': 'gorelka-1', 'name': 'Gorelka', 'qty': 1}]).jami, 0)
+
+    def test_nofaol_va_notanish_kalit_narxi_nol(self):
+        for kalit in ('nofaol-1', 'yoq-kalit'):
+            self.assertEqual(self.jami([{'kalit': kalit, 'name': 'X', 'qty': 1, 'price': 99999}]).jami, 0)
+
+    def test_kalitsiz_qator_nomi_bilan_narxi_nol(self):
+        x = self.jami([{'name': "Po'lat quvur 57×3.5", 'qty': 2, 'price': 5}])
+        self.assertEqual(x.jami, 0)
+        self.assertTrue(x.qatorlar.get().mahsulot_id.startswith('kat:'))
+
+    def test_kalitsiz_har_xil_nomlar_alohida_qator(self):
+        x = self.jami([{'name': 'Quvur A', 'qty': 1}, {'name': 'Quvur B', 'qty': 1}])
+        self.assertEqual(x.qatorlar.count(), 2)
+
+    def test_mahsulotsiz_qator_rad_etiladi(self):
+        self.assertEqual(self.buyurtma([{'qty': 1}]).status_code, 400)
+        self.assertEqual(Xarid.objects.count(), 0)
+
+    def test_ikona_faqat_fa_nomi_qabul_qilinadi(self):
+        x = self.jami([{'kalit': 'ugop-16', 'name': 'x', 'qty': 1, 'image': 'javascript:alert(1)'}])
+        self.assertEqual(x.qatorlar.get().rasm, '')
+        x = self.jami([{'kalit': 'ugop-16', 'name': 'x', 'qty': 1, 'image': 'fa-fire'}])
+        self.assertEqual(x.qatorlar.get().rasm, 'fa-fire')
+
+    def test_aralash_savat_do_kon_va_katalog(self):
+        # do'kon mahsuloti (productId) bilan katalog qatori bir buyurtmada — pastdagi sinfdagi fayl
+        # bo'lmasa productId topilmaydi va 400 qaytadi (narx baribir mijozdan olinmaydi)
+        r = self.buyurtma([{'productId': 'yoq-mahsulot', 'qty': 1}, {'kalit': 'ugop-16', 'name': 'x', 'qty': 1}])
+        self.assertEqual(r.status_code, 400)

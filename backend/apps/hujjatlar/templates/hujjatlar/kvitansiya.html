@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Kvitansiya {{ k.raqam }}</title>
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;background:#eef2f7;font-family:"Times New Roman",Times,serif;color:#111;}
+  .varaq{max-width:760px;margin:20px auto;background:#fff;padding:26px 34px 30px;border:1px solid #c9d2df;position:relative;font-size:15px;}
+  .kompaniya{text-align:center;font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.3px;}
+  .sarlavha{text-align:center;font-weight:700;text-decoration:underline;margin:4px 0 12px;font-size:16.5px;}
+  .varaq-raqam{text-align:center;font-weight:700;margin-bottom:8px;}
+  .varaq-raqam span{display:inline-block;border-bottom:1px solid #111;min-width:200px;color:#b91c1c;letter-spacing:1px;}
+  .sana{border-collapse:collapse;margin:0 auto 14px;}
+  .sana td,.sana th{border:1.5px solid #111;text-align:center;min-width:70px;padding:3px 10px;}
+  .sana td{font-size:17px;font-weight:700;}
+  .maydon{display:flex;gap:8px;align-items:baseline;margin:7px 0;}
+  .maydon .yorliq{white-space:nowrap;}
+  .maydon .qiymat{flex:1;border-bottom:1px solid #111;min-height:20px;padding:0 4px;font-weight:600;word-break:break-word;}
+  .kichik{font-size:12px;text-align:center;color:#444;margin:-4px 0 4px;}
+  table.xizmat{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px;}
+  table.xizmat th,table.xizmat td{border:1.5px solid #111;padding:6px 6px;vertical-align:top;}
+  table.xizmat th{text-align:center;font-size:12.5px;}
+  table.xizmat td.m{text-align:center;} table.xizmat td.r{text-align:right;white-space:nowrap;}
+  .jami{margin-top:12px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
+  .jami .qiymat{flex:1;border-bottom:1px solid #111;font-weight:700;padding:0 4px;min-width:180px;}
+  .yozuv{font-size:12.5px;color:#444;margin:2px 0 0 0;}
+  .imzo{margin-top:12px;display:flex;gap:8px;align-items:baseline;}
+  .imzo .chiz{flex:1;border-bottom:1px solid #111;min-height:20px;padding:0 4px;font-weight:600;}
+  .imzo .qavs{font-size:11.5px;color:#444;white-space:nowrap;}
+  .pastki{margin-top:16px;font-size:13px;line-height:1.5;}
+  .bekor{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
+    font-size:68px;font-weight:900;color:rgba(220,38,38,.28);transform:rotate(-18deg);letter-spacing:4px;}
+  .bekor-yozuv{background:#fdecec;border:1px solid #f6c4c4;color:#b91c1c;padding:8px 10px;margin-bottom:10px;font-weight:700;font-family:Arial,sans-serif;font-size:13.5px;}
+  .amallar{max-width:760px;margin:0 auto 24px;text-align:center;font-family:Arial,sans-serif;}
+  button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;}
+  .jadval-orami{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  /* Telefon: butun chek bitta ekranga sig'adigan ixcham ko'rinish (yonga surilmaydi) */
+  @media (max-width:600px){
+    .varaq{padding:10px 8px 12px;margin:0 auto;border-left:0;border-right:0;font-size:12.5px;}
+    .kompaniya{font-size:13px;letter-spacing:0;} .sarlavha{font-size:12.5px;margin:2px 0 6px;}
+    .varaq-raqam{font-size:12.5px;margin-bottom:5px;}
+    .varaq-raqam span{min-width:0;letter-spacing:.5px;}
+    .sana{margin-bottom:6px;}
+    .sana td,.sana th{min-width:44px;padding:1px 6px;font-size:11px;}
+    .sana td{font-size:13px;}
+    /* Yorliq va qiymat: yorliq ustida kichik, qiymat pastida — qatorlar zich */
+    .maydon{flex-direction:column;gap:0;align-items:stretch;margin:3px 0;}
+    .maydon .yorliq{white-space:normal;font-size:10.5px;color:#555;line-height:1.2;}
+    .maydon .qiymat{font-size:12.5px;line-height:1.25;min-height:16px;padding:0 2px;}
+    .kichik{font-size:10px;margin:-1px 0 2px;}
+    /* 6 ustunli jadval to'liq ekranga sig'adi */
+    .jadval-orami{margin:6px 0 0;padding:0;overflow:visible;}
+    .jadval-orami table.xizmat{margin-top:0;table-layout:fixed;font-size:10.5px;}
+    table.xizmat th,table.xizmat td{padding:3px 2px;border-width:1px;overflow-wrap:break-word;}
+    table.xizmat th{font-size:9px;line-height:1.15;}
+    table.xizmat th:nth-child(1){width:20px;} table.xizmat th:nth-child(3){width:17%;}
+    table.xizmat th:nth-child(4){width:30px;} table.xizmat th:nth-child(5){width:17%;}
+    table.xizmat th:nth-child(6){width:20%;}
+    table.xizmat td.r{white-space:normal;}
+    .jami{margin-top:7px;gap:6px;flex-wrap:nowrap;}
+    .jami .qiymat{min-width:0;font-size:12.5px;}
+    .yozuv{font-size:10.5px;line-height:1.3;}
+    .imzo{margin-top:7px;gap:5px;}
+    .imzo > span:first-child{font-size:11px;}
+    .imzo .chiz{min-width:0;font-size:11.5px;}
+    .imzo .qavs{font-size:9.5px;}
+    .pastki{margin-top:8px;font-size:10.5px;line-height:1.35;}
+    .pastki > div[style]{font-size:9.5px !important;}
+    .bekor{font-size:40px;letter-spacing:2px;}
+    .bekor-yozuv{font-size:11px;padding:5px 7px;}
+    .amallar{margin-bottom:14px;}
+    .amallar button{width:calc(100% - 24px);padding:9px 16px;font-size:13px;}
+  }
+  @media print{ body{background:#fff;} .varaq{border:0;margin:0;max-width:none;padding:0;} .amallar{display:none;} }
+</style>
+</head>
+<body>
+<div class="varaq">
+  {% if k.holat == 'bekor' %}<div class="bekor">BEKOR</div>
+    <div class="bekor-yozuv">Bu kvitansiya bekor qilingan{% if k.bekor_sababi %}: {{ k.bekor_sababi }}{% endif %}</div>{% endif %}
+
+  <div class="kompaniya">{{ sozlama.kompaniya_nomi }}</div>
+  <div class="sarlavha">Gaz jihozlariga xizmat ko'rsatish kvitansiyasi</div>
+  <div class="varaq-raqam">To'lov varaqasi raqami №: <span>{{ k.raqam }}</span></div>
+
+  <table class="sana">
+    <tr><th>Kun</th><th>Oy</th><th>Yil</th></tr>
+    <tr><td>{{ kun }}</td><td>{{ oy }}</td><td>{{ yil }}</td></tr>
+  </table>
+
+  <div class="maydon"><span class="yorliq">Quyida berilgan xizmat uchun haq:</span><span class="qiymat">{{ xizmat_turi }}</span></div>
+  <div class="kichik">(xizmat turi)</div>
+  <div class="maydon"><span class="yorliq">Iste'molchi FISh (korxona nomi):</span><span class="qiymat">{{ k.mijoz_ism }}</span></div>
+  <div class="maydon"><span class="yorliq">Manzili:</span><span class="qiymat">{{ k.manzil }}</span></div>
+  <div class="maydon"><span class="yorliq">Kod (shartnoma raqami):</span><span class="qiymat">{{ k.shartnoma_raqami }}</span></div>
+  <div class="maydon"><span class="yorliq">Telefon raqami:</span><span class="qiymat">{{ k.mijoz_telefon }}</span></div>
+
+  <div class="jadval-orami"><table class="xizmat">
+    <thead>
+      <tr><th style="width:34px">№</th><th>Gaz jihoz nomi</th><th>Narxnoma raqami va ko'rsatgichi</th><th style="width:48px">Soni</th>
+          <th>Narxi<br>(QQS bilan)</th><th>Umumiy mablag' yig'indisi<br>(QQS bilan)</th></tr>
+    </thead>
+    <tbody>
+      {% for q in jadval %}
+      <tr><td class="m">{{ q.n }}</td><td>{{ q.nomi }}</td><td class="m">{{ q.raqam }}</td><td class="m">{{ q.soni }}</td>
+          <td class="r">{{ q.narx }}</td><td class="r">{{ q.jami }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+
+  <div class="jami"><b>Jami:</b><span class="qiymat">{{ summa_matn }} so'm</span></div>
+  <p class="yozuv">(so'z bilan): <b>{{ summa_sozlar }} so'm</b> &nbsp;·&nbsp; to'lov usuli: {{ k.usul_nomi }}{% if k.izoh %} &nbsp;·&nbsp; {{ k.izoh }}{% endif %}</p>
+  {% if qisman %}<p class="yozuv">Buyurtmaning umumiy summasi: <b>{{ buyurtma_summa_matn }} so'm</b>; shu kvitansiya bo'yicha qabul qilingan: <b>{{ summa_matn }} so'm</b>.</p>{% endif %}
+
+  <div class="imzo"><span>Ish bajaruvchi xodim:</span><span class="chiz">{{ xodim_ism }}</span><span class="qavs">(imzo)</span></div>
+  <div class="imzo"><span>Iste'molchi:</span><span class="chiz">&nbsp;</span><span class="qavs">(imzo)</span></div>
+
+  <div class="pastki">
+    <div>«CALL centre» telefon raqami: {{ sozlama.telefon|default:"—" }}</div>
+    <div><b>{{ sozlama.kompaniya_nomi }}</b> Servis xizmat ko'rsatish bo'limi boshlig'i{% if sozlama.servis_boshligi %}: <b>{{ sozlama.servis_boshligi }}</b>{% endif %}</div>
+    {% if sozlama.manzil or sozlama.stir or sozlama.hisob_raqam %}
+    <div style="color:#444;font-size:12px;margin-top:4px;">{% if sozlama.manzil %}{{ sozlama.manzil }}{% endif %}{% if sozlama.stir %} · STIR {{ sozlama.stir }}{% endif %}{% if sozlama.hisob_raqam %} · h/r {{ sozlama.hisob_raqam }}{% if sozlama.bank_nomi %}, {{ sozlama.bank_nomi }}{% endif %}{% if sozlama.mfo %}, MFO {{ sozlama.mfo }}{% endif %}{% endif %}</div>
+    {% endif %}
+    {% if sozlama.kvitansiya_izoh %}<div style="margin-top:6px;font-size:12.5px;">{{ sozlama.kvitansiya_izoh }}</div>{% endif %}
+  </div>
+</div>
+<div class="amallar"><button type="button" id="chop">Chop etish / PDF</button></div>
+<script nonce="{{ request.csp_nonce }}">document.getElementById('chop').addEventListener('click', function () { window.print(); });</script>
+</body>
+</html>

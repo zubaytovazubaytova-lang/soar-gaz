@@ -14,21 +14,47 @@ DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 # Serverga chiqarishda: DJANGO_HOSTS=soargaz.uz,www.soargaz.uz
 ALLOWED_HOSTS = [h for h in os.environ.get('DJANGO_HOSTS', '*').split(',') if h]
 
+# ──────────────────────────────────────────────────────────────
+#  PRODUCTION'DA XAVFLI SOZLAMALARNI RAD ETISH
+#
+#  Ilgari bu holatlar faqat hujjatda "unutmang" deb yozilgan edi. Endi
+#  server DEBUG=0 da xavfli sozlama bilan UMUMAN ISHGA TUSHMAYDI — jimgina
+#  ishlab, standart kalit bilan sessiya/JWT soxtalashtirilishiga yo'l
+#  qo'ymaydi. Dev rejimida (DEBUG=1) hech narsa o'zgarmaydi.
+# ──────────────────────────────────────────────────────────────
+if not DEBUG:
+    from django.core.exceptions import ImproperlyConfigured
+    if SECRET_KEY.startswith('soargaz-django-secret-key') or len(SECRET_KEY) < 50:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY berilmagan yoki juda qisqa (kamida 50 belgi). "
+            "Yaratish: python -c \"import secrets; print(secrets.token_urlsafe(64))\"")
+    if '*' in ALLOWED_HOSTS or not ALLOWED_HOSTS:
+        raise ImproperlyConfigured(
+            "DJANGO_HOSTS aniq domenlar bo'lishi shart (masalan "
+            "soargaz.uz,www.soargaz.uz) — '*' production'da taqiqlangan.")
+
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'soargaz.apps.SoarAdminConfig',      # django.contrib.admin + Rahbariyat bosh sahifasi (soargaz/admin_site.py)
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',   # logout va rotatsiyada tokenni bekor qilish
     'corsheaders',
     'apps.auth_app',
+    'apps.aloqa',
+    'apps.kadrlar',
+    'apps.hujjatlar',
     'apps.buyurtmalar',
     'apps.kabinet',
     'apps.katalog',
+    'apps.narxnoma',
+    'apps.joylashuv',
     'apps.sms_app',
     'apps.tolovlar',
+    'apps.tushum',
     'apps.xaridlar',
 ]
 
@@ -51,6 +77,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # CSP, Permissions-Policy va h.k. — soargaz/middleware.py
+    'soargaz.middleware.XavfsizlikSarlavhalariMiddleware',
 ]
 
 ROOT_URLCONF = 'soargaz.urls'
@@ -58,7 +86,8 @@ ROOT_URLCONF = 'soargaz.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        # soargaz/templates: Django admin shablonlarini (admin/base_site.html) shu yerda o'zgartiramiz
+        'DIRS': [BASE_DIR / 'soargaz' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -73,12 +102,39 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'soargaz.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# ──────────────────────────────────────────────────────────────
+#  MA'LUMOTLAR BAZASI
+#
+#  DB_NOMI berilsa — PostgreSQL (serverda SHART). Berilmasa — SQLite (faqat
+#  o'z kompyuteringizda). SQLite bir vaqtda bitta yozuvchini qabul qiladi:
+#  60 ta parallel buyurtmada deyarli hammasi "database is locked" (500) berdi.
+#    Serverda: DB_NOMI, DB_FOYDALANUVCHI, DB_PAROL  (+ ixtiyoriy DB_HOST, DB_PORT)
+# ──────────────────────────────────────────────────────────────
+if os.environ.get('DB_NOMI'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ['DB_NOMI'],
+            'USER': os.environ['DB_FOYDALANUVCHI'],
+            'PASSWORD': os.environ['DB_PAROL'],
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            # Har so'rovda yangi ulanish ochmaslik uchun
+            'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+    if not DEBUG:
+        import warnings
+        warnings.warn(
+            "DB_NOMI berilmagan — SQLite ishlatilmoqda. Jonli serverda PostgreSQL "
+            "kerak (SQLite ko'p yozuvda qulflanadi).", RuntimeWarning)
 
 AUTH_USER_MODEL = 'auth_app.Foydalanuvchi'
 
@@ -125,21 +181,34 @@ if not DEBUG and not REDIS_URL:
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # Oddiy JWT + egasining «ko'rish» tokenlari (faqat o'qish): apps/auth_app/korish.py
+        'apps.auth_app.korish.KorishJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    # IP bo'yicha cheklovlar (apps/auth_app/throttles.py) mijoz IP sini
+    # `X-Forwarded-For` dan oladi. nginx orqasida aynan 1 ta proksi bor —
+    # shu raqam bo'lmasa hujumchi sarlavhani soxtalashtirib cheklovdan
+    # o'tib ketadi. Proksisiz (dev) ishlaganda 0: faqat REMOTE_ADDR.
+    # Boshqa tuzilma (masalan Cloudflare + nginx) bo'lsa: DJANGO_PROXIES=2
+    'NUM_PROXIES': int(os.environ.get('DJANGO_PROXIES', '0' if DEBUG else '1')),
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
-    # Mijozdan SMS kod FAQAT BIR MARTA so'raladi. Sessiya ilova o'chirilmaguncha
-    # (localStorage tozalanmaguncha) davom etishi kerak, shuning uchun refresh
-    # muddati bir yil va har ishlatilganda yangilanadi (ROTATE). Ya'ni ilovadan
-    # yiliga bir marta foydalansa ham, kod qaytadan so'ralmaydi.
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=365),
+    # Access token QISQA: o'g'irlansa ham 30 daqiqadan keyin foydasiz.
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.environ.get('JWT_ACCESS_DAQIQA', '30'))),
+    # Mijozdan SMS kod FAQAT BIR MARTA so'raladi: sessiya refresh token bilan jimgina
+    # yangilanadi. Refresh brauzerda `httpOnly` cookie'da turadi (JavaScript uni
+    # o'qiy olmaydi, XSS o'g'irlay olmaydi) va har ishlatilganda yangilanadi (ROTATE),
+    # ya'ni faol mijoz uchun muddat har safar 90 kunga uzayadi. Xodimlar uchun
+    # alohida, qisqaroq muddat (auth_app.views.XODIM_REFRESH_KUN).
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.environ.get('JWT_REFRESH_KUN', '90'))),
     'ROTATE_REFRESH_TOKENS': True,
+    # Rotatsiyadan keyin ESKI refresh token yaroqsiz bo'ladi. Aks holda rotatsiya
+    # hech narsani himoya qilmaydi: o'g'irlangan token uzoq ishlayveradi.
+    # (Muddati o'tgan yozuvlarni tozalash: `manage.py flushexpiredtokens`, haftada 1 marta.)
+    'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
@@ -191,6 +260,34 @@ STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# ──────────────────────────────────────────────────────────────
+#  KIRISH MA'LUMOTLARI HAJMI
+#  Standart (2.5 MB) saqlanadi — bu yerda aniq yozilishi sababi: kimdir
+#  "yuklash ishlamayapti" deb uni ko'tarib yubormasligi kerak. Katta fayl
+#  (hujjat, rasm) uchun nginx `client_max_body_size 32M` allaqachon bor;
+#  Django xotiraga olmasdan diskka yozadi.
+# ──────────────────────────────────────────────────────────────
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2_621_440     # JSON/forma tanasi (fayllarsiz)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 200         # forma maydonlari soni (DoS)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2_621_440
+
+# ──────────────────────────────────────────────────────────────
+#  PAROL TALABLARI (Django admin va xodim/admin parollari uchun).
+#  Ilgari ro'yxat bo'sh edi — "1234" ham qabul qilinardi.
+# ──────────────────────────────────────────────────────────────
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+     'OPTIONS': {'min_length': 10}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+# CSRF/sessiya cookie'lari boshqa saytdan yuborilgan so'rovlar bilan
+# ketmasin (Lax: oddiy havolalar ishlaydi, lekin cross-site POST ketmaydi).
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 OTP_EXPIRE_MINUTES = 5
@@ -203,17 +300,56 @@ OTP_SOATLIK_LIMIT = 5        # Bir raqamga soatiga necha marta kod yuborish mumk
 OTP_URINISH_LIMIT = 5        # Noto'g'ri kod kiritish urinishlari (keyin blok)
 OTP_BLOK_DAQIQA = 15         # Limitdan oshgach necha daqiqa kutiladi
 
+# ──────────────────────────────────────────────────────────────
+#  SINOV (TEST) KODI — faqat ishlab chiqish (DEBUG=1) uchun
+#
+#  Haqiqiy SMS provayder ulanmagan paytda mijoz hisobini sinash uchun: ro'yxatdagi
+#  raqamlarga SMS yuborilmaydi va tasdiqlash kodi doim bir xil bo'ladi.
+#  Format: DJANGO_SINOV_MIJOZ="+998900000002:123456,+998900000003:654321"
+#  Qo'shimcha raqam kerak bo'lmasa, standart sinov raqami ishlatiladi.
+#
+#  XAVFSIZLIK: DEBUG=0 (server) da bu ro'yxat HAR DOIM bo'sh. Serverda o'zgaruvchi
+#  berilgan bo'lsa, server ishga tushmaydi — tasodifan qolib ketmasin.
+# ──────────────────────────────────────────────────────────────
+_SINOV_XOM = os.environ.get('DJANGO_SINOV_MIJOZ', '')
+if not DEBUG and _SINOV_XOM:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        "DJANGO_SINOV_MIJOZ faqat ishlab chiqishda (DJANGO_DEBUG=1) ruxsat etiladi — "
+        "serverda uni .env dan olib tashlang.")
+SINOV_MIJOZ = {}
+if DEBUG:
+    SINOV_MIJOZ = {'+998900000002': '123456'}
+    for _juft in filter(None, (x.strip() for x in _SINOV_XOM.split(','))):
+        _tel, _, _kod = _juft.partition(':')
+        if _tel.strip() and _kod.strip().isdigit() and len(_kod.strip()) == 6:
+            SINOV_MIJOZ[_tel.strip()] = _kod.strip()
+
+# ──────────────────────────────────────────────────────────────
+#  XODIMLAR JOYLASHUVI (faqat smena davomida, xodim roziligi bilan)
+# ──────────────────────────────────────────────────────────────
+JOYLASHUV_MIN_SONIYA = 15      # Nuqtalar orasidagi eng kam vaqt (server shundan tezini tashlaydi)
+JOYLASHUV_ALOQA_SONIYA = 120   # Shuncha vaqt nuqta kelmasa, xodim "aloqada emas" hisoblanadi
+JOYLASHUV_SMENA_MAX_SOAT = 16  # Unutilgan smena shuncha soatdan keyin o'zi yopiladi
+JOYLASHUV_SAQLASH_KUN = 30     # Nuqtalar shuncha kundan keyin o'chiriladi (joylashuv_tozala)
+JOYLASHUV_YAQIN_DAQIQA = 10    # "Eng yaqin xodim": oxirgi nuqtasi shuncha daqiqadan eski bo'lmagan smenadagilar hisobga olinadi
+YAQIN_MAX_VAZIFA = 5           # Eng yaqinga avtomatik yuborishda: faol vazifasi shundan ko'p xodimga yuborilmaydi
+
 # Boshqaruv paneli (rol='admin') kirishi — eng yuqori huquqli nuqta, shuning
 # uchun cheklov qattiqroq: bu blok o'zi ochilmaydi. Hisob 'nofaol' bo'lib
 # qoladi va uni faqat tizim egasi Django admin panelidan qayta faollashtiradi
 # (holat -> faol) hamda yangi parol beradi.
 ADMIN_URINISH_LIMIT = 4
 
+# «Uning ko'zi bilan ko'rish» tokeni muddati (daqiqa). Yangilanmaydi: tugagach
+# egasi boshqaruv panelidan qaytadan ochadi.
+KORISH_DAQIQA = 30
+
 # Boshqaruv paneli sessiyasi. Mijoz tokeni bir yil yashaydi (SIMPLE_JWT),
 # admin uchun esa qisqa: ochiq qolgan kompyuter yoki o'g'irlangan token
 # uzoq muddat ishlab turmasligi kerak. Panel ham shu vaqtdan keyin
 # foydalanuvchini avtomatik chiqaradi.
-ADMIN_SESSIYA_DAQIQA = 30
+ADMIN_SESSIYA_DAQIQA = 120
 
 # Boshqaruv paneliga ikki bosqichli kirish: parol + telefonga keladigan SMS kod.
 # Parol o'g'irlansa ham telefonsiz kirib bo'lmaydi. O'chirish uchun: DJANGO_ADMIN_2FA=0
@@ -226,6 +362,10 @@ ADMIN_2FA_URINISH = 3        # Kodni necha marta xato kiritish mumkin
 #  Serverda: SMS_PROVAYDER=eskiz, ESKIZ_EMAIL, ESKIZ_PAROL, ESKIZ_FROM
 #  Sozlanmasa — kodlar faqat log'ga chiqadi (dev rejim).
 # ──────────────────────────────────────────────────────────────
+# Mijozga SMS bilan boradigan hujjat havolalari (kvitansiya, shartnoma) shu manzildan boshlanadi.
+# Serverda ALBATTA o'z domeningiz: DJANGO_SAYT_MANZIL=https://soargaz.uz
+SAYT_MANZIL = os.environ.get('DJANGO_SAYT_MANZIL', 'http://localhost:8001')
+
 SMS_PROVAYDER = os.environ.get('SMS_PROVAYDER', 'konsol')
 ESKIZ_EMAIL = os.environ.get('ESKIZ_EMAIL', '')
 ESKIZ_PAROL = os.environ.get('ESKIZ_PAROL', '')
@@ -302,3 +442,10 @@ KARTA_PROVAYDER = 'click'          # 'click' yoki 'payme'
 # Buyurtma operator tomonidan tasdiqlanadi, shartnoma rasmiylashtiriladi.
 BOLIB_TOLASH = {3: 0, 6: 10, 12: 20}
 BOLIB_ENG_KAM_SUMMA = 1000000      # Shu summadan past buyurtmaga bo'lib to'lash berilmaydi
+
+# Manzil -> xarita koordinatasi (operator arizada manzil yozganda xarita o'zi joyni topadi).
+# OpenStreetMap Nominatim: faqat MANZIL matni yuboriladi (mijoz ismi/telefoni yuborilmaydi), natijalar keshlanadi.
+GEOKOD_URL = os.environ.get('GEOKOD_URL', 'https://nominatim.openstreetmap.org/search')
+GEOKOD_USER_AGENT = os.environ.get('GEOKOD_USER_AGENT', f'SoarGaz/1.0 ({SAYT_MANZIL})')
+GEOKOD_STANDART_HUDUD = "Buxoro viloyati"     # tuman/shaharda viloyat ko'rsatilmasa qidiruvga qo'shiladi
+GEOKOD_TIMEOUT = 6

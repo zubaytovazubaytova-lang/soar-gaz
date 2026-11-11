@@ -1,32 +1,97 @@
 import random
 import secrets
 import string
+import time
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from rest_framework import status, generics
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny, SAFE_METHODS
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import ValidationError
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from apps.sms_app.gateway import sms_yubor, sozlanganmi as sms_sozlanganmi
 from .hududlar import HUDUDLAR_XARITASI
-from .models import Foydalanuvchi, OtpKod, AuditYozuv, audit_yoz, kirish_kodi_yasa
+from .kabinet_turlari import kabinet_malumoti
+from .throttles import (
+    KirishThrottle, OtpYuborishThrottle, OtpTasdiqThrottle, RoyxatThrottle,
+    TokenYangilashThrottle, TasdiqKodiThrottle,
+)
+from .models import Foydalanuvchi, IshHaqi, Sertifikat, OtpKod, AuditYozuv, audit_yoz, kirish_kodi_yasa
 from .serializers import (
-    FoydalanuvchiSerializer, XodimSerializer, ProfilSerializer, RoyxatSerializer,
+    FoydalanuvchiSerializer, XodimSerializer, XodimJamoaSerializer, ProfilSerializer, RoyxatSerializer,
     XodimProfilSerializer, XodimYaratishSerializer, XodimHolatSerializer,
 )
 
 
+# Django paneliga kiradigan, cheklangan huquqli rahbar guruhi (manage.py direktor_guruhi)
+
+
+# Refresh token brauzerda httpOnly cookie'da turadi: JavaScript (demak XSS ham) uni
+# o'qiy olmaydi. Cookie faqat /api/auth/ ga yuboriladi. Mobil ilova cookie ishlatmaydi —
+# u `X-Klient: mobil` sarlavhasi bilan refresh'ni javob tanasida oladi.
+# Mijoz va xodim sessiyalari ALOHIDA cookie'larda: bitta brauzerda ham mijoz, ham xodim
+# sifatida kirilsa, bir sessiya ikkinchisining tokenini almashtirib yubormasin.
+REFRESH_COOKIE = 'sg_refresh'
+REFRESH_COOKIE_XODIM = 'sg_refresh_xodim'
+REFRESH_COOKIE_YOL = '/api/auth/'
+XODIM_REFRESH_KUN = 14       # xodim sessiyasi mijozniki (90 kun) kabi uzun bo'lmasin
+
+
 def _tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
+    if user.rol == 'xodim':
+        refresh.set_exp(lifetime=timezone.timedelta(days=XODIM_REFRESH_KUN))
     return {
         'access': str(refresh.access_token),
         'refresh': str(refresh),
+        'xodim': user.rol == 'xodim',
     }
+
+
+def _cookie_nomi(xodim):
+    return REFRESH_COOKIE_XODIM if xodim else REFRESH_COOKIE
+
+
+def _mobil(request):
+    return request.headers.get('X-Klient', '').lower() == 'mobil'
+
+
+def _refresh_cookie_yoz(javob, refresh_matn, xodim=False, doimiy=True):
+    """doimiy=False — «meni eslab qolma»: cookie brauzer yopilganda o'chadi (muddatsiz)."""
+    muddat = max(int(RefreshToken(refresh_matn)['exp'] - time.time()), 0)
+    javob.set_cookie(
+        _cookie_nomi(xodim), refresh_matn, max_age=muddat if doimiy else None, httponly=True,
+        secure=not settings.DEBUG, samesite='Lax', path=REFRESH_COOKIE_YOL,
+    )
+
+
+def _refresh_cookie_ochir(javob, xodim=False):
+    javob.delete_cookie(_cookie_nomi(xodim), path=REFRESH_COOKIE_YOL, samesite='Lax')
+
+
+def _xodim_sessiya(request):
+    """Mijoz va xodim sahifalari o'z sessiyasini `sessiya: "xodim"` bilan ajratadi."""
+    return request.data.get('sessiya') == "xodim"
+
+
+def _tokenli_javob(request, tokens, qoshimcha=None, status_kodi=200):
+    """Kirish javobi: access tanada, refresh — cookie'da (mobil ilovada tanada)."""
+    tana = {'access': tokens['access'], **(qoshimcha or {})}
+    mobil = _mobil(request)
+    if mobil:
+        tana['refresh'] = tokens['refresh']
+    javob = Response(tana, status=status_kodi)
+    if not mobil:
+        _refresh_cookie_yoz(javob, tokens['refresh'], tokens.get('xodim', False),
+                            doimiy=request.data.get('eslab') is not False)
+    return javob
 
 
 def _admin_tokens(user):
@@ -45,6 +110,80 @@ def _admin_tokens(user):
     return {'access': str(access), 'refresh': str(refresh)}
 
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([TokenYangilashThrottle])
+def token_yangilash(request):
+    """POST /api/auth/token/yangilash/ — jimgina yangi access token olish.
+
+    Refresh token cookie'dan olinadi (eski mijozlar — tanadan: bir martalik ko'chish).
+    Har safar refresh ham yangilanadi, eskisi esa bekor qilinadi.
+    """
+    xodim = _xodim_sessiya(request)
+
+    def rad():
+        javob = Response({'detail': _('Sessiya tugagan. Qaytadan kiring.')}, status=401)
+        _refresh_cookie_ochir(javob, xodim)
+        return javob
+
+    xom = request.COOKIES.get(_cookie_nomi(xodim)) or request.data.get('refresh')
+    if not xom:
+        return rad()
+    try:
+        token = RefreshToken(xom)
+    except TokenError:
+        return rad()
+
+    # Bloklangan hisob (xodim bo'shatilgan, mijoz o'chirilgan) yangi token ololmaydi;
+    # mijoz tokeni xodim sessiyasida (yoki aksincha) ishlamaydi
+    egasi = Foydalanuvchi.objects.filter(pk=token.get('user_id')).first()
+    if not egasi or egasi.holat != 'faol' or (egasi.rol == 'xodim') != xodim:
+        try:
+            token.blacklist()
+        except TokenError:
+            pass
+        return rad()
+
+    ser = TokenRefreshSerializer(data={'refresh': xom})
+    try:
+        ser.is_valid(raise_exception=True)
+    except (TokenError, ValidationError):
+        return rad()
+
+    yangi = ser.validated_data
+    tana = {'access': yangi['access']}
+    mobil = _mobil(request)
+    if mobil and yangi.get('refresh'):
+        tana['refresh'] = yangi['refresh']
+    javob = Response(tana)
+    if not mobil and yangi.get('refresh'):
+        _refresh_cookie_yoz(javob, yangi['refresh'], xodim,
+                            doimiy=request.data.get('eslab') is not False)
+    return javob
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def chiqish(request):
+    """POST /api/auth/chiqish/ — refresh tokenni bekor qiladi va cookie'ni o'chiradi (logout).
+
+    Token o'zi egalik dalili, shuning uchun kirish talab qilinmaydi. Yaroqsiz yoki
+    allaqachon bekor qilingan token ham xato bermaydi: mijoz baribir chiqib ketadi.
+    Access token muddati tugaguncha (30 daqiqa) ishlaydi — refresh esa endi yangi
+    access bera olmaydi.
+    """
+    xodim = _xodim_sessiya(request)
+    for xom in {request.COOKIES.get(_cookie_nomi(xodim)), request.data.get('refresh')}:
+        if xom:
+            try:
+                RefreshToken(xom).blacklist()
+            except TokenError:
+                pass
+    javob = Response({'detail': _('Tizimdan chiqildi')})
+    _refresh_cookie_ochir(javob, xodim)
+    return javob
+
+
 def _user_data(user):
     return {
         'id': user.id,
@@ -58,6 +197,8 @@ def _user_data(user):
         # Tizim egasi (superuser) va oddiy admin farqi: egasi xodimni nofaol
         # qila oladi, boshqa adminlar (masalan direktor) — yo'q.
         'egasi': bool(user.is_superuser),
+        # Direktor — kuzatuvchi: hamma narsani ko'radi, hech narsani o'zgartira olmaydi (apps/auth_app/korish.py)
+        'kuzatuvchi': user.rol == 'admin' and not user.is_superuser,
         'holat': user.holat,
         'qoshimcha_telefon': user.qoshimcha_telefon,
         'email': user.email,
@@ -68,6 +209,7 @@ def _user_data(user):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([KirishThrottle])
 def admin_login(request):
     """Boshqaruv paneliga kirish — telefon + parol.
 
@@ -120,6 +262,9 @@ def admin_login(request):
             status=401)
 
     cache.delete(f'admin:urinish:{telefon}')
+
+    # Direktor ham /boshqaruv/ da ishlaydi (kuzatuvchi: faqat ko'radi — apps/auth_app/korish.py).
+    # Django paneli (/admin/) esa faqat tizim egasi uchun.
 
     # ── Parol to'g'ri. Ikkinchi bosqich: telefonga SMS kod ──
     if settings.ADMIN_2FA:
@@ -176,6 +321,7 @@ def _telefon_maskasi(telefon):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([OtpTasdiqThrottle])
 def admin_otp_tasdiqlash(request):
     """Boshqaruv paneliga kirishning ikkinchi bosqichi — SMS kod.
 
@@ -235,6 +381,7 @@ def admin_otp_tasdiqlash(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([RoyxatThrottle])
 def royxatdan_otish(request):
     """Mijoz ro'yxatdan o'tadi va darhol tizimga kiradi.
     Yaratilgan hisob Django admin panelida (rol='mijoz') ko'rinadi."""
@@ -243,8 +390,8 @@ def royxatdan_otish(request):
         return Response(ser.errors, status=400)
 
     user = ser.save()
-    tokens = _tokens_for_user(user)
-    return Response({**tokens, 'user': _user_data(user)}, status=status.HTTP_201_CREATED)
+    return _tokenli_javob(request, _tokens_for_user(user), {'user': _user_data(user)},
+                          status.HTTP_201_CREATED)
 
 
 def _send_otp_sms(telefon, kod):
@@ -276,6 +423,7 @@ def _otp_cheklov(telefon):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([OtpYuborishThrottle])
 def otp_yuborish(request):
     telefon = request.data.get('telefon', '').replace(' ', '')
     if not telefon:
@@ -296,10 +444,12 @@ def otp_yuborish(request):
         yangi_mijoz = True
         rol = 'mijoz'
 
-    kod = ''.join(random.choices(string.digits, k=6))
+    # Sinov raqami (faqat DEBUG=1): SMS yuborilmaydi, kod doim bir xil. Serverda ro'yxat bo'sh.
+    sinov_kod = (getattr(settings, 'SINOV_MIJOZ', None) or {}).get(telefon) if settings.DEBUG else None
+    kod = sinov_kod or ''.join(random.choices(string.digits, k=6))
     OtpKod.objects.create(telefon=telefon, kod=kod)
 
-    if not _send_otp_sms(telefon, kod):
+    if not sinov_kod and not _send_otp_sms(telefon, kod):
         return Response(
             {'detail': _("SMS yuborilmadi. Birozdan keyin urinib ko'ring yoki operatorga murojaat qiling.")},
             status=502,
@@ -315,6 +465,7 @@ def otp_yuborish(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([OtpTasdiqThrottle])
 def otp_tasdiqlash(request):
     telefon = request.data.get('telefon', '').replace(' ', '')
     kod = request.data.get('kod', '').strip()
@@ -356,8 +507,77 @@ def otp_tasdiqlash(request):
         defaults={'rol': 'mijoz'}
     )
 
-    tokens = _tokens_for_user(user)
-    return Response({**tokens, 'user': _user_data(user)})
+    return _tokenli_javob(request, _tokens_for_user(user), {'user': _user_data(user)})
+
+
+# ──────────────────────────────────────────────────────────────
+#  Maxfiy amallar uchun SMS bilan qayta tasdiqlash (step-up)
+#
+#  Token o'g'irlangan bo'lsa ham hujumchi egasining TELEFONIGA kelgan kodni
+#  ola olmaydi, shuning uchun email / qo'shimcha telefon almashtirish yoki
+#  hisobni o'chirish uning qo'lidan kelmaydi.
+# ──────────────────────────────────────────────────────────────
+TASDIQ_MAYDONLARI = ('email', 'qoshimcha_telefon')
+
+
+def tasdiq_kodini_sarfla(user, kod):
+    """Maxfiy amal uchun SMS kodni tekshiradi va sarflaydi.
+
+    Muvaffaqiyatda None, aks holda tayyor `Response` (view uni shundayligicha qaytaradi).
+    """
+    kod = str(kod or '').strip()
+    if not kod:
+        return Response({
+            'detail': _("Bu amal uchun telefoningizga yuborilgan SMS kodni kiriting"),
+            'kod_kerak': True,
+        }, status=403)
+
+    telefon = user.telefon
+    if cache.get(_kesh_kaliti('blok', telefon)):
+        return Response(
+            {'detail': _("Juda ko'p noto'g'ri urinish. Birozdan keyin qayta urinib ko'ring.")},
+            status=429)
+
+    otp = OtpKod.objects.filter(
+        telefon=telefon, kod=kod, ishlatildi=False).order_by('-yaratilgan').first()
+    if not otp or otp.muddati_utganmi():
+        urinish = cache.get(_kesh_kaliti('urinish', telefon), 0) + 1
+        cache.set(_kesh_kaliti('urinish', telefon), urinish, settings.OTP_EXPIRE_MINUTES * 60)
+        if urinish >= settings.OTP_URINISH_LIMIT:
+            cache.set(_kesh_kaliti('blok', telefon), 1, settings.OTP_BLOK_DAQIQA * 60)
+            return Response(
+                {'detail': _("Juda ko'p noto'g'ri urinish. Hisobingiz vaqtincha bloklandi.")},
+                status=429)
+        return Response({'detail': _("Kod noto'g'ri yoki muddati tugagan"), 'kod_kerak': True},
+                        status=400)
+
+    otp.ishlatildi = True
+    otp.save()
+    cache.delete(_kesh_kaliti('urinish', telefon))
+    return None
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([TasdiqKodiThrottle])
+def tasdiq_kodi_yuborish(request):
+    """POST /api/auth/tasdiq-kodi/ — kirgan foydalanuvchining O'Z telefoniga SMS kod yuboradi."""
+    telefon = request.user.telefon
+    xato, kod_holat = _otp_cheklov(telefon)
+    if xato:
+        return Response({'detail': xato}, status=kod_holat)
+
+    sinov_kod = (getattr(settings, 'SINOV_MIJOZ', None) or {}).get(telefon) if settings.DEBUG else None
+    kod = sinov_kod or ''.join(random.choices(string.digits, k=6))
+    OtpKod.objects.create(telefon=telefon, kod=kod)
+    if not sinov_kod and not _send_otp_sms(telefon, kod):
+        return Response(
+            {'detail': _("SMS yuborilmadi. Birozdan keyin urinib ko'ring.")}, status=502)
+
+    cache.set(_kesh_kaliti('oxirgi', telefon), 1, settings.OTP_QAYTA_SONIYA)
+    soatlik = cache.get(_kesh_kaliti('soatlik', telefon), 0)
+    cache.set(_kesh_kaliti('soatlik', telefon), soatlik + 1, 3600)
+    return Response({'yuborildi': True})
 
 
 @api_view(['PATCH', 'GET'])
@@ -366,6 +586,18 @@ def profil(request):
     user = request.user
     if request.method == 'GET':
         return Response(_user_data(user))
+
+    # Email / qo'shimcha telefon ENDI O'ZGARSA SMS kod talab qilinadi. Qiymat
+    # o'zgarmasa (forma hamma maydonni qayta yuboradi) kod so'ralmaydi.
+    ozgardi = [
+        f for f in TASDIQ_MAYDONLARI
+        if f in request.data
+        and str(request.data.get(f) or '').strip() != str(getattr(user, f) or '').strip()
+    ]
+    if ozgardi:
+        rad = tasdiq_kodini_sarfla(user, request.data.get('tasdiq_kodi'))
+        if rad:
+            return rad
 
     ser = ProfilSerializer(user, data=request.data, partial=True)
     if ser.is_valid():
@@ -404,11 +636,14 @@ def _xodim_data(user):
         'qoshimcha_telefon': user.qoshimcha_telefon,
         'ishga_kirgan': user.ishga_kirgan,
         'holat': user.holat,
+        # Lavozimga qarab kabinet menyusi (kirish hamma uchun bir xil)
+        'kabinet': kabinet_malumoti(user.lavozim),
     }
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([KirishThrottle])
 def xodim_login(request):
     """Xodimlar portaliga kirish — telefon + admin bergan KIRISH KODI.
 
@@ -474,7 +709,7 @@ def xodim_login(request):
     if user.holat == 'nofaol':
         return Response({'detail': _('Hisobingiz bloklangan. Admin bilan bog\'laning.')}, status=403)
 
-    return Response({**_tokens_for_user(user), 'xodim': _xodim_data(user)})
+    return _tokenli_javob(request, _tokens_for_user(user), {'xodim': _xodim_data(user)})
 
 
 @api_view(['GET', 'PATCH'])
@@ -494,6 +729,30 @@ def xodim_profil(request):
         return Response(ser.errors, status=400)
     ser.save()
     return Response(_xodim_data(user))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def xodim_sertifikatlar(request):
+    """Xodimning O'Z sertifikatlari (faqat o'qish). Muddati tez tugaydiganlari `yaqin` holatida."""
+    if request.user.rol != 'xodim':
+        return Response({'detail': _('Faqat xodimlar uchun')}, status=403)
+    return Response([{
+        'id': s.id, 'nomi': s.nomi, 'raqami': s.raqami,
+        'berilgan': s.berilgan, 'amal_qiladi': s.amal_qiladi, 'holat': s.holat,
+    } for s in Sertifikat.objects.filter(xodim=request.user)])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def xodim_ish_haqi(request):
+    """Xodimning O'Z ish haqi tarixi (so'nggi 12 oy, faqat o'qish). Boshqa xodimniki hech qachon ko'rinmaydi."""
+    if request.user.rol != 'xodim':
+        return Response({'detail': _('Faqat xodimlar uchun')}, status=403)
+    return Response([{
+        'id': y.id, 'oy': y.oy, 'asosiy': y.asosiy, 'bonus': y.bonus,
+        'jami': y.jami, 'izoh': y.izoh,
+    } for y in IshHaqi.objects.filter(xodim=request.user)[:12]])
 
 
 @api_view(['GET'])
@@ -559,9 +818,16 @@ class FaqatAdminYozadi(IsAuthenticated):
     def has_permission(self, request, view):
         if not super().has_permission(request, view):
             return False
+        rol = getattr(request.user, 'rol', '')
         if request.method in SAFE_METHODS:
-            return True
-        return getattr(request.user, 'rol', '') == 'admin'
+            return rol in ('admin', 'xodim')          # MIJOZ xodimlar ro'yxatini ko'ra olmaydi
+        return rol == 'admin'
+
+
+def xodim_serializeri(user):
+    """Administrator — to'liq (kirish kodi bilan), oddiy xodim — kodsiz.
+    Kirish kodi xodimning parolini bosib turadi: uni boshqa xodim ko'rsa, uning nomidan kira oladi."""
+    return XodimSerializer if getattr(user, 'rol', '') == 'admin' else XodimJamoaSerializer
 
 
 class XodimlarView(generics.ListCreateAPIView):
@@ -576,7 +842,7 @@ class XodimlarView(generics.ListCreateAPIView):
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return XodimYaratishSerializer
-        return XodimSerializer
+        return xodim_serializeri(self.request.user)
 
     def get_queryset(self):
         return Foydalanuvchi.objects.filter(rol='xodim').order_by('ism')
@@ -588,6 +854,39 @@ class XodimlarView(generics.ListCreateAPIView):
         audit_yoz(request, 'xodim_qoshildi', f'{xodim.ism or xodim.telefon} ({xodim.lavozim})')
         # Ro'yxatdagi kabi to'liq ma'lumot qaytaramiz — panel uni darrov chizadi
         return Response(XodimSerializer(xodim).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def korish_boshlash(request, pk):
+    """Egasi xodim yoki mijoz portalini o'sha foydalanuvchi nomidan FAQAT O'QISH
+    rejimida ochadi (apps/auth_app/korish.py). Qisqa muddatli, yangilanmaydigan token
+    qaytadi; har ochish Faoliyat jurnaliga yoziladi.
+
+    Faqat tizim egasi (superuser) uchun. Admin hisoblari nomidan ko'rib bo'lmaydi.
+    """
+    if not (getattr(request.user, 'rol', '') == 'admin' and request.user.is_superuser):
+        return Response({'detail': _("Bu amal faqat tizim egasi uchun")}, status=403)
+
+    try:
+        hedaf = Foydalanuvchi.objects.get(pk=pk, rol__in=('xodim', 'mijoz'))
+    except Foydalanuvchi.DoesNotExist:
+        return Response({'detail': _('Foydalanuvchi topilmadi')}, status=404)
+
+    token = AccessToken.for_user(hedaf)
+    token.set_exp(lifetime=timezone.timedelta(minutes=settings.KORISH_DAQIQA))
+    token['korish'] = True
+    token['korish_egasi'] = request.user.pk
+
+    nom = hedaf.ism or hedaf.telefon
+    audit_yoz(request, 'korish_boshlandi', f"{nom} ({hedaf.rol}, {hedaf.telefon}) nomidan")
+    return Response({
+        'access': str(token),
+        'ism': nom,
+        'rol': hedaf.rol,
+        'portal': '/xodimlar/' if hedaf.rol == 'xodim' else '/kabinet/',
+        'muddat_daqiqa': settings.KORISH_DAQIQA,
+    })
 
 
 @api_view(['POST'])
@@ -626,7 +925,7 @@ class XodimDetailView(generics.RetrieveUpdateAPIView):
     def get_serializer_class(self):
         if self.request.method in ('PATCH', 'PUT'):
             return XodimHolatSerializer
-        return XodimSerializer
+        return xodim_serializeri(self.request.user)
 
     def update(self, request, *args, **kwargs):
         # Xodimni NOFAOL qilish — qaytarib bo'lmaydigan darajadagi amal:

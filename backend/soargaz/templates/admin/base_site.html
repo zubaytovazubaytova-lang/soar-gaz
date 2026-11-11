@@ -1,0 +1,59 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></h1>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{# Django standart shablonidan farqi: faqat quyidagi blok — barcha parol maydonlariga «ko'zcha»
+   (parolni ko'rib tekshirish). Kirish, parol o'zgartirish va xodim parolini belgilash sahifalarida ishlaydi. #}
+{% block extrahead %}{{ block.super }}
+<style>
+  .parol-quti{position:relative;display:inline-block;max-width:100%;}
+  .parol-quti > input{padding-right:42px !important;}
+  .parol-kozcha{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;
+    background:transparent;color:var(--body-quiet-color,#666);cursor:pointer;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;padding:0;}
+  .parol-kozcha:hover{color:var(--link-fg,#417690);background:var(--darkened-bg,#f8f8f8);}
+  .parol-kozcha:focus-visible{outline:2px solid var(--link-fg,#417690);}
+</style>
+<script nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function () {
+  var OCH = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var YOP = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 19c-6.4 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 5c6.4 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>';
+  document.querySelectorAll('input[type="password"]').forEach(function (inp) {
+    if (inp.dataset.kozcha) return;
+    inp.dataset.kozcha = '1';
+    var eni = inp.offsetWidth;                       // kenglik o'zgarmasin (login sahifasida 100%)
+    var quti = document.createElement('span');
+    quti.className = 'parol-quti';
+    if (eni) quti.style.width = eni + 'px';
+    inp.parentNode.insertBefore(quti, inp);
+    quti.appendChild(inp);
+    var tugma = document.createElement('button');
+    tugma.type = 'button';
+    tugma.className = 'parol-kozcha';
+    tugma.title = "Parolni ko'rsatish";
+    tugma.setAttribute('aria-label', "Parolni ko'rsatish");
+    tugma.setAttribute('aria-pressed', 'false');
+    tugma.innerHTML = OCH;
+    tugma.addEventListener('click', function () {
+      var ochiq = inp.type === 'password';
+      inp.type = ochiq ? 'text' : 'password';
+      tugma.innerHTML = ochiq ? YOP : OCH;
+      tugma.title = ochiq ? 'Parolni yashirish' : "Parolni ko'rsatish";
+      tugma.setAttribute('aria-label', tugma.title);
+      tugma.setAttribute('aria-pressed', String(ochiq));
+      inp.focus();
+    });
+    quti.appendChild(tugma);
+  });
+});
+</script>
+{% endblock %}

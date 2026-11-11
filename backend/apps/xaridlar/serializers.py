@@ -28,8 +28,27 @@ class XaridQatoriSerializer(serializers.ModelSerializer):
         fields = ['productId', 'slug', 'name', 'price', 'qty', 'image']
 
 
+def niqob_ism(ism):
+    """«Ali Valiyev» -> «Ali V.»"""
+    qismlar = (ism or '').split()
+    if not qismlar:
+        return ''
+    return qismlar[0] + (f' {qismlar[1][0]}.' if len(qismlar) > 1 else '')
+
+
+def niqob_telefon(telefon):
+    """«+998901234567» -> «+998 ** *** ** 67»"""
+    raqamlar = ''.join(ch for ch in (telefon or '') if ch.isdigit())
+    return '+998 ** *** ** ' + raqamlar[-2:] if len(raqamlar) >= 2 else ''
+
+
 class XaridSerializer(serializers.ModelSerializer):
-    """Faqat o'qish uchun — yozish `xarid_yaratish` view'ida."""
+    """Faqat o'qish uchun — yozish `xarid_yaratish` view'ida.
+
+    `context={'yashirin': True}` — buyurtma egasi tasdiqlanmagan so'rovchi uchun:
+    ism va telefon niqoblanadi, manzil, koordinatalar, kuryer ma'lumoti va yetkazish
+    izohi umuman berilmaydi (buyurtma raqamini bilish egalik dalili emas).
+    """
     id = serializers.CharField(source='raqam', read_only=True)
     createdAt = serializers.DateTimeField(source='yaratilgan', read_only=True)
     status = serializers.CharField(source='holat', read_only=True)
@@ -46,11 +65,20 @@ class XaridSerializer(serializers.ModelSerializer):
         fields = ['id', 'createdAt', 'status', 'customer', 'delivery',
                   'payment', 'installService', 'items', 'total', 'totals']
 
+    def to_representation(self, obj):
+        d = super().to_representation(obj)
+        if self.context.get('yashirin'):
+            d['restricted'] = True
+        return d
+
     def get_customer(self, obj):
+        if self.context.get('yashirin'):
+            return {'name': niqob_ism(obj.ism), 'phone': niqob_telefon(obj.telefon), 'address': ''}
         return {'name': obj.ism, 'phone': obj.telefon, 'address': obj.manzil}
 
     def get_delivery(self, obj):
-        d = {'method': obj.yetkazish, 'note': obj.yetkazish_izohi,
+        yashirin = self.context.get('yashirin')
+        d = {'method': obj.yetkazish, 'note': '' if yashirin else obj.yetkazish_izohi,
              'time': obj.yetkazish_vaqti, 'price': obj.yetkazish_narxi,
              'region': obj.tuman, 'eta': obj.yetkazish_muddati}
 
@@ -66,7 +94,7 @@ class XaridSerializer(serializers.ModelSerializer):
 
         # Kuryer joylashuvi faqat yo'lda bo'lgan buyurtmalarda ochiladi —
         # yetkazib berilgandan keyin kuryerni kuzatishning hojati yo'q
-        if obj.holat in KURYER_HOLATLARI and obj.kuryer_lat is not None:
+        if not yashirin and obj.holat in KURYER_HOLATLARI and obj.kuryer_lat is not None:
             d['courier'] = {
                 'lat': obj.kuryer_lat,
                 'lng': obj.kuryer_lng,
@@ -74,7 +102,7 @@ class XaridSerializer(serializers.ModelSerializer):
                 'name': obj.kuryer.ism if obj.kuryer else '',
                 'phone': obj.kuryer.telefon if obj.kuryer else '',
             }
-        if obj.manzil_lat is not None:
+        if not yashirin and obj.manzil_lat is not None:
             d['destination'] = {'lat': obj.manzil_lat, 'lng': obj.manzil_lng}
         return d
 
@@ -124,12 +152,19 @@ class XaridKirishSerializer(serializers.Serializer):
         months = serializers.IntegerField(required=False, min_value=0, max_value=36, default=0)
 
     class _Item(serializers.Serializer):
-        productId = serializers.CharField(max_length=60)
-        slug = serializers.SlugField(max_length=160)
-        name = serializers.CharField(max_length=200)
-        price = serializers.IntegerField(min_value=0)
+        # Faqat id va miqdor. Narx/nom/rasm mijozdan QABUL QILINMAYDI —
+        # ular apps.xaridlar.mahsulotlar orqali serverdagi katalogdan olinadi.
+        productId = serializers.CharField(max_length=60, required=False, allow_blank=True)
+        # Marketing sayti katalogi: `kalit` (narx KatalogNarx dan olinadi) + ko'rsatish uchun nom
+        kalit = serializers.CharField(max_length=80, required=False, allow_blank=True)
+        name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+        image = serializers.CharField(max_length=60, required=False, allow_blank=True)
         qty = serializers.IntegerField(min_value=1, max_value=999)
-        image = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+        def validate(self, d):
+            if not (d.get('productId') or d.get('kalit') or d.get('name')):
+                raise serializers.ValidationError(_("Mahsulot ko'rsatilmagan"))
+            return d
 
     customer = _Customer()
     delivery = _Delivery(required=False)

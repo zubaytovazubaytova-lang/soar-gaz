@@ -5,6 +5,8 @@ urlpatterns = [
     path('sorov/', views.sorov_yaratish),
     # Mahsulot (katalog) so'rovlari
     path('mahsulot-sorov/', views.mahsulot_sorov_yaratish),
+    # Metrologiya bo'limi arizasi (ochiq)
+    path('metrologiya-ariza/', views.metrologiya_ariza_yaratish),
     path('mahsulot-sorovlar/', views.mahsulot_sorovlar_list),
     path('mahsulot-sorovlar/<int:pk>/', views.mahsulot_sorov_update),
     path('', views.tolovlar_list),

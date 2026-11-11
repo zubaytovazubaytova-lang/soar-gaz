@@ -4,19 +4,21 @@ from django.db import transaction
 from django.db.models import Count, F, Q, Sum
 from django.utils import timezone
 from django.utils.translation import gettext as _
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.auth_app.models import Foydalanuvchi
+from apps.auth_app.throttles import BuyurtmaKorishThrottle, BuyurtmaTasdiqThrottle
 from apps.sms_app.gateway import sms_yubor
 from apps.sms_app.models import SmsXabar
 from apps.tolovlar.models import TolovSorovi
 from apps.tolovlar.views import _tolov_url
 
 from .hisob import hisobla, narx_qoidalari, bolib_hisobla
+from .mahsulotlar import qatorlarni_aniqla
 from .models import Xarid, XaridQatori, Promokod, ONLAYN_USULLAR
-from .tolov import tolov_sorovi_yarat, tolov_url, sozlanganmi
+from .tolov import tolov_sorovi_yarat, tolov_url, sozlanganmi, eski_sorovni_bekor
 from .serializers import (XaridSerializer, XaridKirishSerializer,
                           HOLATLAR, TOLOV_USULLARI, MUAMMOLAR)
 
@@ -35,6 +37,67 @@ def _sms_yuborish(telefon, matn):
 
 def _admin_mi(user):
     return user.is_authenticated and getattr(user, 'rol', None) == 'admin'
+
+
+# ──────────────────────────────────────────────────────────────
+#  Buyurtma egaligi
+#
+#  Buyurtma raqamini bilish egalik dalili EMAS (u chekda, SMSda, ekranda
+#  ko'rinadi). To'liq ma'lumot (ism, telefon, manzil, kuryer joylashuvi) va
+#  o'zgartiruvchi amallar (to'lov usuli, qayta yetkazish manzili) uchun:
+#    * tizimga kirgan buyurtma egasi (telefoni mos), yoki xodim/admin, yoki
+#    * telefon raqamning oxirgi 4+ raqami (mehmon xaridi uchun).
+#  Taxminlar buyurtma boshiga soatiga TASDIQ_URINISH_LIMIT ta bilan cheklanadi.
+# ──────────────────────────────────────────────────────────────
+TASDIQ_URINISH_LIMIT = 8
+
+
+def _toliq_korish_huquqi(request, xarid):
+    u = request.user
+    if not u.is_authenticated:
+        return False
+    if getattr(u, 'rol', None) in ('admin', 'xodim'):
+        return True
+    egasi = _telefon_raqamlari(u.telefon)[-9:]
+    return len(egasi) == 9 and egasi == _telefon_raqamlari(xarid.telefon)[-9:]
+
+
+def _telefon_dalili(request, xarid):
+    """Telefon oxiri (tanada `telefon` yoki `X-Telefon-Oxiri` sarlavhasida) mosmi?
+
+    True — mos; False — berilgan, lekin noto'g'ri yoki limit tugagan;
+    None — umuman berilmagan. Noto'g'ri urinishlar buyurtma boshiga sanaladi.
+    """
+    tel = _telefon_raqamlari(
+        request.headers.get('X-Telefon-Oxiri') or request.data.get('telefon') or '')
+    if not tel:
+        return None
+    kalit = f'xarid:tasdiq:{xarid.raqam}'
+    urinish = cache.get(kalit, 0)
+    if urinish >= TASDIQ_URINISH_LIMIT:
+        return False
+    if len(tel) >= 4 and _telefon_raqamlari(xarid.telefon).endswith(tel):
+        return True
+    cache.set(kalit, urinish + 1, 3600)
+    return False
+
+
+def _egalik_tekshir(request, xarid):
+    """Ruxsat bo'lsa None, aks holda tayyor `Response` qaytaradi."""
+    if _toliq_korish_huquqi(request, xarid):
+        return None
+    dalil = _telefon_dalili(request, xarid)
+    if dalil:
+        return None
+    if cache.get(f'xarid:tasdiq:{xarid.raqam}', 0) >= TASDIQ_URINISH_LIMIT:
+        return Response(
+            {'detail': _("Juda ko'p noto'g'ri urinish. Birozdan keyin qayta urinib ko'ring.")},
+            status=429)
+    return Response({
+        'detail': _("Buyurtma egasini tasdiqlash uchun telefon raqamingizning "
+                    "oxirgi 4 raqamini kiriting"),
+        'telefon_kerak': True,
+    }, status=403)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -90,10 +153,15 @@ def xaridlar_list(request):
     tolov_usuli = tolov_d.get('method', 'naqd')
     bolib_oy = int(tolov_d.get('months') or 0)
 
-    # Summa har doim server tomonda hisoblanadi (mijoz yuborgan `total`ga ishonmaymiz)
+    # Narx, nom va rasm mijozdan olinmaydi — faqat productId va qty. Qolganini
+    # server katalogdan topadi (mijoz yuborgan `price`/`total` ga ishonmaymiz).
+    qatorlar, qator_xato = qatorlarni_aniqla(d['items'])
+    if qator_xato:
+        return Response({'detail': qator_xato, 'maydon': 'items'}, status=400)
+
     tuman = yetkazish_d.get('region', '') or ''
     summa, promo, promo_xato = hisobla(
-        d['items'], yetkazish=yetkazish, ornatish=ornatish,
+        qatorlar, yetkazish=yetkazish, ornatish=ornatish,
         kod=d.get('promo', ''), tuman=tuman
     )
     # Promokod yaroqsiz bo'lsa buyurtmani to'xtatamiz — mijoz kutgan narx o'zgarib ketmasin
@@ -142,7 +210,7 @@ def xaridlar_list(request):
                 nomi=q['name'], narx=q['price'], miqdor=q['qty'],
                 rasm=q.get('image', '') or '',
             )
-            for q in d['items']
+            for q in qatorlar
         ])
         if promo:
             # Bir vaqtda kelgan so'rovlarda limit oshib ketmasligi uchun atomik o'sish
@@ -172,13 +240,15 @@ def promokod_tekshir(request):
     if not kod:
         return Response({'detail': _('Promokod kiriting')}, status=400)
 
-    qatorlar = request.data.get('items') or []
-    try:
-        qatorlar = [{'price': int(q.get('price', 0)), 'qty': int(q.get('qty', 0))} for q in qatorlar]
-    except (TypeError, ValueError):
+    items = request.data.get('items') or []
+    if not isinstance(items, list) or not all(isinstance(q, dict) for q in items):
         return Response({'detail': _("Savat ma'lumoti noto'g'ri")}, status=400)
-    if not qatorlar:
+    if not items:
         return Response({'detail': _("Savat bo'sh")}, status=400)
+    # Narx mijozdan emas, serverdagi katalogdan olinadi
+    qatorlar, qator_xato = qatorlarni_aniqla(items)
+    if qator_xato:
+        return Response({'detail': qator_xato}, status=400)
 
     summa, promo, xato = hisobla(
         qatorlar,
@@ -212,6 +282,7 @@ def promokod_tekshir(request):
 # ──────────────────────────────────────────────────────────────
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
+@throttle_classes([BuyurtmaKorishThrottle])
 def tolov_boshqarish(request, raqam):
     try:
         xarid = Xarid.objects.get(raqam=raqam)
@@ -230,6 +301,10 @@ def tolov_boshqarish(request, raqam):
         })
 
     # ── POST: qayta urinish / usulni almashtirish ──
+    # Begona buyurtmaning to'lov usulini o'zgartirib bo'lmasligi uchun egalik talab qilinadi
+    rad = _egalik_tekshir(request, xarid)
+    if rad:
+        return rad
     if xarid.tolandi:
         return Response({'detail': _("Bu buyurtma allaqachon to'langan")}, status=400)
     if xarid.holat == 'bekor':
@@ -263,8 +338,12 @@ def tolov_boshqarish(request, raqam):
     xarid.save(update_fields=['tolov_usuli', 'bolib_oy', 'oylik_tolov', 'jami', 'yangilangan'])
 
     if yangi_usul == 'naqd':
+        # Naqdga o'tilgach eski onlayn havola ham to'lanmasligi kerak
+        eski = xarid.tolov_sorovi
+        xarid.tolov_sorovi = None
         xarid.tolov_holati = ''
-        xarid.save(update_fields=['tolov_holati', 'yangilangan'])
+        xarid.save(update_fields=['tolov_sorovi', 'tolov_holati', 'yangilangan'])
+        eski_sorovni_bekor(eski)
         _sms_yuborish(xarid.telefon,
                       f"SOAR GAZ: {xarid.raqam} buyurtmangiz to'lov usuli naqd (yetkazishda) ga o'zgartirildi.")
     else:
@@ -300,6 +379,7 @@ def narxlar(request):
 # ──────────────────────────────────────────────────────────────
 @api_view(['GET', 'PATCH'])
 @permission_classes([AllowAny])
+@throttle_classes([BuyurtmaKorishThrottle])
 def xarid_detail(request, raqam):
     try:
         xarid = Xarid.objects.prefetch_related('qatorlar').get(raqam=raqam)
@@ -307,7 +387,10 @@ def xarid_detail(request, raqam):
         return Response({'detail': _('Topilmadi')}, status=404)
 
     if request.method == 'GET':
-        return Response(XaridSerializer(xarid).data)
+        # Raqamning o'zi egalik dalili emas: egasi (yoki xodim) bo'lmasa shaxsiy
+        # ma'lumotlar niqoblanadi. To'liq ko'rish — xarid_tasdiqlash (telefon bilan).
+        toliq = _toliq_korish_huquqi(request, xarid) or _telefon_dalili(request, xarid) is True
+        return Response(XaridSerializer(xarid, context={'yashirin': not toliq}).data)
 
     if not _admin_mi(request.user):
         return Response({'detail': _("Ruxsat yo'q")}, status=403)
@@ -320,6 +403,25 @@ def xarid_detail(request, raqam):
     xarid.save(update_fields=['holat', 'yangilangan'])
     # Mijozga SMS signal orqali ketadi (signals.py) — admin panelidan
     # o'zgartirilganda ham bir xil ishlashi uchun
+    return Response(XaridSerializer(xarid).data)
+
+
+# ──────────────────────────────────────────────────────────────
+#  POST /api/xaridlar/<raqam>/korish/  {telefon: "...1234"}
+#  Mehmon xaridi egasi telefonining oxirgi 4+ raqamini ko'rsatib, buyurtmaning
+#  TO'LIQ ma'lumotini (manzil, kuryer joylashuvi) oladi.
+# ──────────────────────────────────────────────────────────────
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([BuyurtmaTasdiqThrottle])
+def xarid_tasdiqlash(request, raqam):
+    try:
+        xarid = Xarid.objects.prefetch_related('qatorlar').get(raqam=raqam)
+    except Xarid.DoesNotExist:
+        return Response({'detail': _('Topilmadi')}, status=404)
+    rad = _egalik_tekshir(request, xarid)
+    if rad:
+        return rad
     return Response(XaridSerializer(xarid).data)
 
 
@@ -467,11 +569,18 @@ def yetkazish_muammosi(request, raqam):
 # ──────────────────────────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([BuyurtmaTasdiqThrottle])
 def qayta_yetkazish(request, raqam):
     try:
         xarid = Xarid.objects.get(raqam=raqam)
     except Xarid.DoesNotExist:
         return Response({'detail': _('Buyurtma topilmadi')}, status=404)
+
+    # Yetkazish manzili/vaqtini o'zgartiradi — begona odam buyurtmani boshqa joyga
+    # yo'naltira olmasligi uchun egalik talab qilinadi
+    rad = _egalik_tekshir(request, xarid)
+    if rad:
+        return rad
 
     if xarid.holat != 'muammo':
         return Response({'detail': _("Bu buyurtma qayta yetkazishni kutmayapti")}, status=400)

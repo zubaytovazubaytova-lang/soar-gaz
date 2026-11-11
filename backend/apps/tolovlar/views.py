@@ -3,16 +3,23 @@ import hashlib
 from urllib.parse import urlencode
 
 from django.conf import settings
+from django.db import transaction
 from django.utils.translation import gettext as _
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.auth_app.models import Foydalanuvchi
 from apps.sms_app.gateway import sms_yubor
 from apps.sms_app.models import SmsXabar
-from .models import TolovSorovi, MahsulotSorovi
-from .serializers import TolovSoroviSerializer, MahsulotSoroviSerializer
+from rest_framework.throttling import AnonRateThrottle
+
+import hmac
+
+from .models import TolovSorovi, MahsulotSorovi, MetrologiyaArizasi
+from .payme import payme_endpoint  # noqa: F401  (urls.py views.payme_endpoint ni ishlatadi)
+from .serializers import (TolovSoroviSerializer, MahsulotSoroviSerializer,
+                          MetrologiyaArizasiSerializer)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -196,19 +203,44 @@ def _click_error(code, note):
     return Response({'error': code, 'error_note': note})
 
 
+def _click_sorov(d, secret, complete=False):
+    """Imzo, so'rov va summani tekshiradi. Qaytadi: (sorov, None) yoki (None, javob)."""
+    if not secret:
+        return None, _click_error(-9, 'Click sozlanmagan')
+    imzo = str(d.get('sign_string') or '')
+    if not hmac.compare_digest(imzo, _click_signature(d, secret, complete=complete)):
+        return None, _click_error(-1, 'Imzo xato')
+    try:
+        sorov = TolovSorovi.objects.select_for_update().get(
+            pk=d.get('merchant_trans_id'), tolov_tizimi='click')
+    except (TolovSorovi.DoesNotExist, ValueError, TypeError):
+        return None, _click_error(-5, "So'rov topilmadi")
+    # To'langan summa so'rov summasiga mos kelishi shart
+    try:
+        summa_mos = abs(float(d.get('amount', 0)) - float(sorov.summa)) < 1
+    except (TypeError, ValueError):
+        summa_mos = False
+    if not summa_mos:
+        return None, _click_error(-2, "Summa noto'g'ri")
+    if sorov.holat == 'tolandi':
+        return None, _click_error(-4, "Allaqachon to'langan")
+    if sorov.holat == 'bekor':
+        return None, _click_error(-9, 'Tranzaksiya bekor qilingan')
+    return sorov, None
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def click_prepare(request):
-    secret = getattr(settings, 'CLICK_SECRET_KEY', '')
-    if not secret:
-        return _click_error(-9, 'Click sozlanmagan')
     d = request.data
-    if d.get('sign_string') != _click_signature(d, secret):
-        return _click_error(-1, 'Imzo xato')
-    try:
-        sorov = TolovSorovi.objects.get(pk=d.get('merchant_trans_id'))
-    except (TolovSorovi.DoesNotExist, ValueError, TypeError):
-        return _click_error(-5, 'So\'rov topilmadi')
+    with transaction.atomic():
+        sorov, xato = _click_sorov(d, getattr(settings, 'CLICK_SECRET_KEY', ''))
+        if xato:
+            return xato
+        # Click tranzaksiya id sini eslab qolamiz: Complete shu id bilan kelishi shart
+        sorov.tashqi_id = str(d.get('click_trans_id', ''))
+        sorov.holat = 'kutilmoqda'
+        sorov.save(update_fields=['tashqi_id', 'holat', 'yangilangan'])
     return Response({
         'click_trans_id': d.get('click_trans_id'),
         'merchant_trans_id': d.get('merchant_trans_id'),
@@ -221,28 +253,25 @@ def click_prepare(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def click_complete(request):
-    secret = getattr(settings, 'CLICK_SECRET_KEY', '')
-    if not secret:
-        return _click_error(-9, 'Click sozlanmagan')
     d = request.data
-    if d.get('sign_string') != _click_signature(d, secret, complete=True):
-        return _click_error(-1, 'Imzo xato')
-    try:
-        sorov = TolovSorovi.objects.get(pk=d.get('merchant_trans_id'))
-    except (TolovSorovi.DoesNotExist, ValueError, TypeError):
-        return _click_error(-5, 'So\'rov topilmadi')
-    # To'langan summa so'rov summasiga mos kelishi shart
-    try:
-        summa_mos = abs(float(d.get('amount', 0)) - float(sorov.summa)) < 1
-    except (TypeError, ValueError):
-        summa_mos = False
-    if not summa_mos:
-        return _click_error(-2, "Summa noto'g'ri")
+    with transaction.atomic():
+        sorov, xato = _click_sorov(d, getattr(settings, 'CLICK_SECRET_KEY', ''), complete=True)
+        if xato:
+            return xato
+        # Prepare bosqichidan o'tmagan yoki boshqa tranzaksiyaga tegishli Complete
+        if (str(d.get('merchant_prepare_id')) != str(sorov.id)
+                or not sorov.tashqi_id
+                or str(d.get('click_trans_id')) != sorov.tashqi_id):
+            return _click_error(-6, 'Tranzaksiya topilmadi')
 
-    if str(d.get('error')) == '0':
+        if str(d.get('error')) != '0':
+            # Click to'lov amalga oshmaganini xabar qildi — so'rov bekor qilinadi
+            sorov.holat = 'bekor'
+            sorov.save(update_fields=['holat', 'yangilangan'])
+            return _click_error(-9, 'Tranzaksiya bekor qilindi')
+
         sorov.holat = 'tolandi'
-        sorov.tashqi_id = str(d.get('click_trans_id', ''))
-        sorov.save(update_fields=['holat', 'tashqi_id', 'yangilangan'])
+        sorov.save(update_fields=['holat', 'yangilangan'])
     return Response({
         'click_trans_id': d.get('click_trans_id'),
         'merchant_trans_id': d.get('merchant_trans_id'),
@@ -252,100 +281,31 @@ def click_complete(request):
     })
 
 
-# ──────────────────────────────────────────────────────────────
-#  Payme JSON-RPC webhook
-#  Kalitlar sozlangach to'liq ishlaydi.  https://developer.help.paycom.uz
-# ──────────────────────────────────────────────────────────────
-def _payme_result(rpc_id, result):
-    return Response({'jsonrpc': '2.0', 'id': rpc_id, 'result': result})
+# Payme JSON-RPC webhook: apps/tolovlar/payme.py (holat mashinasi o'sha yerda)
 
 
-def _payme_error(rpc_id, code, message):
-    return Response({'jsonrpc': '2.0', 'id': rpc_id,
-                     'error': {'code': code, 'message': message}})
+# ──────────────────────────────────────────────────────────────
+#  Public: Metrologiya bo'limidan ariza
+# ──────────────────────────────────────────────────────────────
+class MetrologiyaArizaThrottle(AnonRateThrottle):
+    """Ochiq forma spamdan himoyalangan: bir IP dan soatiga 10 ta ariza."""
+    scope = 'metrologiya_ariza'
+    rate = '10/hour'
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def payme_endpoint(request):
-    key = getattr(settings, 'PAYME_KEY', '')
-    rpc_id = request.data.get('id')
-    if not key:
-        return _payme_error(rpc_id, -32504, 'Payme sozlanmagan')
-
-    # Basic auth: "Paycom:<PAYME_KEY>"
-    auth = request.META.get('HTTP_AUTHORIZATION', '')
-    ok = False
-    if auth.startswith('Basic '):
-        try:
-            dec = base64.b64decode(auth[6:]).decode()
-            ok = dec.split(':', 1)[-1] == key
-        except Exception:
-            ok = False
-    if not ok:
-        return _payme_error(rpc_id, -32504, 'Avtorizatsiya xato')
-
-    method = request.data.get('method')
-    params = request.data.get('params', {})
-
-    def _sorov():
-        oid = (params.get('account') or {}).get('order_id')
-        return TolovSorovi.objects.filter(pk=oid).first()
-
-    def _summa_mos(s):
-        """Payme summani tiyinda yuboradi — so'rov summasi bilan solishtiramiz."""
-        try:
-            return int(params.get('amount', 0)) == int(s.summa) * 100
-        except (TypeError, ValueError):
-            return False
-
-    if method == 'CheckPerformTransaction':
-        s = _sorov()
-        if not s:
-            return _payme_error(rpc_id, -31050, 'Buyurtma topilmadi')
-        if not _summa_mos(s):
-            return _payme_error(rpc_id, -31001, "Summa noto'g'ri")
-        return _payme_result(rpc_id, {'allow': True})
-
-    if method == 'CreateTransaction':
-        s = _sorov()
-        if not s:
-            return _payme_error(rpc_id, -31050, 'Buyurtma topilmadi')
-        if not _summa_mos(s):
-            return _payme_error(rpc_id, -31001, "Summa noto'g'ri")
-        s.holat = 'kutilmoqda'
-        s.tashqi_id = params.get('id', '')
-        s.save(update_fields=['holat', 'tashqi_id', 'yangilangan'])
-        return _payme_result(rpc_id, {
-            'create_time': params.get('time'),
-            'transaction': str(s.id),
-            'state': 1,
-        })
-
-    if method == 'PerformTransaction':
-        s = TolovSorovi.objects.filter(tashqi_id=params.get('id')).first()
-        if not s:
-            return _payme_error(rpc_id, -31003, 'Tranzaksiya topilmadi')
-        s.holat = 'tolandi'
-        s.save(update_fields=['holat', 'yangilangan'])
-        return _payme_result(rpc_id, {
-            'transaction': str(s.id), 'perform_time': params.get('time', 0), 'state': 2,
-        })
-
-    if method == 'CancelTransaction':
-        s = TolovSorovi.objects.filter(tashqi_id=params.get('id')).first()
-        if s:
-            s.holat = 'bekor'
-            s.save(update_fields=['holat', 'yangilangan'])
-        return _payme_result(rpc_id, {
-            'transaction': str(s.id) if s else '', 'cancel_time': params.get('time', 0), 'state': -1,
-        })
-
-    if method == 'CheckTransaction':
-        s = TolovSorovi.objects.filter(tashqi_id=params.get('id')).first()
-        if not s:
-            return _payme_error(rpc_id, -31003, 'Tranzaksiya topilmadi')
-        state = 2 if s.holat == 'tolandi' else (-1 if s.holat == 'bekor' else 1)
-        return _payme_result(rpc_id, {'transaction': str(s.id), 'state': state})
-
-    return _payme_error(rpc_id, -32601, 'Metod topilmadi')
+@throttle_classes([MetrologiyaArizaThrottle])
+def metrologiya_ariza_yaratish(request):
+    ser = MetrologiyaArizasiSerializer(data=request.data)
+    if not ser.is_valid():
+        return Response(ser.errors, status=400)
+    ariza = ser.save()
+    # Xizmat turi ixtiyoriy: tanlanmagan bo'lsa SMS'da qavs ichida bo'sh joy chiqmasin
+    tur = f" ({ariza.get_xizmat_display()})" if ariza.xizmat else ""
+    _sms_yuborish(
+        ariza.telefon,
+        f"SOAR GAZ: metrologiya{tur} arizangiz #{ariza.id} qabul qilindi! "
+        f"24 soat ichida bog'lanamiz."
+    )
+    return Response(MetrologiyaArizasiSerializer(ariza).data, status=201)

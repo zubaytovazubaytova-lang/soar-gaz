@@ -62,6 +62,18 @@ class XodimSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class XodimJamoaSerializer(serializers.ModelSerializer):
+    """Jamoa ro'yxati ODDIY XODIM uchun: KIRISH KODISIZ. Kod xodimning parolini bosib turadi — uni faqat
+    administrator ko'radi (XodimSerializer). Aks holda har bir xodim boshqasining nomidan kira olardi."""
+    tuman_nomi = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Foydalanuvchi
+        fields = ['id', 'telefon', 'ism', 'lavozim', 'viloyat', 'tuman',
+                  'mahalla', 'tuman_nomi', 'holat', 'ishga_kirgan', 'yaratilgan']
+        read_only_fields = fields
+
+
 class XodimYaratishSerializer(JoylashuvMixin, serializers.ModelSerializer):
     """Admin panelidan yangi xodim kiritish.
 

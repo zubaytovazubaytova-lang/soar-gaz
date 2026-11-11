@@ -1,14 +1,16 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.contrib.admin import AllValuesFieldListFilter
+from django.contrib.admin.helpers import ActionForm
 from django.contrib.auth.admin import UserAdmin
 from django.core.cache import cache
 from django.utils.html import format_html, format_html_join
 
 from .hududlar import (HUDUDLAR, viloyatlar, viloyat_tumanlari,
                        tuman_viloyati)
-from .models import (Foydalanuvchi, Xodim, OtpKod, AuditYozuv, LAVOZIM_CHOICES,
-                     kirish_kodi_yasa)
+from .models import (Foydalanuvchi, Mijoz, Xodim, Sertifikat, IshHaqi, OtpKod, AuditYozuv, LAVOZIM_CHOICES,
+                     audit_yoz, kirish_kodi_yasa)
 
 
 class TaklifliMatnWidget(forms.TextInput):
@@ -191,10 +193,70 @@ class FoydalanuvchiAdmin(YozilaOladiganTanlovMixin, UserAdmin):
             cache.delete(f'admin:urinish:{obj.telefon}')
 
 
+class XabarForm(ActionForm):
+    """Amallar satri yonida xabar matni uchun maydon."""
+    matn = forms.CharField(required=False, max_length=500, label='Xabar matni',
+                           widget=forms.TextInput(attrs={'size': 50, 'placeholder': 'Faqat "Xabar yuborish" uchun'}))
+
+
+class SertifikatInline(admin.TabularInline):
+    """Xodim sahifasida uning sertifikatlari — xodim kabinetidagi «Sertifikatlarim» shundan to'ladi."""
+    model = Sertifikat
+    extra = 0
+    fields = ('nomi', 'raqami', 'berilgan', 'amal_qiladi')
+
+
+class IshHaqiInline(admin.TabularInline):
+    """Oylik ish haqi — FAQAT tizim egasi ko'radi va kiritadi (direktorga ko'rinmaydi)."""
+    model = IshHaqi
+    extra = 0
+    fields = ('oy', 'asosiy', 'bonus', 'izoh')
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+
 @admin.register(Xodim)
 class XodimAdmin(YozilaOladiganTanlovMixin, UserAdmin):
     """Xodimlar ro'yxati — yangi xodim faqat shu yerdan qo'shiladi.
     Portalda ro'yxatdan o'tish yo'q, xodim faqat kirish (telefon + parol) qiladi."""
+    action_form = XabarForm
+    actions = ['xabar_yuborish']
+    inlines = [SertifikatInline, IshHaqiInline]
+
+    def has_xabar_permission(self, request):
+        return request.user.has_perm('aloqa.add_xabar')
+
+    @admin.action(description='Tanlangan xodimlarga XABAR yuborish (matnni yuqoridagi maydonga yozing)',
+                  permissions=['xabar'])
+    def xabar_yuborish(self, request, queryset):
+        """Xabar xodimning portalida qo'ng'iroqcha belgisida ko'rinadi (faqat FAOL xodimlarga)."""
+        from apps.aloqa.models import Xabar
+
+        matn = (request.POST.get('matn') or '').strip()
+        if not matn:
+            self.message_user(request, 'Xabar matnini yozing (amallar satridagi maydon).', messages.ERROR)
+            return
+        if len(matn) > 500:
+            self.message_user(request, 'Xabar 500 belgidan oshmasligi kerak.', messages.ERROR)
+            return
+        qabulchilar = list(queryset.filter(rol='xodim', holat='faol'))
+        if not qabulchilar:
+            self.message_user(request, 'Tanlanganlar orasida faol xodim yo\'q.', messages.WARNING)
+            return
+        Xabar.objects.bulk_create([Xabar(xodim=x, yuboruvchi=request.user, matn=matn) for x in qabulchilar])
+        audit_yoz(request, 'xabar_yuborildi', f'{len(qabulchilar)} ta xodimga: {matn[:120]}')
+        self.message_user(request, f'{len(qabulchilar)} ta xodimga xabar yuborildi.', messages.SUCCESS)
+
     list_display = ['telefon', 'ism', 'lavozim', 'kirish_kodi', 'viloyat', 'tuman', 'holat']
     list_filter = [('lavozim', AllValuesFieldListFilter), 'holat',
                    ('viloyat', AllValuesFieldListFilter),
@@ -226,6 +288,20 @@ class XodimAdmin(YozilaOladiganTanlovMixin, UserAdmin):
     def get_queryset(self, request):
         return Foydalanuvchi.objects.filter(rol='xodim')
 
+    # Direktor ("Direktor" guruhi) xodim qo'shadi va ma'lumotini tahrirlaydi, lekin xodimni
+    # nofaol/faol qila olmaydi va unga parol qo'ya olmaydi (parol orqali xodim hisobiga kirish
+    # mumkin bo'lardi) — bu boshqaruv paneli API'sidagi qoida bilan bir xil: faqat tizim egasi.
+    def get_readonly_fields(self, request, obj=None):
+        yozilmas = list(super().get_readonly_fields(request, obj))
+        if obj is not None and not request.user.is_superuser:
+            yozilmas.append('holat')
+        return yozilmas
+
+    def user_change_password(self, request, id, form_url=''):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        return super().user_change_password(request, id, form_url)
+
     def save_model(self, request, obj, form, change):
         obj.rol = 'xodim'
         # Xodimda parol yo'q — u telefon + kirish kodi bilan kiradi
@@ -240,6 +316,32 @@ class XodimAdmin(YozilaOladiganTanlovMixin, UserAdmin):
         super().save_model(request, obj, form, change)
         self.message_user(
             request, f'{obj.ism or obj.telefon} — kirish kodi: {obj.kirish_kodi}')
+
+
+@admin.register(Mijoz)
+class MijozAdmin(admin.ModelAdmin):
+    """Mijozlar bazasi (CRM) — FAQAT O'QISH. Parol shifri ko'rinmaydi: sahifada faqat
+    quyidagi maydonlar bor."""
+    list_display = ['telefon', 'ism', 'viloyat', 'tuman', 'mulk_turi', 'buyurtmalar_soni', 'yaratilgan']
+    list_filter = ['mulk_turi', ('viloyat', AllValuesFieldListFilter), ('tuman', AllValuesFieldListFilter)]
+    search_fields = ['telefon', 'ism', 'qoshimcha_telefon']
+    ordering = ['-yaratilgan']
+    date_hierarchy = 'yaratilgan'
+    fields = ['telefon', 'ism', 'viloyat', 'tuman', 'mahalla', 'manzil', 'moljal', 'qoshimcha_telefon',
+              'email', 'mulk_turi', 'yaratilgan']
+    readonly_fields = fields
+
+    def get_queryset(self, request):
+        from django.db.models import Count
+        return super().get_queryset(request).annotate(_buyurtmalar=Count('buyurtmalar'))
+
+    @admin.display(description='Buyurtmalar', ordering='_buyurtmalar')
+    def buyurtmalar_soni(self, obj):
+        return obj._buyurtmalar
+
+    def has_add_permission(self, request): return False
+    def has_change_permission(self, request, obj=None): return False
+    def has_delete_permission(self, request, obj=None): return False
 
 
 @admin.register(AuditYozuv)

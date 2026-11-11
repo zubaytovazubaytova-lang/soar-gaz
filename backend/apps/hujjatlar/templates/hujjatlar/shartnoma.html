@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Shartnoma {{ s.raqam }}</title>
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;background:#eef2f7;font-family:Inter,Arial,sans-serif;color:#0f172a;}
+  .varaq{max-width:800px;margin:20px auto;background:#fff;padding:38px 44px;border:1px solid #d6dde8;border-radius:10px;position:relative;}
+  .matn{font-size:14.5px;line-height:1.6;white-space:pre-line;}
+  .rekvizit{margin-top:22px;font-size:13px;color:#334155;line-height:1.6;}
+  .imzolar{display:flex;justify-content:space-between;gap:30px;margin-top:36px;font-size:13px;}
+  .imzolar > div{flex:1;}
+  .chiz{border-top:1px solid #0f172a;margin-top:34px;padding-top:6px;color:#475569;}
+  .tasdiq{margin-top:22px;padding:10px 12px;border-radius:8px;background:#eafaf0;border:1px solid #bbe8cc;color:#166534;font-weight:700;font-size:13.5px;}
+  .kutish{margin-top:22px;padding:10px 12px;border-radius:8px;background:#fff2e8;border:1px solid #fdd6ae;color:#c2410c;font-weight:700;font-size:13.5px;}
+  .bekor{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
+    font-size:72px;font-weight:900;color:rgba(220,38,38,.25);transform:rotate(-18deg);letter-spacing:4px;}
+  .bekor-yozuv{background:#fdecec;border:1px solid #f6c4c4;color:#b91c1c;padding:10px 12px;border-radius:8px;font-weight:700;margin-bottom:14px;}
+  .amallar{max-width:800px;margin:0 auto 24px;text-align:center;}
+  button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;}
+  @media (max-width:600px){
+    .varaq{padding:20px 14px;margin:0 auto;border-radius:0;border-left:0;border-right:0;}
+    .matn{font-size:14px;overflow-wrap:break-word;}
+    .imzolar{flex-direction:column;gap:6px;margin-top:24px;}
+    .bekor{font-size:44px;letter-spacing:2px;}
+    .amallar button{width:calc(100% - 24px);}
+  }
+  @media print{ body{background:#fff;} .varaq{border:0;margin:0;max-width:none;padding:0;} .amallar{display:none;} }
+</style>
+</head>
+<body>
+<div class="varaq">
+  {% if s.holat == 'bekor' %}<div class="bekor">BEKOR</div>
+    <div class="bekor-yozuv">Bu shartnoma bekor qilingan{% if s.bekor_sababi %}: {{ s.bekor_sababi }}{% endif %}</div>{% endif %}
+
+  <div class="matn">{{ s.matn }}</div>
+
+  <div class="rekvizit">
+    <b>{{ sozlama.kompaniya_nomi }}</b>
+    {% if sozlama.manzil %}<br>Manzil: {{ sozlama.manzil }}{% endif %}
+    {% if sozlama.telefon %}<br>Tel: {{ sozlama.telefon }}{% endif %}
+    {% if sozlama.stir %}<br>STIR: {{ sozlama.stir }}{% endif %}
+    {% if sozlama.bank_nomi or sozlama.hisob_raqam %}<br>{{ sozlama.bank_nomi }}{% if sozlama.hisob_raqam %}, h/r {{ sozlama.hisob_raqam }}{% endif %}{% if sozlama.mfo %}, MFO {{ sozlama.mfo }}{% endif %}{% endif %}
+  </div>
+
+  <div class="imzolar">
+    <div><b>Ijrochi</b><br>{{ sozlama.kompaniya_nomi }}{% if sozlama.direktor %}<br>Direktor: {{ sozlama.direktor }}{% endif %}
+      <div class="chiz">imzo, muhr</div></div>
+    <div><b>Buyurtmachi</b><br>{{ s.mijoz_ism }}<br>Tel: {{ s.mijoz_telefon }}<br>Manzil: {{ s.manzil }}
+      <div class="chiz">imzo</div></div>
+  </div>
+
+  {% if tasdiq %}<div class="tasdiq">{{ tasdiq }}</div>
+  {% elif s.holat != 'bekor' %}<div class="kutish">Shartnoma hali tasdiqlanmagan</div>{% endif %}
+</div>
+<div class="amallar"><button type="button" id="chop">Chop etish / PDF</button></div>
+<script nonce="{{ request.csp_nonce }}">document.getElementById('chop').addEventListener('click', function () { window.print(); });</script>
+</body>
+</html>

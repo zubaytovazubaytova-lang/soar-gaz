@@ -1,4 +1,5 @@
 from django.contrib import admin
+from apps.hujjatlar import views as hujjat_views
 from django.urls import path, re_path, include
 from django.conf import settings
 from django.conf.urls.static import static
@@ -77,10 +78,49 @@ def robots_txt(request):
         "Disallow: /xodimlar/\n"
         "Disallow: /xodimlar.html\n"
         "Disallow: /kabinet/\n"
+        "Disallow: /kvitansiya/\n"
+        "Disallow: /shartnoma/\n"
         "Disallow: /api/\n"
         "Allow: /\n"
+        "\n"
+        "Sitemap: https://soargaz.uz/sitemap.xml\n"
     )
     return HttpResponse(matn, content_type='text/plain; charset=utf-8')
+
+
+def sitemap_xml(request):
+    """Qidiruv tizimlari uchun ochiq sahifalar ro'yxati.
+
+    Faqat jamoat sahifalari: kabinet, boshqaruv va xodimlar bu yerda
+    YO'Q (ular robots.txt da ham yopilgan).
+    """
+    sahifalar = ('https://soargaz.uz/', 'https://soargaz.uz/xaridlar/')
+    qatorlar = ''.join(f'  <url><loc>{u}</loc></url>\n' for u in sahifalar)
+    matn = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            f'{qatorlar}</urlset>\n')
+    return HttpResponse(matn, content_type='application/xml; charset=utf-8')
+
+
+def sahifa_topilmadi(request, exception=None):
+    """404: API so'rovlariga JSON, brauzerga sayt dizaynidagi sahifa.
+
+    Standart Django 404 sahifasi ingliz tilida va sayt dizaynidan butunlay
+    boshqacha. `DEBUG=True` da Django o'zining texnik sahifasini ko'rsatadi —
+    bu faqat production (DEBUG=0) da ishlaydi.
+    """
+    if request.path.startswith('/api/'):
+        return JsonResponse({'detail': 'Topilmadi.'}, status=404)
+    try:
+        with open(os.path.join(ILDIZ, '404.html'), 'rb') as f:
+            kontent = f.read()
+    except OSError:
+        return HttpResponse('Sahifa topilmadi', status=404)
+    return HttpResponse(kontent, status=404,
+                        content_type='text/html; charset=utf-8')
+
+
+handler404 = 'soargaz.urls.sahifa_topilmadi'
 
 
 def statik_fayl(request, path, papka):
@@ -191,7 +231,11 @@ urlpatterns = [
     # shuning uchun bu sahifa '/boshqaruv/' manzilida turadi.
     path('boshqaruv/', _yopiq_sahifa('admin.html')),
     path('admin.html', _yopiq_sahifa('admin.html')),
+    # Mijozga SMS bilan boradigan hujjat sahifalari (maxfiy kod bilan, indekslanmaydi)
+    path('kvitansiya/<str:token>/', hujjat_views.kvitansiya_sahifa),
+    path('shartnoma/<str:token>/', hujjat_views.shartnoma_sahifa),
     path('robots.txt', robots_txt),
+    path('sitemap.xml', sitemap_xml),
     # PWA — telefon ekraniga qo'shish va offline rejim.
     # sw.js AYNAN ildizdan berilishi shart: service worker faqat o'zi
     # turgan katalog va undan pastdagi manzillarni boshqara oladi.
@@ -213,10 +257,16 @@ urlpatterns = [
     # turadi va faqat /api/katalog/hujjat/<token>/ orqali beriladi.
     re_path(r'^(?P<path>images/.+)$', rasm_bilan_webp),
     path('api/auth/', include('apps.auth_app.urls')),
+    path('api/aloqa/', include('apps.aloqa.urls')),
+    path('api/kadrlar/', include('apps.kadrlar.urls')),
+    path('api/hujjatlar/', include('apps.hujjatlar.urls')),
     path('api/buyurtmalar/', include('apps.buyurtmalar.urls')),
     path('api/kabinet/', include('apps.kabinet.urls')),
     path('api/katalog/', include('apps.katalog.urls')),
+    path('api/narxnoma/', include('apps.narxnoma.urls')),
+    path('api/joylashuv/', include('apps.joylashuv.urls')),
     path('api/sms/', include('apps.sms_app.urls')),
     path('api/tolovlar/', include('apps.tolovlar.urls')),
+    path('api/tushum/', include('apps.tushum.urls')),
     path('api/xaridlar/', include('apps.xaridlar.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

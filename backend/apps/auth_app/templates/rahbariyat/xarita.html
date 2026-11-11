@@ -1,0 +1,104 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<style>
+  #xarita{height:480px;border:1px solid var(--hairline-color);border-radius:8px;z-index:0;}
+  .xar-royxat table{width:100%;margin-top:14px;}
+  .xar-holat{font-weight:700;}
+  .xar-holat.ok{color:#15803d;} .xar-holat.yoq{color:#b91c1c;}
+  /* Telefon: xarita past, jadval o'z ichida yonga suriladi */
+  @media (max-width:640px){
+    #xarita{height:320px;}
+    .xar-royxat table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .xar-royxat th,.xar-royxat td{white-space:nowrap;padding-right:14px;}
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Bosh sahifa</a> &rsaquo; Xodimlar xaritasi</div>
+{% endblock %}
+
+{% block content %}
+<p style="color:var(--body-quiet-color)">Faqat hozir <b>smenada</b> bo'lgan va joylashuvga <b>rozilik bergan</b> xodimlar ko'rinadi.
+  Xarita har 15 soniyada yangilanadi. Har bir ko'rish Faoliyat jurnaliga yoziladi.</p>
+<div id="xarita"></div>
+<div class="xar-royxat">
+  <table>
+    <thead><tr><th>Xodim</th><th>Lavozim</th><th>Smena boshi</th><th>Oxirgi nuqta</th><th>Aloqa</th></tr></thead>
+    <tbody id="xarTana"><tr><td colspan="5">Yuklanmoqda…</td></tr></tbody>
+  </table>
+</div>
+
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script nonce="{{ request.csp_nonce }}">
+(function () {
+  var MALUMOT = "{% url 'admin:xarita_malumot' %}";
+  var xarita = L.map('xarita').setView([41.3111, 69.2797], 11);          // Toshkent
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(xarita);
+  var belgilar = {};
+
+  function vaqt(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    return d.toLocaleString('uz-UZ', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+  }
+  function katak(matn, sinf) {
+    var td = document.createElement('td');
+    td.textContent = matn;
+    if (sinf) td.className = sinf;
+    return td;
+  }
+
+  function chiz(royxat) {
+    var tana = document.getElementById('xarTana');
+    tana.textContent = '';
+    if (!royxat.length) {
+      var tr = document.createElement('tr');
+      var td = katak("Hozir smenada xodim yo'q");
+      td.colSpan = 5;
+      tr.appendChild(td);
+      tana.appendChild(tr);
+    }
+    var bor = {};
+    royxat.forEach(function (x) {
+      var tr = document.createElement('tr');
+      tr.appendChild(katak(x.ism));
+      tr.appendChild(katak(x.lavozim || '—'));
+      tr.appendChild(katak(vaqt(x.smena_boshlandi)));
+      tr.appendChild(katak(x.oxirgi_vaqt ? vaqt(x.oxirgi_vaqt) : '—'));
+      tr.appendChild(katak(x.aloqada ? 'Aloqada' : 'Aloqada emas', 'xar-holat ' + (x.aloqada ? 'ok' : 'yoq')));
+      tana.appendChild(tr);
+      if (x.lat == null) return;
+      bor[x.xodim_id] = true;
+      var rang = x.aloqada ? '#16a34a' : '#94a3b8';
+      var b = belgilar[x.xodim_id];
+      if (!b) {
+        b = belgilar[x.xodim_id] = L.circleMarker([x.lat, x.lng], {radius: 9, weight: 3, color: '#fff', fillOpacity: 1}).addTo(xarita);
+      }
+      b.setLatLng([x.lat, x.lng]).setStyle({fillColor: rang});
+      // Leaflet matnni HTML deb o'qiydi — ism xavfsiz bo'lishi uchun DOM elementi beriladi
+      var maslahat = document.createElement('span');
+      maslahat.textContent = x.ism + (x.aloqada ? ' — aloqada' : ' — aloqada emas');
+      b.bindTooltip(maslahat);
+    });
+    Object.keys(belgilar).forEach(function (id) {
+      if (!bor[id]) { xarita.removeLayer(belgilar[id]); delete belgilar[id]; }
+    });
+  }
+
+  function yukla() {
+    fetch(MALUMOT, {credentials: 'same-origin'})
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(chiz)
+      .catch(function () {
+        document.getElementById('xarTana').innerHTML = '<tr><td colspan="5">Ma\'lumotni yuklab bo\'lmadi</td></tr>';
+      });
+  }
+  yukla();
+  setInterval(yukla, 15000);
+})();
+</script>
+{% endblock %}

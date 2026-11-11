@@ -323,7 +323,8 @@ def tekshiruvga_yozilish(request, pk):
         obyekt=h.obyekt,
         xizmat='metrologiya',
         tavsif=f"Hisoblagich {h.seriya_raqam} ({h.markasi or h.get_turi_display()}) — davlat tekshiruvi.",
-        vaqt_istagi=request.data.get('vaqt_istagi', 'Operator bog\'lansin'),
+        # Modelda max_length=100: uzun matn bazani buzmasligi uchun qirqiladi
+        vaqt_istagi=str(request.data.get('vaqt_istagi') or "Operator bog'lansin")[:100],
     )
     _bildirishnoma(
         request.user,
@@ -699,6 +700,12 @@ def hisobni_ochirish(request):
     tasdiq = (request.data.get('tasdiq') or '').strip().upper()
     if tasdiq != "O'CHIRISH":
         return Response({'detail': _("Tasdiqlash uchun O'CHIRISH so'zini kiriting")}, status=400)
+
+    # Qaytarib bo'lmaydigan amal: faqat so'z emas, telefonga kelgan SMS kod ham kerak
+    from apps.auth_app.views import tasdiq_kodini_sarfla
+    rad = tasdiq_kodini_sarfla(user, request.data.get('tasdiq_kodi'))
+    if rad:
+        return rad
 
     user.holat = 'nofaol'
     user.is_active = False

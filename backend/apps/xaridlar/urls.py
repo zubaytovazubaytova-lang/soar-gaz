@@ -13,6 +13,7 @@ urlpatterns = [
     path('<str:raqam>/muammo/', views.yetkazish_muammosi),
     path('<str:raqam>/qayta/', views.qayta_yetkazish),
     path('<str:raqam>/tolov/', views.tolov_boshqarish),
+    path('<str:raqam>/korish/', views.xarid_tasdiqlash),
     path('<str:raqam>/kuryer/', views.kuryer_joylashuvi),
     path('<str:raqam>/', views.xarid_detail),
 ]

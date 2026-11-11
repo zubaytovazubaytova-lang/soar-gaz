@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import TolovSorovi, MahsulotSorovi
+from .models import TolovSorovi, MahsulotSorovi, MetrologiyaArizasi
 
 
 @admin.register(TolovSorovi)
@@ -18,5 +18,15 @@ class MahsulotSoroviAdmin(admin.ModelAdmin):
                     'katalog', 'holat', 'yaratilgan']
     list_filter = ['holat', 'katalog']
     search_fields = ['ism', 'telefon', 'mahsulot']
+    ordering = ['-yaratilgan']
+    list_editable = ['holat']
+
+
+@admin.register(MetrologiyaArizasi)
+class MetrologiyaArizasiAdmin(admin.ModelAdmin):
+    list_display = ['id', 'xizmat_nomi', 'ism', 'telefon', 'hisoblagich',
+                    'seriya_raqam', 'manzil', 'holat', 'yaratilgan']
+    list_filter = ['holat', 'xizmat', 'hisoblagich']
+    search_fields = ['ism', 'telefon', 'seriya_raqam', 'manzil']
     ordering = ['-yaratilgan']
     list_editable = ['holat']
