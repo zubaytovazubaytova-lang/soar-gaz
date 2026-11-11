@@ -1058,7 +1058,7 @@
       background: rgba(31,72,135,0.15);
     }
     /* Anchorga o'tganda sarlavha navbar ostida qolib ketmasin */
-    html { scroll-padding-top: 76px; }
+    html { scroll-padding-top: 116px; }
 
     /* ── Hero CTA tugmalari ──
        Ikkalasi ham bir xil balandlik va padding. Avval kontur tugmasi
@@ -2063,6 +2063,195 @@
     section .text-center.mb-16{margin-bottom:22px !important;}
   }
 </style>
+<style>
+/* ════════════════════════════════════════════════════════════════════
+   YANGI BOSH SAHIFA TUZILMASI (12 blok) — 2026-11-11
+   Qo'shilgan bloklar: 0) yuqori panel, 3) aksiyalar/yangiliklar,
+   5) hamkorlar, 6) litsenziya, 7) ish jarayoni, 8) savol-javob,
+   10) raqamlar, 11) ijtimoiy tarmoqlar tasmasi, 12) kengaytirilgan futer.
+   Kontent hali qo'yilmagan joylar: .sg2-ph (shtrixli quti) va [ ... ]
+   ko'rinishidagi sariq matnlar. Qidirish uchun belgi: TODO
+   ════════════════════════════════════════════════════════════════════ */
+.sg2-topbar{overflow:hidden;max-height:40px;transition:max-height .3s ease}
+.nav-scrolled .sg2-topbar{max-height:0;border-bottom-width:0}
+/* Bo'sh kontent o'rni (rasm/video kelgach butun quti almashtiriladi) */
+.sg2-ph{display:grid;place-items:center;text-align:center;padding:10px;min-height:56px;
+  background:repeating-linear-gradient(135deg,rgba(13,110,253,.05) 0 12px,rgba(13,110,253,.11) 12px 24px);
+  border:2px dashed rgba(13,110,253,.35);border-radius:inherit;color:#4a6382;
+  font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:1.6}
+.sg2-ph--dark{background:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 12px,rgba(255,255,255,.1) 12px 24px);
+  border-color:rgba(255,255,255,.35);color:rgba(255,255,255,.75)}
+.sg2-todo{background:#fff3cd;border-radius:4px;padding:0 4px;color:#7a5a00}
+
+/* Umumiy mayda qismlar */
+.sg2-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 24px;margin-bottom:40px}
+.sg2-ghost-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:9999px;
+  background:rgba(255,255,255,.6);border:1px solid rgba(60,140,225,.3);font-weight:700;font-size:14px;color:#1c3d63;
+  transition:border-color .2s,color .2s}
+.sg2-ghost-btn:hover{border-color:#0d6efd;color:#0d6efd}
+.sg2-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:9999px;
+  background:rgba(255,255,255,.65);border:1px solid rgba(60,140,225,.3);font-size:11px;font-weight:800;
+  letter-spacing:.14em;text-transform:uppercase;color:#0d6efd}
+
+/* 0-blok: yuqori panel */
+.sg2-topbar{background:#0B1B33;color:#cfe0f5;font-size:12.5px;font-weight:600;border-bottom:1px solid rgba(255,255,255,.08)}
+.sg2-topbar-in{display:flex;align-items:center;justify-content:space-between;gap:14px;height:40px}
+.sg2-topbar a{display:inline-flex;align-items:center;gap:7px;color:#cfe0f5}
+.sg2-topbar a:hover{color:#fff}
+.sg2-topbar .fab.fa-telegram{color:#4db2ff}
+.sg2-topbar-l{display:flex;align-items:center;gap:20px;white-space:nowrap;overflow:hidden}
+.sg2-topbar-r{display:flex;align-items:center;gap:8px;white-space:nowrap}
+@media(max-width:760px){.sg2-topbar-r,.sg2-top-mail{display:none}}
+
+/* 3-blok: aksiyalar va yangiliklar */
+.sg2-news{display:grid;gap:24px;grid-template-columns:1.6fr .9fr 1.4fr}
+.sg2-news-mid{display:grid;gap:24px;align-content:start}
+.sg2-news-list{display:grid;gap:16px;align-content:start}
+.sg2-news-card{display:flex;flex-direction:column;gap:10px;text-align:left}
+.sg2-news-card .sg2-media{border-radius:18px;overflow:hidden;aspect-ratio:16/10}
+.sg2-news-big .sg2-media{aspect-ratio:1/1}
+.sg2-news-card .sg2-media .sg2-ph{height:100%}
+.sg2-news-card h3{font-weight:800;font-size:15px;line-height:1.4;color:#1c3d63}
+.sg2-news-big h3{font-size:20px}
+.sg2-news-meta{font-size:12px;color:#5b7fa6;font-weight:600;display:flex;gap:14px}
+.sg2-news-row{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center}
+.sg2-news-row .sg2-media{aspect-ratio:3/2;border-radius:14px}
+.sg2-news-row h3{font-size:13.5px}
+@media(max-width:1100px){.sg2-news{grid-template-columns:1fr 1fr}.sg2-news-list{grid-column:1/-1;grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.sg2-news{grid-template-columns:1fr}.sg2-news-list{grid-template-columns:1fr}}
+
+/* 5-blok: hamkorlar */
+.sg2-partners{display:grid;gap:16px;grid-template-columns:repeat(6,1fr)}
+.sg2-partner{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;
+  padding:18px 12px 14px;border-radius:16px;background:rgba(255,255,255,.55);
+  border:1px solid rgba(60,140,225,.22);font-size:12px;font-weight:700;color:#2f5580;transition:border-color .25s}
+.sg2-partner:hover{border-color:#0d6efd}
+.sg2-partner .sg2-logo{width:68px;height:68px;border-radius:12px}
+@media(max-width:1100px){.sg2-partners{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:640px){.sg2-partners{grid-template-columns:repeat(2,1fr);gap:10px}}
+
+/* 6-blok: litsenziya (to'q fon, katak naqsh) */
+.sg2-lic{position:relative;overflow:hidden;color:#fff;
+  background:radial-gradient(circle at 12% 8%,rgba(31,111,235,.28),transparent 34%),
+             radial-gradient(circle at 88% 18%,rgba(255,138,0,.16),transparent 30%),
+             linear-gradient(145deg,#04111f,#0B1B33 48%,#0f2a4d 100%)}
+.sg2-lic::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:32px 32px}
+.sg2-lic-grid{position:relative;display:grid;gap:48px;grid-template-columns:1fr 1.9fr;align-items:center;padding:80px 0}
+.sg2-lic h2{font-size:clamp(28px,4vw,44px);font-weight:900;line-height:1.05;letter-spacing:-.03em;color:#fff}
+.sg2-lic h2 em{font-style:normal;display:block;
+  background:linear-gradient(110deg,#ffd9a8,#ff8a00 40%,#ffe9c7 52%,#ff8a00 64%,#ffd9a8);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.sg2-lic p{margin-top:14px;color:rgba(255,255,255,.78);font-size:14px;line-height:1.7}
+.sg2-docs{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.sg2-doc{aspect-ratio:210/297;border-radius:12px;background:#fff;box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
+.sg2-doc .sg2-ph{height:100%;border-radius:12px}
+@media(max-width:1100px){.sg2-lic-grid{grid-template-columns:1fr;gap:36px;padding:60px 0}}
+@media(max-width:640px){.sg2-docs{gap:12px}}
+
+/* 7-blok: ish jarayoni (zigzag slaydlar) */
+.sg2-slide{position:relative;display:grid;grid-template-columns:1fr 1fr;width:82%;margin-bottom:48px;
+  border-radius:28px;overflow:hidden;background:rgba(255,255,255,.72);
+  border:1px solid rgba(60,140,225,.25);box-shadow:0 30px 80px -45px rgba(3,18,42,.5)}
+.sg2-slide:nth-of-type(even){margin-left:auto}
+.sg2-slide:nth-of-type(even) .sg2-slide-media{order:2}
+.sg2-slide-media{position:relative;min-height:340px;display:grid}
+.sg2-slide-media .sg2-ph{border-radius:0;border:0;height:100%}
+.sg2-slide-media img,.sg2-slide-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.sg2-slide-text{position:relative;padding:36px;display:flex;flex-direction:column;gap:12px}
+.sg2-slide-text .sg2-k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#0d6efd}
+.sg2-slide-text h3{font-size:28px;font-weight:900;letter-spacing:-.02em;color:#1c3d63}
+.sg2-slide-text p{color:#47525c;font-size:14.5px;line-height:1.7}
+.sg2-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:10px}
+.sg2-chips a,.sg2-chips button{padding:7px 14px;border-radius:9999px;border:1px solid rgba(60,140,225,.35);
+  font-size:13px;font-weight:600;color:#2f5580;background:rgba(255,255,255,.6);cursor:pointer;
+  transition:border-color .2s,color .2s}
+.sg2-chips a:hover,.sg2-chips button:hover{border-color:#ff8a00;color:#b45f00}
+.sg2-num{position:absolute;top:12px;right:20px;font-size:56px;font-weight:900;line-height:1;
+  color:transparent;-webkit-text-stroke:2px rgba(60,140,225,.35)}
+@media(max-width:1100px){.sg2-slide{width:100%}}
+@media(max-width:760px){.sg2-slide{grid-template-columns:1fr}
+  .sg2-slide:nth-of-type(even) .sg2-slide-media{order:0}
+  .sg2-slide-media{min-height:220px}
+  .sg2-slide-text{padding:22px}}
+
+/* 8-blok: savol-javob yonidagi CTA karta */
+.sg2-faq-grid{display:grid;gap:28px;grid-template-columns:.85fr 1.6fr;align-items:start}
+.sg2-faq-cta{border-radius:20px;padding:30px;color:#fff;
+  background:linear-gradient(135deg,#123a66,#0d6efd 55%,#ff8a00 140%);
+  box-shadow:0 25px 50px -22px rgba(3,18,42,.55)}
+.sg2-faq-cta h3{font-size:22px;font-weight:900;margin:10px 0 6px;color:#fff}
+.sg2-faq-cta p{font-size:13.5px;opacity:.92;margin-bottom:18px;line-height:1.6}
+.sg2-cta-oq{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#0B1B33;
+  font-weight:800;font-size:13.5px;padding:10px 18px;border-radius:9999px;margin:0 8px 8px 0}
+.sg2-cta-shisha{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.5);
+  color:#fff;font-weight:700;font-size:13.5px;padding:10px 18px;border-radius:9999px;background:rgba(255,255,255,.12)}
+@media(max-width:1100px){.sg2-faq-grid{grid-template-columns:1fr}}
+
+/* 10-blok: raqamlar */
+.sg2-nums{border-radius:28px;color:#fff;padding:clamp(22px,3vw,40px);
+  display:grid;gap:36px;grid-template-columns:1fr 1.6fr;
+  background:linear-gradient(160deg,#0B1B33,#123a66);box-shadow:0 30px 80px -45px rgba(3,18,42,.65)}
+.sg2-nums h2{font-size:28px;font-weight:900;letter-spacing:-.02em;color:#fff}
+.sg2-nums .sg2-big{font-size:52px;font-weight:900;line-height:1;margin-top:18px}
+.sg2-nums small{color:#9db5d6;font-weight:600;font-size:12px}
+.sg2-nums-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.14)}
+.sg2-nums-two b{display:block;font-size:22px}
+.sg2-chart{display:flex;align-items:flex-end;gap:5px;height:200px;padding-top:18px;
+  border-bottom:1px solid rgba(255,255,255,.22)}
+.sg2-chart i{flex:1;min-width:3px;border-radius:3px 3px 0 0;background:#3f96de}
+.sg2-chart i:nth-last-child(-n+7){background:#ff8a00}
+.sg2-chart-note{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#9db5d6;margin-top:8px}
+@media(max-width:1100px){.sg2-nums{grid-template-columns:1fr}}
+
+/* 11-blok: ijtimoiy tarmoqlar tasmasi (telefon maketlari) */
+.sg2-social{background:linear-gradient(160deg,#123a66,#0B1B33);color:#fff;margin-top:72px}
+.sg2-social-grid{display:grid;gap:28px;grid-template-columns:.9fr 1.6fr;align-items:center}
+.sg2-social h2{font-size:22px;font-weight:900;line-height:1.3;color:#fff;margin-top:12px}
+.sg2-social h2 em{font-style:normal;color:#ffb866}
+.sg2-soc-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.sg2-soc-row a{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:9999px;
+  border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.07);color:#fff;font-size:13px;font-weight:700;
+  transition:background .2s}
+.sg2-soc-row a:hover{background:rgba(255,255,255,.18)}
+.sg2-phones{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(10px,1.4vw,22px);margin-top:-56px}
+.sg2-phone{aspect-ratio:9/17;border:4px solid #060d18;border-bottom:0;border-radius:20px 20px 0 0;
+  background:#060d18;overflow:hidden;display:flex;flex-direction:column}
+.sg2-phone .sg2-ph{flex:1;border-radius:0;border:0;font-size:10px}
+.sg2-phone span{background:#0B1B33;text-align:center;font-size:11.5px;font-weight:800;padding:7px 0;color:#cfe0f5}
+@media(max-width:1100px){.sg2-social-grid{grid-template-columns:1fr}.sg2-phones{margin-top:0}}
+@media(max-width:640px){.sg2-phones{grid-template-columns:repeat(2,1fr)}}
+
+/* 12-blok: kengaytirilgan futer */
+.sg2-footer{background:linear-gradient(170deg,#0B1B33,#04111f);color:rgba(255,255,255,.72);font-size:14px}
+.sg2-footer a:hover{color:#fff}
+.sg2-f1{display:grid;gap:28px;grid-template-columns:1.5fr 1fr 1fr 1.1fr;padding-top:56px}
+.sg2-f1 b{color:#fff;font-weight:800}
+.sg2-f1 small{display:block;font-size:11px;opacity:.65;margin-bottom:12px}
+.sg2-f-map{border-radius:14px;min-height:130px}
+.sg2-f2{display:grid;gap:22px;grid-template-columns:repeat(6,1fr);margin-top:40px;padding-top:32px;
+  border-top:1px solid rgba(255,255,255,.1)}
+.sg2-f2 h3,.sg2-f3t{font-size:13px;font-weight:800;color:#fff;line-height:1.2;
+  padding-left:9px;border-left:3px solid #ff8a00;margin-bottom:14px}
+.sg2-f2 ul{list-style:none;margin:0;padding:0}
+.sg2-f2 li{margin-bottom:9px;font-size:13px}
+.sg2-f2 button{background:none;border:0;padding:0;color:inherit;font-size:13px;cursor:pointer;text-align:left}
+.sg2-f2 button:hover{color:#fff}
+.sg2-f3t{margin-top:36px}
+.sg2-f3{display:grid;gap:12px;grid-template-columns:repeat(4,1fr)}
+.sg2-f3 a,.sg2-f3 button{display:flex;gap:12px;align-items:center;text-align:left;padding:14px;border-radius:14px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:inherit;cursor:pointer;transition:background .2s}
+.sg2-f3 a:hover,.sg2-f3 button:hover{background:rgba(255,255,255,.1)}
+.sg2-fi{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:17px;color:#fff}
+.sg2-f3 small{display:block;font-size:11px;opacity:.65}
+.sg2-f4{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:36px;padding:16px 0 20px;
+  border-top:1px solid rgba(255,255,255,.1);font-size:12px}
+@media(max-width:1100px){.sg2-f1{grid-template-columns:1fr 1fr}.sg2-f2{grid-template-columns:repeat(3,1fr)}.sg2-f3{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.sg2-f1{grid-template-columns:1fr}.sg2-f2{grid-template-columns:1fr 1fr}.sg2-f3{grid-template-columns:1fr}}
+</style>
 </head>
 <body class="font-sans text-ink-900">
 <svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false"><defs>
@@ -2161,6 +2350,19 @@
 
 <!-- ====== NAVBAR ====== -->
 <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 bg-navy-900/95 backdrop-blur-xl border-b border-cobalt-500/20 transition-all duration-300">
+  <!-- 0-BLOK: YUQORI PANEL (skrollda yig'iladi) -->
+  <div class="sg2-topbar">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 sg2-topbar-in">
+      <div class="sg2-topbar-l">
+        <a href="tel:+998918341104"><i class="fas fa-phone"></i>+998 91 834 11 04</a>
+        <a href="mailto:info@soargaz.uz" class="sg2-top-mail"><i class="fas fa-envelope"></i>info@soargaz.uz</a>
+      </div>
+      <div class="sg2-topbar-r">
+        <span><i class="fas fa-clock"></i> Du–Ju 09:00–18:00 · Favqulodda 24/7</span>
+        <a href="https://t.me/soarcompany" target="_blank" rel="noopener noreferrer" aria-label="Telegram"><i class="fab fa-telegram"></i>Telegram</a>
+      </div>
+    </div>
+  </div>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[68px] flex items-center justify-between">
 
     <!-- Logo -->
@@ -2179,7 +2381,9 @@
       <button data-h-click="h1" class="nav-link">Biz haqimizda</button>
       <a href="#xaridlar" class="nav-link">Xaridlar</a>
       <a href="#tolov" class="nav-link">To'lov</a>
-      <a href="#faq" class="nav-link">Savol-javob</a>
+      <a href="#xizmatlar" class="nav-link">Xizmatlar</a>
+      <a href="#jarayon" class="nav-link">Ish jarayoni</a>
+      <a href="#savollar" class="nav-link">Savol-javob</a>
 
       <span class="nav-ajratgich"></span>
 
@@ -2204,7 +2408,9 @@
       <button data-h-click="h4" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all text-left">Biz haqimizda</button>
       <a href="#xaridlar" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">Xaridlar</a>
       <a href="#tolov" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">To'lov</a>
-      <a href="#faq" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">Savol-javob</a>
+      <a href="#xizmatlar" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">Xizmatlar</a>
+      <a href="#jarayon" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">Ish jarayoni</a>
+      <a href="#savollar" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">Savol-javob</a>
       <button data-h-click="h5" id="kirish-btn-mobil" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all text-left"><i class="fas fa-right-to-bracket mr-2"></i>Kirish</button>
       <!-- Admin panel tugmasi olib tashlandi — boshqaruv Django admin panelida (/admin/) -->
       <a href="#aloqa" data-h-click="h3" class="py-3 px-4 gold-btn text-oq font-bold rounded-lg text-center mt-1">Murojaat</a>
@@ -2219,7 +2425,7 @@
     /* ── HERO ──
        Tepada to'liq kenglikdagi banner-karusel (3 ta rasm, matni rasmning o'zida),
        pastda tezkor tugmalar va ko'rsatkichlar. Banner nisbati 2172:724 (~3:1). */
-    .hero-banner{padding-top:68px;}            /* fixed navbar balandligi */
+    .hero-banner{padding-top:108px;}           /* fixed navbar: 40px panel + 68px menyu */
     .hero-h1{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
       clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
@@ -2247,7 +2453,7 @@
     /* ── Banner ostidagi qator ── */
     .hero-strip{max-width:1280px;margin:0 auto;padding:28px 24px 56px;
       display:flex;align-items:center;justify-content:space-between;gap:28px;flex-wrap:wrap}
-    .hero-stats{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:14px;flex:1 1 360px;max-width:520px}
+    .hero-stats{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:14px;flex:1 1 480px;max-width:680px}
     .hero-stats .stat-card{padding:16px 12px;text-align:center;}
     .hero-stats i{font-size:16px;margin-bottom:6px;display:block;}
     .hero-stats .stat-num{font-size:24px;font-weight:800;line-height:1.1;}
@@ -2264,7 +2470,7 @@
       #hero-carousel .hc-dot.is-active{width:16px}
     }
     @media (max-width:480px){
-      .hero-stats{gap:8px}
+      .hero-stats{gap:8px;grid-template-columns:repeat(2,1fr)}
       .hero-stats .stat-card{padding:12px 4px;}
       .hero-stats i{font-size:14px;margin-bottom:4px;}
       .hero-stats .stat-num{font-size:20px;}
@@ -2311,6 +2517,46 @@
         <i class="fas fa-tools text-gold-400"></i>
         <div class="stat-num text-gold-400">24/7</div>
         <div class="stat-label text-gray-500">Servis</div>
+      </div>
+      <!-- TODO: 4-ko'rsatkich — haqiqiy raqam qo'yilgach .sg2-todo ni olib tashlang -->
+      <div class="stat-card stat-gradient rounded-xl">
+        <i class="fas fa-map-marker-alt text-cobalt-400"></i>
+        <div class="stat-num text-cobalt-300"><span class="sg2-todo">00</span></div>
+        <div class="stat-label text-gray-500">Tuman</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cobalt-line"></div>
+
+<!-- ====== 3-BLOK: AKSIYALAR VA YANGILIKLAR ======
+     TODO kontent: 1 katta + 2 o'rta + 4 kichik yangilik. Har birida rasm, sarlavha, sana. -->
+<section id="yangiliklar" class="py-24 section-dark">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="sg2-head">
+      <h2 class="text-4xl font-black">Aksiyalar va <span class="gradient-text">yangiliklar</span></h2>
+      <a href="#" class="sg2-ghost-btn">Hammasini ko'rish <i class="fas fa-arrow-right"></i></a>
+    </div>
+    <div class="sg2-news">
+      <a href="#" class="sg2-news-card sg2-news-big">
+        <div class="sg2-media"><div class="sg2-ph">Asosiy aksiya rasmi · 1:1<br>(masalan, «Issiq uy»)</div></div>
+        <div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span><span>[toifa]</span></div>
+        <h3><span class="sg2-todo">[Asosiy aksiya yoki yangilik sarlavhasi]</span></h3>
+      </a>
+      <div class="sg2-news-mid">
+        <a href="#" class="sg2-news-card"><div class="sg2-media"><div class="sg2-ph">Rasm · 16:10</div></div>
+          <div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div>
+          <h3><span class="sg2-todo">[Yangilik 2 sarlavhasi]</span></h3></a>
+        <a href="#" class="sg2-news-card"><div class="sg2-media"><div class="sg2-ph">Rasm · 16:10</div></div>
+          <div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div>
+          <h3><span class="sg2-todo">[Yangilik 3 sarlavhasi]</span></h3></a>
+      </div>
+      <div class="sg2-news-list">
+        <a href="#" class="sg2-news-card sg2-news-row"><div class="sg2-media"><div class="sg2-ph">Rasm</div></div><div><h3><span class="sg2-todo">[Yangilik 4 sarlavhasi]</span></h3><div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div></div></a>
+        <a href="#" class="sg2-news-card sg2-news-row"><div class="sg2-media"><div class="sg2-ph">Rasm</div></div><div><h3><span class="sg2-todo">[Yangilik 5 sarlavhasi]</span></h3><div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div></div></a>
+        <a href="#" class="sg2-news-card sg2-news-row"><div class="sg2-media"><div class="sg2-ph">Rasm</div></div><div><h3><span class="sg2-todo">[Yangilik 6 sarlavhasi]</span></h3><div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div></div></a>
+        <a href="#" class="sg2-news-card sg2-news-row"><div class="sg2-media"><div class="sg2-ph">Rasm</div></div><div><h3><span class="sg2-todo">[Yangilik 7 sarlavhasi]</span></h3><div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div></div></a>
       </div>
     </div>
   </div>
@@ -2507,6 +2753,148 @@
 
 <div class="cobalt-line"></div>
 
+<!-- ====== 5-BLOK: HAMKORLAR ======
+     TODO kontent: 12 ta logotip (brendlar, loyiha va qurilish tashkilotlari) -->
+<section id="hamkorlar" class="py-24 section-card">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl font-black">Hamkor <span class="gradient-text">tashkilotlar</span></h2>
+    </div>
+    <div class="sg2-partners">
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 1]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 2]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 3]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 4]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 5]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 6]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 7]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 8]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 9]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 10]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 11]</span></div>
+      <div class="sg2-partner"><div class="sg2-logo sg2-ph">logo</div><span class="sg2-todo">[Hamkor 12]</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 6-BLOK: LITSENZIYA ======
+     TODO kontent: litsenziya matni va 3 ta hujjat skani (A4, tik) -->
+<section id="litsenziya" class="sg2-lic">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 sg2-lic-grid">
+    <div>
+      <h2>Faoliyatimiz <em>rasmiy litsenziyalangan</em></h2>
+      <p>Litsenziya: № GZ-2024-0521. <span class="sg2-todo">[Kim bergan, sanasi, qaysi ishlarga ruxsat berilgan]</span></p>
+    </div>
+    <div class="sg2-docs">
+      <div class="sg2-doc"><div class="sg2-ph">Litsenziya<br>A4 skan</div></div>
+      <div class="sg2-doc"><div class="sg2-ph">Sertifikat<br>A4 skan</div></div>
+      <div class="sg2-doc"><div class="sg2-ph">Ilova<br>A4 skan</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 7-BLOK: ISH JARAYONI (4 slayd, zigzag) ======
+     Rasmlar: 02, 03, 04 — images/ish-jarayoni/ dan qo'yildi. TODO: 01-slayd rasmi (forma yoki bot skrinshoti) va har slayd matni -->
+<section id="jarayon" class="py-24 section-card">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="sg2-head" style="padding-bottom:24px;border-bottom:1px solid rgba(60,140,225,.22)">
+      <div>
+        <span class="sg2-pill"><i class="fas fa-route"></i> Ish jarayoni</span>
+        <h2 class="text-4xl font-black" style="margin-top:12px">Qanday <span class="gradient-text">ishlaymiz</span></h2>
+        <p class="text-gray-500" style="margin-top:8px;max-width:60ch"><span class="sg2-todo">[Bir jumla: arizadan to ishni topshirishgacha]</span></p>
+      </div>
+      <button type="button" class="sg2-ghost-btn" data-h-click="h12">Nega SOAR GAZ? <i class="fas fa-arrow-right"></i></button>
+    </div>
+    <article class="sg2-slide">
+      <div class="sg2-slide-media"><div class="sg2-ph">01-bosqich rasmi yoki videosi</div></div>
+      <div class="sg2-slide-text">
+        <span class="sg2-k">● Bosqich 01</span>
+        <h3>Ariza</h3>
+        <p><span class="sg2-todo">[Mijoz sayt, Telegram bot yoki telefon orqali ariza qoldiradi…]</span></p>
+        <div class="sg2-chips"><a href="#aloqa">Onlayn ariza</a><a href="https://t.me/soarcompany" target="_blank" rel="noopener noreferrer">Telegram</a></div>
+        <span class="sg2-num" aria-hidden="true">01</span>
+      </div>
+    </article>
+    <article class="sg2-slide">
+      <div class="sg2-slide-media"><img src="images/ish-jarayoni/02-trassa-ochish.webp" alt="SOAR GAZ brigadasi gaz quvuri trassasini ochmoqda" width="824" height="747" loading="lazy" decoding="async"/></div>
+      <div class="sg2-slide-text">
+        <span class="sg2-k">● Bosqich 02</span>
+        <h3>Loyiha va hisob-kitob</h3>
+        <p><span class="sg2-todo">[Mutaxassis obyektga chiqadi, o'lchaydi, narxni aytadi…]</span></p>
+        <div class="sg2-chips"><button type="button" data-h-click="h7">Loyihalashtirish</button><a href="#" data-h-click="h6">Narxnoma</a></div>
+        <span class="sg2-num" aria-hidden="true">02</span>
+      </div>
+    </article>
+    <article class="sg2-slide">
+      <div class="sg2-slide-media"><img src="images/ish-jarayoni/07-payvand-choki.webp" alt="Payvandchi gaz quvuri choklarini payvandlamoqda" width="401" height="475" loading="lazy" decoding="async"/></div>
+      <div class="sg2-slide-text">
+        <span class="sg2-k">● Bosqich 03</span>
+        <h3>Montaj va ishga tushirish</h3>
+        <p><span class="sg2-todo">[Uskuna o'rnatiladi, sinovdan o'tkaziladi, hujjatlar topshiriladi…]</span></p>
+        <div class="sg2-chips"><button type="button" data-h-click="h8">Montaj</button><button type="button" data-h-click="h10">Metrologiya</button></div>
+        <span class="sg2-num" aria-hidden="true">03</span>
+      </div>
+    </article>
+    <article class="sg2-slide" style="margin-bottom:0">
+      <div class="sg2-slide-media"><img src="images/ish-jarayoni/11-yakuniy-nazorat.webp" alt="Yotqizilgan quvurni yakuniy nazoratdan o'tkazish" width="363" height="287" loading="lazy" decoding="async"/></div>
+      <div class="sg2-slide-text">
+        <span class="sg2-k">● Bosqich 04</span>
+        <h3>To'lov va kafolat</h3>
+        <p><span class="sg2-todo">[To'lov usullari, kafolat muddati, keyingi servis…]</span></p>
+        <div class="sg2-chips"><button type="button" data-h-click="h13">To'lov usullari</button><button type="button" data-h-click="h9">Servis</button></div>
+        <span class="sg2-num" aria-hidden="true">04</span>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ====== 8-BLOK: SAVOL-JAVOB ====== -->
+<section id="savollar" class="py-24 section-dark">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl font-black">Ko'p beriladigan <span class="gradient-text">savollar</span></h2>
+      <p class="text-gray-500" style="margin-top:12px">Mijozlar eng ko'p beradigan savollarga qisqa javoblar</p>
+    </div>
+    <div class="sg2-faq-grid">
+      <aside class="sg2-faq-cta">
+        <i class="fas fa-circle-question" style="font-size:26px"></i>
+        <h3>Javob topa olmadingizmi?</h3>
+        <p>Savolingizni qoldiring — mutaxassisimiz siz bilan bog'lanadi.</p>
+        <a href="#aloqa" class="sg2-cta-oq">Ariza qoldirish <i class="fas fa-arrow-right"></i></a>
+        <a href="tel:+998918341104" class="sg2-cta-shisha"><i class="fas fa-phone"></i> +998 91 834 11 04</a>
+      </aside>
+      <div class="sg-faq" style="margin:0">
+        <details class="sg-faq__item" open>
+          <summary class="sg-faq__q"><span><b style="color:#ff8a00;margin-right:10px">01</b>Gaz loyihasi qancha vaqtda tayyorlanadi?</span><i class="fas fa-plus sg-faq__ico" aria-hidden="true"></i></summary>
+          <div class="sg-faq__a"><p>Uy-joy obyektlari uchun odatda 3–7 ish kuni, sanoat obyektlari uchun 10–20 ish kuni. Muddat obyekt hajmi va kerakli kelishuvlar soniga bog'liq.</p></div>
+        </details>
+        <details class="sg-faq__item">
+          <summary class="sg-faq__q"><span><b style="color:#ff8a00;margin-right:10px">02</b>Montaj ishlariga kafolat beriladimi?</span><i class="fas fa-plus sg-faq__ico" aria-hidden="true"></i></summary>
+          <div class="sg-faq__a"><p>Ha. Montaj ishlariga 24 oy, o'rnatilgan uskunalarga ishlab chiqaruvchi kafolati amal qiladi. Kafolat shartlari shartnomada aniq yoziladi.</p></div>
+        </details>
+        <details class="sg-faq__item">
+          <summary class="sg-faq__q"><span><b style="color:#ff8a00;margin-right:10px">03</b>Hisoblagichni qachon qiyoslovdan o'tkazish kerak?</span><i class="fas fa-plus sg-faq__ico" aria-hidden="true"></i></summary>
+          <div class="sg-faq__a"><p>Maishiy hisoblagichlar uchun odatda har 5 yilda, sanoat hisoblagichlari uchun pasport talabiga ko'ra. Biz muddatni eslatib turamiz va qiyoslovni o'zimiz tashkil qilamiz.</p></div>
+        </details>
+        <details class="sg-faq__item">
+          <summary class="sg-faq__q"><span><b style="color:#ff8a00;margin-right:10px">04</b>Viloyatlarga ham xizmat ko'rsatasizmi?</span><i class="fas fa-plus sg-faq__ico" aria-hidden="true"></i></summary>
+          <div class="sg-faq__a"><p>Ha, O'zbekistonning barcha viloyatlarida ishlaymiz. Uskunalarni yetkazib berish va mobil montaj brigadalari mavjud.</p></div>
+        </details>
+        <details class="sg-faq__item">
+          <summary class="sg-faq__q"><span><b style="color:#ff8a00;margin-right:10px">05</b>Hisob-fakturani qanday olish mumkin?</span><i class="fas fa-plus sg-faq__ico" aria-hidden="true"></i></summary>
+          <div class="sg-faq__a"><p>To'lov bo'limidagi hisob-faktura so'rovi orqali kompaniya rekvizitlarini yuboring — rasmiy hisob-faktura 1 ish kuni ichida elektron pochtangizga keladi.</p></div>
+        </details>
+        <details class="sg-faq__item">
+          <summary class="sg-faq__q"><span><b style="color:#ff8a00;margin-right:10px">06</b>Buyurtma holatini qanday kuzataman?</span><i class="fas fa-plus sg-faq__ico" aria-hidden="true"></i></summary>
+          <div class="sg-faq__a"><p>Yuqoridagi «Kirish» tugmasini bosing va telefon raqamingizni kiriting — SMS orqali kod keladi. Shaxsiy kabinetda buyurtmalaringiz, to'lovlaringiz va hisoblagich muddatlari ko'rinadi.</p></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cobalt-line"></div>
+
 <!-- ====== ALOQA ====== -->
 <section id="aloqa" class="py-24 section-dark">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -2595,24 +2983,81 @@
   </div>
 </section>
 
-<!-- ====== FOOTER ====== -->
-<footer class="bg-navy-900 border-t border-gold-500/70 py-10">
+<!-- ====== 10-BLOK: RAQAMLARDA ======
+     TODO: grafik hozir NAMUNA ustunlar; haqiqiy statistika (arizalar yoki tashriflar) API dan ulanadi -->
+<section style="padding-top:64px">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 gold-btn rounded-lg flex items-center justify-center">
-          <i class="fas fa-fire text-oq"></i>
+    <div class="sg2-nums">
+      <div>
+        <h2>SOAR GAZ raqamlarda</h2>
+        <small><span class="sg2-todo">[Ko'rsatkich: arizalar yoki tashriflar]</span></small>
+        <div class="sg2-big"><span class="sg2-todo">0 000</span></div><small>So'nggi 30 kunda</small>
+        <div class="sg2-nums-two">
+          <div><b><span class="sg2-todo">000</span></b><small>So'nggi 7 kunda</small></div>
+          <div><b><span class="sg2-todo">00</span></b><small>Kuniga o'rtacha</small></div>
         </div>
-        <span class="font-black">SOAR<span class="text-gold-500"> GAZ</span></span>
       </div>
-      <p class="text-gray-500 text-sm">© 2024 SOAR GAZ. Barcha huquqlar himoyalangan.</p>
-      <p class="text-gray-600 text-xs">Litsenziya: № GZ-2024-0521</p>
+      <div>
+        <div class="sg2-chart" aria-hidden="true"><i style="height:18%"></i><i style="height:26%"></i><i style="height:40%"></i><i style="height:48%"></i><i style="height:44%"></i><i style="height:90%"></i><i style="height:76%"></i><i style="height:84%"></i><i style="height:30%"></i><i style="height:82%"></i><i style="height:96%"></i><i style="height:58%"></i><i style="height:60%"></i><i style="height:56%"></i><i style="height:8%"></i><i style="height:70%"></i><i style="height:68%"></i><i style="height:74%"></i><i style="height:82%"></i><i style="height:60%"></i><i style="height:44%"></i><i style="height:22%"></i><i style="height:72%"></i><i style="height:100%"></i></div>
+        <div class="sg2-chart-note"><span>[boshlanish]</span><span>Namuna ustunlar — haqiqiy ma'lumot ulanadi</span><span>[bugun]</span></div>
+      </div>
     </div>
-    <div class="mt-6 pt-6 flex flex-col md:flex-row items-center justify-center gap-x-8 gap-y-2 text-sm text-gray-500" style="border-top:1px solid rgba(120,170,235,0.25)">
-      <a href="tel:+998918341104" class="hover:text-ink-900 transition-colors"><i class="fas fa-phone mr-2"></i>+998 91 834 11 04</a>
-      <a href="tel:+998954801104" class="hover:text-ink-900 transition-colors"><i class="fas fa-phone mr-2"></i>+998 95 480 11 04</a>
-      <span class="text-center"><i class="fas fa-map-marker-alt mr-2"></i>Buxoro viloyati, Buxoro shahri, Hofiz Tanish Buxoriy, 8-uy</span>
+  </div>
+</section>
+
+<!-- ====== 11-BLOK: IJTIMOIY TARMOQLAR ======
+     TODO kontent: har telefon ichiga sahifa skrinshoti (9:17) -->
+<section class="sg2-social">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 sg2-social-grid" style="padding-top:28px">
+    <div>
+      <span class="sg2-pill" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff">● <span class="sg2-todo">00 000+</span> obunachi</span>
+      <h2>Ijtimoiy tarmoqlardagi sahifalarimizga <em>obuna bo'ling</em></h2>
+      <div class="sg2-soc-row">
+        <a href="https://t.me/soarcompany" target="_blank" rel="noopener noreferrer"><i class="fab fa-telegram"></i> Telegram</a>
+        <a href="https://www.instagram.com/soar._company/" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i> Instagram</a>
+        <a href="#"><i class="fab fa-youtube"></i> <span class="sg2-todo">YouTube</span></a>
+      </div>
     </div>
+    <div class="sg2-phones">
+      <div class="sg2-phone"><div class="sg2-ph sg2-ph--dark">Telegram<br>skrinshot</div><span>Telegram</span></div>
+      <div class="sg2-phone"><div class="sg2-ph sg2-ph--dark">Instagram<br>skrinshot</div><span>Instagram</span></div>
+      <div class="sg2-phone"><div class="sg2-ph sg2-ph--dark">Reels<br>skrinshot</div><span>Reels</span></div>
+      <div class="sg2-phone"><div class="sg2-ph sg2-ph--dark">YouTube<br>skrinshot</div><span>YouTube</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 12-BLOK: FUTER (4 qavat) ====== -->
+<footer class="sg2-footer">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="sg2-f1">
+      <div>
+        <a href="#" class="flex items-center gap-3" style="margin-bottom:14px">
+          <img src="/logo_icon.png?v=2" alt="" width="40" height="40" decoding="async" loading="lazy"/>
+          <span class="font-black text-lg" style="color:#fff">SOAR<span style="color:#ff8a00"> GAZ</span></span>
+        </a>
+        <p style="line-height:1.7">Gaz ta'minoti platformasi: loyihalash, montaj, servis, metrologiya va uskunalar savdosi. <span class="sg2-todo">[Tavsifni tasdiqlang]</span></p>
+      </div>
+      <div><b>+998 91 834 11 04</b><small>Telefon</small><b>+998 95 480 11 04</b><small>Telefon</small><b>info@soargaz.uz</b><small>Email</small></div>
+      <div><b>Buxoro viloyati, Buxoro shahri, Hofiz Tanish Buxoriy, 8-uy</b><small>Manzil</small><b>Du–Ju: 09:00–18:00 | Sha: 09:00–14:00</b><small>Ish vaqti · favqulodda 24/7</small></div>
+      <div class="sg2-f-map sg2-ph sg2-ph--dark">Xarita<br>(rasm yoki havola)</div>
+    </div>
+    <div class="sg2-f2">
+      <div><h3>Kompaniya</h3><ul><li><button type="button" data-h-click="h1">Biz haqimizda</button></li><li><button type="button" data-h-click="h12">Nega SOAR GAZ?</button></li><li><a href="#litsenziya">Litsenziya</a></li><li><a href="#hamkorlar">Hamkorlar</a></li></ul></div>
+      <div><h3>Xizmatlar</h3><ul><li><button type="button" data-h-click="h7">Loyihalashtirish</button></li><li><button type="button" data-h-click="h8">Montaj qilish</button></li><li><button type="button" data-h-click="h9">Servis xizmatlari</button></li><li><button type="button" data-h-click="h10">Metrologiya</button></li></ul></div>
+      <div><h3>Xaridlar</h3><ul><li><button type="button" data-h-click="h11">Katalog</button></li><li><a href="#yangiliklar">Aksiyalar</a></li><li><a href="#"><span class="sg2-todo">[Yetkazib berish]</span></a></li></ul></div>
+      <div><h3>To'lov</h3><ul><li><button type="button" data-h-click="h13">To'lov usullari</button></li><li><button type="button" data-h-click="h6">Narxnoma</button></li></ul></div>
+      <div><h3>Mijozlarga</h3><ul><li><a href="#savollar">Savol-javob</a></li><li><a href="#jarayon">Ish jarayoni</a></li><li><button type="button" data-h-click="h2">Shaxsiy kabinet</button></li></ul></div>
+      <div><h3>Aloqa</h3><ul><li><a href="tel:+998918341104">+998 91 834 11 04</a></li><li><a href="tel:+998954801104">+998 95 480 11 04</a></li><li><a href="mailto:info@soargaz.uz">info@soargaz.uz</a></li></ul></div>
+    </div>
+    <div class="sg2-f3t">Foydali havolalar</div>
+    <div class="sg2-f3">
+      <button type="button" data-h-click="h2"><span class="sg2-fi" style="background:linear-gradient(135deg,#0d6efd,#38bdf8)"><i class="fas fa-user"></i></span><span><b style="color:#fff">Shaxsiy kabinet</b><small>Buyurtma va to'lovlar</small></span></button>
+      <a href="https://t.me/soarcompany" target="_blank" rel="noopener noreferrer"><span class="sg2-fi" style="background:linear-gradient(135deg,#229ed9,#4db2ff)"><i class="fab fa-telegram"></i></span><span><b style="color:#fff">Telegram</b><small>@soarcompany</small></span></a>
+      <button type="button" data-h-click="h11"><span class="sg2-fi" style="background:linear-gradient(135deg,#ff8a00,#ffb866)"><i class="fas fa-cart-shopping"></i></span><span><b style="color:#fff">Xaridlar</b><small>Uskunalar katalogi</small></span></button>
+      <button type="button" data-h-click="h13"><span class="sg2-fi" style="background:linear-gradient(135deg,#16a34a,#4ade80)"><i class="fas fa-wallet"></i></span><span><b style="color:#fff">To'lovlar</b><small>Onlayn va shartnoma</small></span></button>
+    </div>
+    <div class="sg2-f4"><span>© 2026 SOAR GAZ. Barcha huquqlar himoyalangan.</span><span>Litsenziya: № GZ-2024-0521</span></div>
   </div>
 </footer>
 
