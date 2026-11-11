@@ -1229,11 +1229,11 @@
     leafletVada = new Promise((bajar, rad) => {
       const uslub = document.createElement('link');
       uslub.rel = 'stylesheet';
-      uslub.href = '/vendor/leaflet/leaflet.css';
+      uslub.href = 'vendor/leaflet/leaflet.css';
       document.head.appendChild(uslub);
 
       const skript = document.createElement('script');
-      skript.src = '/vendor/leaflet/leaflet.js';
+      skript.src = 'vendor/leaflet/leaflet.js';
       skript.onload = () => bajar();
       skript.onerror = () => { leafletVada = null; rad(new Error('leaflet')); };
       document.head.appendChild(skript);
