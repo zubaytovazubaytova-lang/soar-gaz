@@ -399,6 +399,21 @@ def royxatdan_otish(request):
                           status.HTTP_201_CREATED)
 
 
+# Mijoz kirish kodi (`otp/yuborish`, `otp/tasdiqlash`) FAQAT mijozlar uchun. Xodim `/xodimlar` da telefon +
+# admin bergan kod bilan, administrator `/boshqaruv/` da parol + 2-bosqich bilan kiradi. Bu yo'lni ular uchun
+# yopish ikki narsani beradi: administrator parolsiz (faqat kod bilan) kirib ketmaydi — jumladan o'z
+# 2-bosqich kodi bilan ham — va xodim kodlariga SMS/Telegram puli sarflanmaydi.
+OTP_YOPIQ_ROLLAR = ('admin', 'xodim')
+
+
+def _otp_yopiq_javobi():
+    return Response({
+        'detail': _("Bu yerdan faqat mijozlar kiradi. Xodimlar: /xodimlar sahifasi (telefon va admin bergan kod), "
+                    "administrator: /boshqaruv/."),
+        'yopiq_rol': True,
+    }, status=403)
+
+
 def _gateway_mumkinmi(telefon):
     """Telegram Gateway pullik: faqat mijozlar va yangi (hali ro'yxatda yo'q) raqamlar uchun.
     Xodim va admin kodlari Gateway'ga ketmaydi."""
@@ -471,6 +486,8 @@ def otp_yuborish(request):
         mavjud = Foydalanuvchi.objects.get(telefon=telefon)
         if mavjud.holat == 'nofaol':
             return Response({'detail': _('Hisobingiz bloklangan. Admin bilan bog\'laning.')}, status=403)
+        if mavjud.rol in OTP_YOPIQ_ROLLAR:
+            return _otp_yopiq_javobi()
         yangi_mijoz = False
         rol = mavjud.rol
     except Foydalanuvchi.DoesNotExist:
@@ -502,6 +519,10 @@ def otp_tasdiqlash(request):
 
     if not telefon or not kod:
         return Response({'detail': _('Telefon va kod kiritilishi shart')}, status=400)
+
+    # Xodim/admin bu yo'ldan token ololmaydi (kod sarflanmaydi: admin 2-bosqich kodi o'z yo'lida qoladi)
+    if Foydalanuvchi.objects.filter(telefon=telefon, rol__in=OTP_YOPIQ_ROLLAR).exists():
+        return _otp_yopiq_javobi()
 
     if cache.get(_kesh_kaliti('blok', telefon)):
         return Response(
