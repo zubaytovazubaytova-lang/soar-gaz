@@ -257,6 +257,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+# `manage.py collectstatic` shu yerga yig'adi (Django admin dizayni); nginx /static/ ni shu papkadan beradi
+STATIC_ROOT = BASE_DIR / 'static'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
