@@ -95,22 +95,28 @@ class YuborishTest(TestCase):
 
     @mock.patch('apps.sms_app.telegram._api')
     def test_ulangan_raqamga_telegramdan_ketadi(self, api):
-        self.assertTrue(sms_yubor('998901234567', 'kod: 123456'))
+        self.assertTrue(sms_yubor('998901234567', 'kod: 123456', telegram_bot=True))
         api.assert_called_once_with('sendMessage', {'chat_id': 555, 'text': 'kod: 123456'})
 
     @mock.patch('apps.sms_app.telegram._api')
+    def test_oddiy_xabar_telegramga_ketmaydi(self, api):
+        """Ariza/buyurtma xabarlari mijozlarga SMS bilan boradi: ulangan bo'lsa ham botga emas."""
+        self.assertFalse(sms_yubor('998901234567', 'Arizangiz qabul qilindi'))
+        api.assert_not_called()
+
+    @mock.patch('apps.sms_app.telegram._api')
     def test_ulanmagan_raqamga_ketmaydi(self, api):
-        self.assertFalse(sms_yubor('+998900000000', 'kod: 1'))
+        self.assertFalse(sms_yubor('+998900000000', 'kod: 1', telegram_bot=True))
         api.assert_not_called()
 
     @mock.patch('apps.sms_app.telegram._api', side_effect=telegram.TelegramXato('bot blocked'))
     def test_telegram_xatosi_false_qaytaradi(self, api):
-        self.assertFalse(sms_yubor(TEL, 'kod'))
+        self.assertFalse(sms_yubor(TEL, 'kod', telegram_bot=True))
 
     @override_settings(TELEGRAM_BOT_TOKEN='')
     @mock.patch('apps.sms_app.telegram._api')
     def test_token_bermasa_telegramga_urinmaydi(self, api):
-        self.assertFalse(sms_yubor(TEL, 'kod'))
+        self.assertFalse(sms_yubor(TEL, 'kod', telegram_bot=True))
         api.assert_not_called()
         self.assertFalse(sozlanganmi())
 
@@ -121,7 +127,7 @@ class YuborishTest(TestCase):
     @mock.patch('apps.sms_app.telegram._api', side_effect=telegram.TelegramXato('x'))
     @mock.patch('apps.sms_app.gateway._eskiz_yubor')
     def test_telegram_ketmasa_eskiz_sms_zaxira_bo_ladi(self, eskiz, api):
-        self.assertTrue(sms_yubor(TEL, 'kod'))
+        self.assertTrue(sms_yubor(TEL, 'kod', telegram_bot=True))
         eskiz.assert_called_once()
 
 
@@ -174,6 +180,7 @@ class KirishKodiTest(TestCase):
         self.api = p.start()
         self.addCleanup(p.stop)
 
+    @override_settings(TELEGRAM_BOT_MIJOZLARGA=True)
     def test_ulanmagan_mijozga_yoriqnoma_qaytadi(self):
         r = self.c.post('/api/auth/otp/yuborish/', {'telefon': TEL}, format='json')
         self.assertEqual(r.status_code, 409)
@@ -199,7 +206,14 @@ class KirishKodiTest(TestCase):
         self.assertEqual(r2.status_code, 200)
         self.assertTrue(Foydalanuvchi.objects.filter(telefon=TEL).exists())
 
-    @override_settings(TELEGRAM_BOT_TOKEN='')
+    def test_standart_holatda_mijozga_bot_yoriqnomasi_korsatilmaydi(self):
+        """Mijozlar botdan foydalanmaydi: kod ketmasa umumiy xato (502), botni ochish yo'riqnomasi YO'Q."""
+        r = self.c.post('/api/auth/otp/yuborish/', {'telefon': TEL}, format='json')
+        self.assertEqual(r.status_code, 502)
+        self.assertNotIn('telegram_kerak', r.json())
+        self.assertNotIn('soargaz_test_bot', r.json()['detail'])
+
+    @override_settings(TELEGRAM_BOT_TOKEN='', TELEGRAM_BOT_MIJOZLARGA=True)
     def test_telegram_ochiq_bolmasa_eski_xulq_502(self):
         r = self.c.post('/api/auth/otp/yuborish/', {'telefon': TEL}, format='json')
         self.assertEqual(r.status_code, 502)

@@ -401,15 +401,16 @@ def royxatdan_otish(request):
 
 def _send_otp_sms(telefon, kod):
     """OTP kodni yuboradi. Navbat: 1) Telegram Gateway (raqam bo'yicha, botsiz), 2) Telegram bot
-    (raqam ulangan bo'lsa), 3) SMS (Eskiz). Hech biri sozlanmagan bo'lsa — log."""
+    (faqat raqam allaqachon ulangan bo'lsa: ichki zaxira), 3) SMS (Eskiz). Hech biri sozlanmagan bo'lsa — log."""
     if tg_gateway.sozlangan() and tg_gateway.kod_yubor(telefon, kod):
         return True
-    return sms_yubor(telefon, f"SOAR GAZ tasdiqlash kodi: {kod}. Hech kimga aytmang.")
+    return sms_yubor(telefon, f"SOAR GAZ tasdiqlash kodi: {kod}. Hech kimga aytmang.", telegram_bot=True)
 
 
 def _kod_yuborilmadi_javobi(telefon):
     """Kod ketmadi. Telegram yoqilgan va raqam botga ulanmagan bo'lsa — ulash yo'riqnomasi."""
-    if telegram_bot.sozlangan() and not telegram_bot.ulangan(telefon):
+    if (settings.TELEGRAM_BOT_MIJOZLARGA and telegram_bot.sozlangan()
+            and not telegram_bot.ulangan(telefon)):
         bot = telegram_bot.bot_nomi()
         return Response({
             'detail': _("Kod Telegram orqali yuboriladi. Telegramda @%(bot)s botini oching, "

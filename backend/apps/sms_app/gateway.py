@@ -90,14 +90,15 @@ def _eskiz_yubor(telefon, matn, qayta=True):
         raise SmsXato(f"Eskiz bilan aloqa yo'q: {xato}")
 
 
-def sms_yubor(telefon, matn):
+def sms_yubor(telefon, matn, telegram_bot=False):
     """SMS yuboradi. Muvaffaqiyatli bo'lsa True qaytaradi.
 
     Xatolik yuz bersa log'ga yozadi va False qaytaradi — chaqiruvchi kod
     (masalan OTP) shu asosda mijozga tushunarli xabar ko'rsatadi.
     """
-    # 1) Telegram (bepul): raqam botga ulangan bo'lsa xabar o'sha yerga boradi
-    if telegram.sozlangan() and telegram.yubor(telefon, matn):
+    # Telegram bot faqat so'ralganda (kirish kodi zaxirasi): oddiy xabarlar (ariza, buyurtma, to'lov)
+    # mijozlarga SMS bilan boradi, bot ularga ko'rsatilmaydi.
+    if telegram_bot and telegram.sozlangan() and telegram.yubor(telefon, matn):
         return True
 
     provayder = _sozlama('SMS_PROVAYDER', 'konsol')

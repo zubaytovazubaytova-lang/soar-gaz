@@ -385,6 +385,10 @@ TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', '')
 # Token — Telegram Gateway hisobi sozlamalarida. `soargaz-gateway-kalit` yozadi.
 TELEGRAM_GATEWAY_TOKEN = os.environ.get('TELEGRAM_GATEWAY_TOKEN', '')
 
+# Kod ketmasa mijozga «botni oching» yo'riqnomasi ko'rsatilsinmi. Standart — YO'Q: mijozlar botdan
+# foydalanmaydi (kod Gateway orqali, xabarlar SMS orqali). Bot faqat ichki zaxira (admin/xodim).
+TELEGRAM_BOT_MIJOZLARGA = os.environ.get('TELEGRAM_BOT_MIJOZLARGA', '0') == '1'
+
 # ──────────────────────────────────────────────────────────────
 #  TO'LOV TIZIMLARI (Click / Payme)
 #  Kalitlar merchant kabinetdan olinadi va SERVERDA muhit o'zgaruvchisi
