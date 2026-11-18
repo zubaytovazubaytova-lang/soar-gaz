@@ -119,7 +119,7 @@
        fonts.googleapis.com, cdnjs, unpkg) ulanish har biri alohida DNS+TLS
        talab qilardi. Tailwind endi build vaqtida generatsiya qilinadi
        (npm run css) — brauzerda JIT kompilyator ishlamaydi.  -->
-  <link rel="stylesheet" href="assets/tailwind.css?v=20261108"/>
+  <link rel="stylesheet" href="assets/tailwind.css?v=20261118"/>
   <link rel="stylesheet" href="assets/inter.css"/>
   <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=2"/>
   <!-- Kuryerni xaritada kuzatish uchun (OpenStreetMap — API kalit talab qilmaydi).
@@ -2139,6 +2139,7 @@
 .sg2-news-row{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center}
 .sg2-news-row .sg2-media{aspect-ratio:3/2;border-radius:14px}
 .sg2-news-row h3{font-size:13.5px}
+.sg2-news-row p{margin-top:4px;font-size:12px;line-height:1.45;color:#5b7fa6;font-weight:500}
 @media(max-width:1100px){.sg2-news{grid-template-columns:1fr 1fr}.sg2-news-list{grid-column:1/-1;grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.sg2-news{grid-template-columns:1fr}.sg2-news-list{grid-template-columns:1fr}}
 
@@ -2177,11 +2178,33 @@
   background:linear-gradient(110deg,#ffd9a8,#ff8a00 40%,#ffe9c7 52%,#ff8a00 64%,#ffd9a8);
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .sg2-lic p{margin-top:14px;color:rgba(255,255,255,.78);font-size:14px;line-height:1.7}
-.sg2-docs{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.sg2-doc{aspect-ratio:210/297;border-radius:12px;background:#fff;box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
+.sg2-docs{display:flex;flex-wrap:wrap;justify-content:center;gap:16px}
+.sg2-doc{position:relative;display:block;flex:0 0 calc((100% - 64px)/5);border-radius:12px;background:#fff;overflow:hidden;
+  box-shadow:0 20px 50px -20px rgba(0,0,0,.6);transition:transform .35s ease,box-shadow .35s ease;cursor:zoom-in}
+.sg2-doc img{position:relative;z-index:1;display:block;width:100%;height:auto;aspect-ratio:570/880;object-fit:cover;object-position:top}
+.sg2-doc:hover{transform:translateY(-8px);box-shadow:0 30px 60px -22px rgba(0,0,0,.75),0 0 0 2px #ff8a1f}
+.sg2-doc:focus-visible{outline:3px solid #ffb866;outline-offset:3px}
+.sg2-doc-cap{position:relative;z-index:1;display:flex;flex-direction:column;gap:2px;padding:8px 10px 9px;background:linear-gradient(180deg,#0e2340,#0B1B33);color:#fff}
+.sg2-doc-cap b{font-size:13px;font-weight:800}
+.sg2-doc-cap small{font-size:11px;color:#9db6d6;font-weight:600}
+@media(max-width:1000px){.sg2-doc{flex-basis:calc((100% - 32px)/3)}}
+@media(max-width:560px){.sg2-docs{gap:10px}.sg2-doc{flex-basis:calc((100% - 10px)/2)}}
+@media(prefers-reduced-motion:reduce){.sg2-doc,.sg2-doc:hover{transition:none;transform:none}}
+/* Ruxsatnomani kattalashtirib ko'rish oynasi */
+.sg2-lbox{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(4,12,24,.86);backdrop-filter:blur(4px)}
+.sg2-lbox.is-open{display:flex}
+.sg2-lbox-in{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:min(92vw,720px);max-height:100%}
+.sg2-lbox img{display:block;max-width:100%;max-height:calc(100vh - 150px);width:auto;height:auto;border-radius:10px;background:#fff;box-shadow:0 30px 80px -20px rgba(0,0,0,.8)}
+.sg2-lbox-cap{color:#fff;text-align:center;font-size:14px;line-height:1.5;max-width:62ch}
+.sg2-lbox-cap b{display:block;font-size:15px;color:#ffb866}
+.sg2-lbox button{position:absolute;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.4);
+  background:rgba(8,22,44,.7);color:#fff;font-size:18px;cursor:pointer;transition:background .2s}
+.sg2-lbox button:hover{background:#ff8a1f;border-color:#ff8a1f}
+.sg2-lbox-x{top:16px;right:16px}.sg2-lbox-p{left:16px;top:50%;margin-top:-23px}.sg2-lbox-n{right:16px;top:50%;margin-top:-23px}
+@media(max-width:560px){.sg2-lbox-p,.sg2-lbox-n{top:auto;bottom:16px;margin-top:0}.sg2-lbox-p{left:calc(50% - 56px)}.sg2-lbox-n{right:calc(50% - 56px)}.sg2-lbox img{max-height:calc(100vh - 210px)}}
 .sg2-doc .sg2-ph{height:100%;border-radius:12px}
 @media(max-width:1100px){.sg2-lic-grid{grid-template-columns:1fr;gap:36px;padding:60px 0}}
-@media(max-width:640px){.sg2-docs{gap:12px}}
+@media(max-width:640px){}
 
 /* 7-blok: ish jarayoni (zigzag slaydlar) */
 .sg2-slide{position:relative;display:grid;grid-template-columns:1fr 1fr;width:82%;margin-bottom:48px;
@@ -2244,23 +2267,18 @@
 .sg2-event::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(circle at 8% 12%,rgba(31,111,235,.3),transparent 36%),radial-gradient(circle at 92% 88%,rgba(255,138,0,.2),transparent 34%)}
 .sg2-ev{position:relative;display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(24px,4vw,56px);align-items:center}
-.sg2-ev-stage{position:relative;aspect-ratio:1/1.1;border-radius:28px;overflow:hidden;background:#06101f;
-  box-shadow:0 40px 70px -34px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.14);touch-action:pan-y;user-select:none}
-.sg2-ev-slide{position:absolute;inset:0;margin:0;opacity:0;visibility:hidden;transition:opacity .9s ease,visibility 0s .9s}
-.sg2-ev-slide.is-active{opacity:1;visibility:visible;transition:opacity .9s ease}
-.sg2-ev-slide img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.02);transition:transform 7s linear}
-.sg2-ev-slide.is-active img{transform:scale(1.1)}
+.sg2-ev-stage{position:relative;aspect-ratio:960/1102;border-radius:28px;overflow:hidden;background:#06101f;
+  box-shadow:0 40px 70px -34px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.14);user-select:none}
+.sg2-ev-slide{position:absolute;inset:0;margin:0;opacity:0;visibility:hidden}
+.sg2-ev-slide.is-active{opacity:1;visibility:visible}
+.sg2-ev-slide img{width:100%;height:100%;object-fit:cover;display:block}
 .sg2-ev-stage::after{content:"";position:absolute;inset:auto 0 0 0;height:34%;pointer-events:none;z-index:2;
   background:linear-gradient(0deg,rgba(6,16,31,.82),transparent)}
-.sg2-ev-count{position:absolute;left:20px;bottom:18px;z-index:3;font-weight:800;font-size:13px;letter-spacing:.14em;color:#fff}
-.sg2-ev-nav{position:absolute;bottom:12px;z-index:4;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
-  border:1px solid rgba(255,255,255,.4);background:rgba(8,22,44,.55);color:#fff;backdrop-filter:blur(6px);cursor:pointer;
-  transition:background .25s,border-color .25s,transform .25s}
-.sg2-ev-nav:hover{background:#ff8a1f;border-color:#ff8a1f;transform:scale(1.06)}
-.sg2-ev-prev{right:68px}.sg2-ev-next{right:16px}
-.sg2-ev-bar{position:absolute;left:0;right:0;top:0;height:3px;z-index:4;background:rgba(255,255,255,.18)}
-.sg2-ev-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff8a1f,#ffb866)}
-.sg2-ev-bar i.is-run{width:100%;transition:width var(--ev-ms,5500ms) linear}
+/* Shaxmat effekti: yangi rasm kataklar bo'lib (avval qora, keyin oq kataklar) ochiladi */
+.sg2-ev-chess{position:absolute;inset:0;z-index:2;display:grid;pointer-events:none}
+.sg2-ev-chess i{display:block;background-repeat:no-repeat;transform:scale(0);opacity:0;will-change:transform,opacity;
+  animation:sg2-tile .34s cubic-bezier(.2,.8,.25,1) forwards}
+@keyframes sg2-tile{0%{transform:scale(0) rotate(-8deg);opacity:0}100%{transform:scale(1.02) rotate(0);opacity:1}}
 .sg2-ev-side{position:relative;z-index:1}
 .sg2-ev-side h2{margin-top:16px;font-size:clamp(28px,3.4vw,46px);font-weight:900;line-height:1.08;letter-spacing:-.03em;color:#fff}
 .sg2-ev-side h2 em{font-style:normal;color:#ffb866}
@@ -2269,15 +2287,13 @@
   min-height:3em;transition:opacity .3s ease,transform .3s ease}
 .sg2-ev-cap.is-out{opacity:0;transform:translateY(6px)}
 .sg2-ev-thumbs{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:22px}
-.sg2-ev-th{position:relative;aspect-ratio:1/1;padding:0;border:2px solid transparent;border-radius:12px;overflow:hidden;cursor:pointer;
+.sg2-ev-th{position:relative;aspect-ratio:1/1;padding:0;border:2px solid transparent;border-radius:12px;overflow:hidden;pointer-events:none;
   background:#06101f;opacity:.55;transition:opacity .25s,border-color .25s,transform .25s}
 .sg2-ev-th img{width:100%;height:100%;object-fit:cover;display:block}
-.sg2-ev-th:hover{opacity:.9;transform:translateY(-2px)}
 .sg2-ev-th.is-active{opacity:1;border-color:#ff8a1f}
-.sg2-ev-th:focus-visible,.sg2-ev-nav:focus-visible{outline:2px solid #fff;outline-offset:2px}
-@media(max-width:1000px){.sg2-ev{grid-template-columns:1fr}.sg2-ev-stage{aspect-ratio:1/.95;max-width:640px;width:100%;margin:0 auto}}
-@media(max-width:560px){.sg2-event{padding:56px 0}.sg2-ev-stage{border-radius:20px}.sg2-ev-thumbs{grid-template-columns:repeat(4,1fr)}.sg2-ev-nav{width:40px;height:40px}.sg2-ev-prev{right:60px}}
-@media(prefers-reduced-motion:reduce){.sg2-ev-slide,.sg2-ev-slide.is-active{transition:none}.sg2-ev-slide img,.sg2-ev-slide.is-active img{transition:none;transform:none}.sg2-ev-bar{display:none}}
+@media(max-width:1000px){.sg2-ev{grid-template-columns:1fr}.sg2-ev-stage{max-width:560px;width:100%;margin:0 auto}}
+@media(max-width:560px){.sg2-event{padding:56px 0}.sg2-ev-stage{border-radius:20px}.sg2-ev-thumbs{grid-template-columns:repeat(4,1fr)}}
+@media(prefers-reduced-motion:reduce){.sg2-ev-chess{display:none}}
 
 /* 11-blok: ijtimoiy tarmoqlar tasmasi (telefon maketlari) */
 .sg2-social{background:linear-gradient(160deg,#123a66,#0B1B33);color:#fff;margin-top:72px}
@@ -2718,22 +2734,20 @@ body > .cobalt-line{display:none}
     <div class="sg2-news">
       <a href="#" class="sg2-news-card sg2-news-big">
         <div class="sg2-media sg2-fx"><img src="images/aksiya/xonadoningizga-iliqlik.webp" srcset="images/aksiya/xonadoningizga-iliqlik-640.webp 640w, images/aksiya/xonadoningizga-iliqlik.webp 1100w" sizes="(max-width:640px) 100vw, (max-width:1100px) 50vw, 42vw" alt="SOAR GAZ: Xonadoningizga iliqlik. Gaz ta'minoti xizmatlari bir platformada" width="1100" height="1100" loading="lazy"><span class="sg2-fx-glow" aria-hidden="true"></span></div>
-        <div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span><span>[toifa]</span></div>
-        <h3><span class="sg2-todo">[Asosiy aksiya yoki yangilik sarlavhasi]</span></h3>
+        
+        <h3>Xonadoningizga iliqlik: gaz ta'minoti xizmatlari — bir platformada</h3>
       </a>
       <div class="sg2-news-mid">
         <a href="#" class="sg2-news-card"><div class="sg2-media"><img src="images/yangiliklar/onlayn-tolov.webp" alt="Onlayn to'lov: gaz xizmatlari uchun telefon orqali xavfsiz to'lov" width="960" height="600" loading="lazy" decoding="async"/></div>
-          <div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div>
-          <h3><span class="sg2-todo">[Yangilik 2 sarlavhasi]</span></h3></a>
+          <h3>Onlayn to'lov: xizmatlar uchun to'lovni telefon orqali amalga oshiring</h3></a>
         <a href="#" class="sg2-news-card"><div class="sg2-media"><img src="images/yangiliklar/gaz-sizish-tekshiruvi.webp" alt="SOAR GAZ ustasi gaz detektori bilan quvur ulanishlarini tekshirmoqda" width="800" height="800" loading="lazy" decoding="async" style="object-position:50% 38%"/></div>
-          <div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div>
-          <h3><span class="sg2-todo">[Yangilik 3 sarlavhasi]</span></h3></a>
+          <h3>Gaz sizishini maxsus asbob bilan tekshirish xizmati</h3></a>
       </div>
       <div class="sg2-news-list">
-        <a href="#" class="sg2-news-card sg2-news-row"><div class="sg2-media"><img src="images/yangiliklar/brigada-va-avtomobil.webp" alt="SOAR GAZ brigadasi xizmat avtomobili yonida" width="640" height="640" loading="lazy" decoding="async" style="object-position:50% 45%"/></div><div><h3><span class="sg2-todo">[Yangilik 4 sarlavhasi]</span></h3><div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> [sana]</span></div></div></a>
-        <a href="#tadbir" class="sg2-news-card sg2-news-row"><div class="sg2-media"><img src="images/tadbir/soar-gaz-stendi.webp" alt="Kelajak Tadbirkori 2026 yarmarkasida SOAR GAZ stendi" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></div><div><h3>SOAR GAZ — yarmarkaning faol ishtirokchisi</h3><div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> 12-noyabr</span><span>Buxoro</span></div></div></a>
-        <a href="#tadbir" class="sg2-news-card sg2-news-row"><div class="sg2-media"><img src="images/tadbir/gorelkalar-namoyishi.webp" alt="Tejamkor gorelkalar namoyishi" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></div><div><h3>Zamonaviy tejamkor gorelkalar namoyishi</h3><div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> 12-noyabr</span><span>Buxoro</span></div></div></a>
-        <a href="#tadbir" class="sg2-news-card sg2-news-row"><div class="sg2-media"><img src="images/tadbir/kasb-sirlari.webp" alt="Usta yoshlarga kasb sirlarini o'rgatmoqda" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></div><div><h3>Yoshlarga kasb sirlarini o'rgatamiz</h3><div class="sg2-news-meta"><span><i class="fas fa-calendar-days"></i> 12-noyabr</span><span>Buxoro</span></div></div></a>
+        <a href="#" class="sg2-news-card sg2-news-row"><div class="sg2-media"><img src="images/yangiliklar/brigada-va-avtomobil.webp" alt="SOAR GAZ brigadasi xizmat avtomobili yonida" width="640" height="640" loading="lazy" decoding="async" style="object-position:50% 45%"/></div><div><h3>Chekka tumandamisiz? Biz sizga ham yetib boramiz!</h3><p>Gaz va suv montaji, ta'mirlash hamda texnik xizmat — to'g'ridan-to'g'ri manzilingizda.</p></div></a>
+        <a href="#tadbir" class="sg2-news-card sg2-news-row"><div class="sg2-media"><img src="images/tadbir/soar-gaz-stendi.webp" alt="Kelajak Tadbirkori 2026 yarmarkasida SOAR GAZ stendi" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></div><div><h3>SOAR GAZ — yarmarkaning faol ishtirokchisi</h3><div class="sg2-news-meta"><span>Buxoro</span></div></div></a>
+        <a href="#tadbir" class="sg2-news-card sg2-news-row"><div class="sg2-media"><img src="images/tadbir/gorelkalar-namoyishi.webp" alt="Tejamkor gorelkalar namoyishi" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></div><div><h3>Zamonaviy tejamkor gorelkalar namoyishi</h3><div class="sg2-news-meta"><span>Buxoro</span></div></div></a>
+        <a href="#tadbir" class="sg2-news-card sg2-news-row"><div class="sg2-media"><img src="images/tadbir/kasb-sirlari.webp" alt="Usta yoshlarga kasb sirlarini o'rgatmoqda" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></div><div><h3>Yoshlarga kasb sirlarini o'rgatamiz</h3><div class="sg2-news-meta"><span>Buxoro</span></div></div></a>
       </div>
     </div>
   </div>
@@ -2743,7 +2757,7 @@ body > .cobalt-line{display:none}
      Kadrlar SoarGaz_Kelajak_Tadbirkori_2026_v3.mp4 videosidan olindi (images/tadbir/). Skript: scripts/tadbir-slider.js -->
 <section id="tadbir" class="sg2-event" aria-labelledby="tadbir-sarlavha">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="sg2-ev" data-ev role="region" aria-roledescription="slayder" aria-label="Kelajak Tadbirkori 2026 lavhalari">
+    <div class="sg2-ev" data-ev aria-label="Kelajak Tadbirkori 2026 lavhalari">
       <div class="sg2-ev-stage" data-ev-stage>
         <figure class="sg2-ev-slide is-active" data-cap="SOAR GAZ — yarmarkaning faol ishtirokchisi"><img src="images/tadbir/soar-gaz-stendi.webp" alt="SOAR GAZ — yarmarkaning faol ishtirokchisi" width="960" height="1102" decoding="async" style="object-position:50% 40%"/></figure>
         <figure class="sg2-ev-slide" data-cap="Zamonaviy tejamkor gorelkalar namoyishi"><img src="images/tadbir/gorelkalar-namoyishi.webp" alt="Zamonaviy tejamkor gorelkalar namoyishi" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></figure>
@@ -2756,10 +2770,6 @@ body > .cobalt-line{display:none}
         <figure class="sg2-ev-slide" data-cap="Yuzlab yoshlar bir maydonda"><img src="images/tadbir/yoshlar-maydonda.webp" alt="Yuzlab yoshlar bir maydonda" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></figure>
         <figure class="sg2-ev-slide" data-cap="Kasbdan — ishga, g'oyadan — biznesga!"><img src="images/tadbir/tinglovchilar.webp" alt="Kasbdan — ishga, g'oyadan — biznesga!" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></figure>
         <figure class="sg2-ev-slide" data-cap="Korxonalar va tadbirkorlar ko'rgazmasi"><img src="images/tadbir/kasblar-akademiyasi.webp" alt="Korxonalar va tadbirkorlar ko'rgazmasi" width="960" height="1102" loading="lazy" decoding="async" style="object-position:50% 40%"/></figure>
-        <span class="sg2-ev-count" data-ev-count aria-hidden="true">01 / 11</span>
-        <button type="button" class="sg2-ev-nav sg2-ev-prev" data-ev-prev aria-label="Oldingi lavha"><i class="fas fa-arrow-left"></i></button>
-        <button type="button" class="sg2-ev-nav sg2-ev-next" data-ev-next aria-label="Keyingi lavha"><i class="fas fa-arrow-right"></i></button>
-        <span class="sg2-ev-bar" aria-hidden="true"><i data-ev-bar></i></span>
       </div>
       <div class="sg2-ev-side">
         <span class="sg2-pill" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff"><i class="fas fa-location-dot"></i> Buxoro · 12-noyabr</span>
@@ -2767,17 +2777,17 @@ body > .cobalt-line{display:none}
         <p class="sg2-ev-lead">Kasb, bandlik va tadbirkorlik imkoniyatlari yarmarkasida SOAR GAZ o'z stendi bilan qatnashdi.</p>
         <p class="sg2-ev-cap" data-ev-cap aria-live="polite">SOAR GAZ — yarmarkaning faol ishtirokchisi</p>
         <div class="sg2-ev-thumbs" data-ev-thumbs>
-          <button type="button" class="sg2-ev-th is-active" aria-label="1-lavha: SOAR GAZ — yarmarkaning faol ishtirokchisi"><img src="images/tadbir/soar-gaz-stendi.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="2-lavha: Zamonaviy tejamkor gorelkalar namoyishi"><img src="images/tadbir/gorelkalar-namoyishi.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="3-lavha: Har bir mehmon bilan jonli muloqot"><img src="images/tadbir/mehmon-bilan-muloqot.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="4-lavha: Yoshlarga kasb sirlarini o'rgatamiz"><img src="images/tadbir/kasb-sirlari.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="5-lavha: Ishonch. Sifat. Hamkorlik."><img src="images/tadbir/jonli-namoyish.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="6-lavha: Davlat madhiyasi sadolari ostida"><img src="images/tadbir/madhiya.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="7-lavha: Bayramona kayfiyat"><img src="images/tadbir/bayramona-kayfiyat.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="8-lavha: Milliy raqs va quvonch"><img src="images/tadbir/milliy-raqs.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="9-lavha: Yuzlab yoshlar bir maydonda"><img src="images/tadbir/yoshlar-maydonda.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="10-lavha: Kasbdan — ishga, g'oyadan — biznesga!"><img src="images/tadbir/tinglovchilar.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
-          <button type="button" class="sg2-ev-th" aria-label="11-lavha: Korxonalar va tadbirkorlar ko'rgazmasi"><img src="images/tadbir/kasblar-akademiyasi.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></button>
+          <span class="sg2-ev-th is-active" aria-hidden="true"><img src="images/tadbir/soar-gaz-stendi.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/gorelkalar-namoyishi.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/mehmon-bilan-muloqot.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/kasb-sirlari.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/jonli-namoyish.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/madhiya.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/bayramona-kayfiyat.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/milliy-raqs.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/yoshlar-maydonda.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/tinglovchilar.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
+          <span class="sg2-ev-th" aria-hidden="true"><img src="images/tadbir/kasblar-akademiyasi.webp" alt="" width="960" height="1102" loading="lazy" decoding="async"/></span>
         </div>
       </div>
     </div>
@@ -2991,17 +3001,34 @@ body > .cobalt-line{display:none}
 </section>
 
 <!-- ====== 6-BLOK: LITSENZIYA ======
-     TODO kontent: litsenziya matni va 3 ta hujjat skani (A4, tik) -->
+     Rasmiy ruxsatnomalar skanlari: images/litsenziya/. Kattalashtirish: scripts/litsenziya.js -->
 <section id="litsenziya" class="sg2-lic">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 sg2-lic-grid">
     <div>
       <h2>Faoliyatimiz <em>rasmiy litsenziyalangan</em></h2>
-      <p>Litsenziya: № GZ-2024-0521. <span class="sg2-todo">[Kim bergan, sanasi, qaysi ishlarga ruxsat berilgan]</span></p>
+      <p>"SOAR GAZ LUX SERVIS" MChJ Vazirlar Mahkamasi huzuridagi Sanoat, radiatsiya va yadro xavfsizligi qo'mitasi tomonidan berilgan 5 ta rasmiy ruxsatnomaga ega: gaz quvurlari va gaz xo'jaligi obyektlarini montaj qilish, ta'mirlash va ishga tushirish. Hujjatni kattalashtirib ko'rish uchun ustiga bosing.</p>
     </div>
     <div class="sg2-docs">
-      <div class="sg2-doc"><div class="sg2-ph">Litsenziya<br>A4 skan</div></div>
-      <div class="sg2-doc"><div class="sg2-ph">Sertifikat<br>A4 skan</div></div>
-      <div class="sg2-doc"><div class="sg2-ph">Ilova<br>A4 skan</div></div>
+      <a class="sg2-doc" href="images/litsenziya/ruxsatnoma-1954014.webp" data-lic-title="Magistral gaz quvurlari, uloqtiruvchi va qabul qilish uskunalari, gaz taqsimlash stansiyalari va boshqa texnologik quvurlarni, shuningdek quvur o'tkazish klapanlarini montaj qilish, ta'mirlash, ishga tushirish-sozlash" data-lic-no="1954014" data-lic-until="04.11.2028" aria-label="Ruxsatnoma №1954014, kattalashtirib ko'rish">
+        <img src="images/litsenziya/ruxsatnoma-1954014.webp" alt="Sanoat, radiatsiya va yadro xavfsizligi qo'mitasi ruxsatnomasi №1954014" width="570" height="880" loading="lazy"/>
+        <span class="sg2-doc-cap"><b>№1954014</b><small>04.11.2028 gacha</small></span>
+      </a>
+      <a class="sg2-doc" href="images/litsenziya/ruxsatnoma-1367463.webp" data-lic-title="Gaz quvurlari va gaz xo'jaligining gaz iste'mol qiluvchi boshqa obyektlarini montaj qilish, ta'mirlash, ishga tushirish" data-lic-no="1367463" data-lic-until="09.02.2027" aria-label="Ruxsatnoma №1367463, kattalashtirib ko'rish">
+        <img src="images/litsenziya/ruxsatnoma-1367463.webp" alt="Sanoat, radiatsiya va yadro xavfsizligi qo'mitasi ruxsatnomasi №1367463" width="570" height="880" loading="lazy"/>
+        <span class="sg2-doc-cap"><b>№1367463</b><small>09.02.2027 gacha</small></span>
+      </a>
+      <a class="sg2-doc" href="images/litsenziya/ruxsatnoma-1367459.webp" data-lic-title="Gaz xo'jaligida yuqori, o'rta va past bosimli po'lat yer usti gaz quvurlarini montaj qilish, ta'mirlash va ishga tushirish-sozlash ishlari" data-lic-no="1367459" data-lic-until="09.02.2027" aria-label="Ruxsatnoma №1367459, kattalashtirib ko'rish">
+        <img src="images/litsenziya/ruxsatnoma-1367459.webp" alt="Sanoat, radiatsiya va yadro xavfsizligi qo'mitasi ruxsatnomasi №1367459" width="570" height="880" loading="lazy"/>
+        <span class="sg2-doc-cap"><b>№1367459</b><small>09.02.2027 gacha</small></span>
+      </a>
+      <a class="sg2-doc" href="images/litsenziya/ruxsatnoma-1367458.webp" data-lic-title="Gaz xo'jaligida yuqori, o'rta va past bosimli po'lat yer osti gaz quvurlarini montaj qilish, ta'mirlash va ishga tushirish-sozlash ishlari" data-lic-no="1367458" data-lic-until="09.02.2027" aria-label="Ruxsatnoma №1367458, kattalashtirib ko'rish">
+        <img src="images/litsenziya/ruxsatnoma-1367458.webp" alt="Sanoat, radiatsiya va yadro xavfsizligi qo'mitasi ruxsatnomasi №1367458" width="570" height="880" loading="lazy"/>
+        <span class="sg2-doc-cap"><b>№1367458</b><small>09.02.2027 gacha</small></span>
+      </a>
+      <a class="sg2-doc" href="images/litsenziya/ruxsatnoma-1367464.webp" data-lic-title="Gaz xo'jaligining gaz iste'mol qiluvchi obyektlarida ishga tushirish-sozlash faoliyati" data-lic-no="1367464" data-lic-until="09.02.2027" aria-label="Ruxsatnoma №1367464, kattalashtirib ko'rish">
+        <img src="images/litsenziya/ruxsatnoma-1367464.webp" alt="Sanoat, radiatsiya va yadro xavfsizligi qo'mitasi ruxsatnomasi №1367464" width="570" height="880" loading="lazy"/>
+        <span class="sg2-doc-cap"><b>№1367464</b><small>09.02.2027 gacha</small></span>
+      </a>
     </div>
   </div>
 </section>
@@ -3039,7 +3066,7 @@ body > .cobalt-line{display:none}
       </div>
     </article>
     <article class="sg2-slide">
-      <div class="sg2-slide-media"><img src="images/ish-jarayoni/07-payvand-choki.webp" alt="Payvandchi gaz quvuri choklarini payvandlamoqda" width="401" height="475" loading="lazy" decoding="async"/></div>
+      <div class="sg2-slide-media"><img src="images/ish-jarayoni/13-montaj-brigada.webp" alt="SOAR GAZ montaj brigadasi: to'rt nafar usta gaz uskunalari va xizmat avtomobili yonida" width="1600" height="640" loading="lazy" style="object-position:45% 50%"/></div>
       <div class="sg2-slide-text">
         <span class="sg2-k">● Bosqich 03</span>
         <h3>Montaj va ishga tushirish</h3>
@@ -3049,7 +3076,7 @@ body > .cobalt-line{display:none}
       </div>
     </article>
     <article class="sg2-slide" style="margin-bottom:0">
-      <div class="sg2-slide-media"><img src="images/ish-jarayoni/11-yakuniy-nazorat.webp" alt="Yotqizilgan quvurni yakuniy nazoratdan o'tkazish" width="363" height="287" loading="lazy" decoding="async"/></div>
+      <div class="sg2-slide-media"><img src="images/ish-jarayoni/12-tolov-kafolat.webp" alt="SOAR GAZ xodimi noutbukda to'lov va kvitansiyalarni rasmiylashtirmoqda" width="1600" height="533" loading="lazy" style="object-position:86% 50%"/></div>
       <div class="sg2-slide-text">
         <span class="sg2-k">● Bosqich 04</span>
         <h3>To'lov va kafolat</h3>
@@ -6128,7 +6155,8 @@ body > .cobalt-line{display:none}
 <script src="scripts/index-asosiy.js?v=1"></script>
 <script src="scripts/index-hodisalar.js?v=1"></script>
 <script src="scripts/hero-carousel.js?v=3" defer></script>
-<script src="scripts/tadbir-slider.js?v=1" defer></script>
+<script src="scripts/tadbir-slider.js?v=3" defer></script>
+<script src="scripts/litsenziya.js?v=1" defer></script>
 </body>
 </html>
 

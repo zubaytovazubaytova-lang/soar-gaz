@@ -6,7 +6,19 @@
 // Ranglarni o'zgartirgandan keyin CSS ni QAYTA build qilish shart.
 
 module.exports = {
-  content: ["./index.html"],
+  // Bosh sahifa skriptlari ham sinf yaratadi (innerHTML orqali). Ular bu
+  // ro'yxatda bo'lmasa build ularning sinflarini tashlab yuboradi va dizayn
+  // buziladi (2026-11-18: 100 ta sinf shu sababli yo'qolgan edi).
+  // index.html ga yangi <script> qo'shilsa — shu yerga ham qo'shing.
+  content: [
+    "./index.html",
+    "./scripts/index-asosiy.js",
+    "./scripts/index-hodisalar.js",
+    "./scripts/hodisa-boshqaruvchi.js",
+    "./scripts/hero-carousel.js",
+    "./scripts/tadbir-slider.js",
+    "./scripts/litsenziya.js",
+  ],
 
   // Tailwind sinf nomlarini fayl matnidan qidiradi. index.html ichidagi JS
   // ba'zi sinflarni yig'ib quradi (`text-${b.rang}-400` kabi) — bunday
