@@ -399,10 +399,18 @@ def royxatdan_otish(request):
                           status.HTTP_201_CREATED)
 
 
+def _gateway_mumkinmi(telefon):
+    """Telegram Gateway pullik: faqat mijozlar va yangi (hali ro'yxatda yo'q) raqamlar uchun.
+    Xodim va admin kodlari Gateway'ga ketmaydi."""
+    if not settings.TELEGRAM_GATEWAY_FAQAT_MIJOZ:
+        return True
+    return not Foydalanuvchi.objects.filter(telefon=telefon, rol__in=('admin', 'xodim')).exists()
+
+
 def _send_otp_sms(telefon, kod):
     """OTP kodni yuboradi. Navbat: 1) Telegram Gateway (raqam bo'yicha, botsiz), 2) Telegram bot
     (faqat raqam allaqachon ulangan bo'lsa: ichki zaxira), 3) SMS (Eskiz). Hech biri sozlanmagan bo'lsa — log."""
-    if tg_gateway.sozlangan() and tg_gateway.kod_yubor(telefon, kod):
+    if tg_gateway.sozlangan() and _gateway_mumkinmi(telefon) and tg_gateway.kod_yubor(telefon, kod):
         return True
     return sms_yubor(telefon, f"SOAR GAZ tasdiqlash kodi: {kod}. Hech kimga aytmang.", telegram_bot=True)
 

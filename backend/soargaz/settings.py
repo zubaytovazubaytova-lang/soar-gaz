@@ -389,6 +389,11 @@ TELEGRAM_GATEWAY_TOKEN = os.environ.get('TELEGRAM_GATEWAY_TOKEN', '')
 # foydalanmaydi (kod Gateway orqali, xabarlar SMS orqali). Bot faqat ichki zaxira (admin/xodim).
 TELEGRAM_BOT_MIJOZLARGA = os.environ.get('TELEGRAM_BOT_MIJOZLARGA', '0') == '1'
 
+# Gateway pullik (~$0.01/kod): standart — faqat mijozlar va yangi raqamlar uchun. Xodim/admin kodlari
+# (admin paneli 2FA, xodim OTP) Gateway'ga ketmaydi: bot (ulangan bo'lsa, tekin) yoki SMS orqali.
+# Sinov uchun vaqtincha TELEGRAM_GATEWAY_FAQAT_MIJOZ=0.
+TELEGRAM_GATEWAY_FAQAT_MIJOZ = os.environ.get('TELEGRAM_GATEWAY_FAQAT_MIJOZ', '1') == '1'
+
 # ──────────────────────────────────────────────────────────────
 #  TO'LOV TIZIMLARI (Click / Payme)
 #  Kalitlar merchant kabinetdan olinadi va SERVERDA muhit o'zgaruvchisi

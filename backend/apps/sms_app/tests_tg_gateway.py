@@ -115,3 +115,53 @@ class SinovBuyrugiTest(TestCase):
     def test_tokensiz_xato(self):
         with self.assertRaises(CommandError):
             call_command('telegram_gateway_sinov', TEL)
+
+
+@override_settings(**GW)
+class FaqatMijozTest(TestCase):
+    """Gateway pullik: xodim va admin kodlari unga ketmaydi."""
+
+    def setUp(self):
+        cache.clear()
+        self.c = APIClient()
+
+    def _kod_sorash(self, rol, **sozlama):
+        from apps.auth_app.models import Foydalanuvchi
+        if rol:
+            Foydalanuvchi.objects.create(telefon=TEL, rol=rol, holat='faol')
+        with override_settings(**sozlama), \
+                mock.patch('apps.sms_app.tg_gateway._api', return_value={'request_id': 'r'}) as api:
+            r = self.c.post('/api/auth/otp/yuborish/', {'telefon': TEL}, format='json')
+        return r, api
+
+    def test_mijoz_gateway_orqali(self):
+        r, api = self._kod_sorash('mijoz')
+        self.assertEqual(r.status_code, 200)
+        api.assert_called_once()
+
+    def test_yangi_raqam_gateway_orqali(self):
+        r, api = self._kod_sorash(None)
+        self.assertEqual(r.status_code, 200)
+        api.assert_called_once()
+
+    def test_xodim_gatewayga_ketmaydi(self):
+        r, api = self._kod_sorash('xodim')
+        api.assert_not_called()          # SMS ham yo'q -> 502, lekin pul sarflanmadi
+        self.assertEqual(r.status_code, 502)
+
+    def test_admin_gatewayga_ketmaydi_bot_zaxirasi_ishlaydi(self):
+        from apps.auth_app.models import Foydalanuvchi
+        Foydalanuvchi.objects.create(telefon=TEL, rol='admin', holat='faol')
+        TelegramUlanish.objects.create(telefon=TEL, chat_id=555)
+        with override_settings(TELEGRAM_BOT_TOKEN='1:BOT'), \
+                mock.patch('apps.sms_app.tg_gateway._api') as gw, \
+                mock.patch('apps.sms_app.telegram._api') as bot:
+            r = self.c.post('/api/auth/otp/yuborish/', {'telefon': TEL}, format='json')
+        self.assertEqual(r.status_code, 200)
+        gw.assert_not_called()
+        self.assertEqual(bot.call_args[0][1]['chat_id'], 555)
+
+    def test_sozlama_ochiq_bolsa_hammaga_gateway(self):
+        r, api = self._kod_sorash('admin', TELEGRAM_GATEWAY_FAQAT_MIJOZ=False)
+        self.assertEqual(r.status_code, 200)
+        api.assert_called_once()
