@@ -18,6 +18,7 @@ module.exports = {
     "./scripts/hero-carousel.js",
     "./scripts/tadbir-slider.js",
     "./scripts/litsenziya.js",
+    "./scripts/qollanma-video.js",
   ],
 
   // Tailwind sinf nomlarini fayl matnidan qidiradi. index.html ichidagi JS

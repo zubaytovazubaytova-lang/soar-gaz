@@ -2524,6 +2524,14 @@ body > .cobalt-line{display:none}
 .sg2-direct-soc a:hover{background:rgba(255,255,255,.16)}
 @media(max-width:1023px){.sg2-apply{grid-template-columns:1fr;border-radius:24px}.sg2-apply-foto{min-height:240px}}
 @media(max-width:560px){#aloqa .sg2-form,.sg2-direct{grid-template-columns:1fr}}
+/* Ariza qoldirish: video qo'llanma (chap oyna). Video 4:5 — oynaga to'liq sig'adi (contain),
+   fon video fonining rangida, shuning uchun chetlar bilinmaydi. Pastdagi qadam yozuvlari
+   yopilmasligi uchun belgi tepaga ko'chirilgan. Boshqaruv: scripts/qollanma-video.js */
+.sg2-apply-video{background:#0a1930}
+.sg2-apply-video video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;cursor:pointer}
+.sg2-apply-video video:focus-visible{outline:3px solid #ffb347;outline-offset:-3px}
+.sg2-apply-video .sg2-apply-chip{top:20px;bottom:auto}
+@media(max-width:1023px){.sg2-apply-video{min-height:0;aspect-ratio:4/5;max-height:72vh}}
 </style>
 </head>
 <body class="font-sans text-ink-900">
@@ -3139,8 +3147,14 @@ body > .cobalt-line{display:none}
 <section id="aloqa" class="py-24 section-dark">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="sg2-apply">
-      <div class="sg2-apply-foto">
-        <img src="images/hero-slider/3-foto.webp" alt="SOAR GAZ ustasi gaz uskunasiga texnik xizmat ko'rsatmoqda" width="1130" height="667" loading="lazy" decoding="async"/>
+      <div class="sg2-apply-foto sg2-apply-video">
+        <!-- 14 soniyalik video qo'llanma: formani qanday to'ldirish. Ovozsiz; ekranga chiqqanda o'ynaydi -->
+        <video data-qollanma muted loop playsinline preload="none" tabindex="0"
+               poster="images/qollanma/ariza-qollanma-poster.jpg" width="1080" height="1350"
+               aria-label="Video qo'llanma: saytda ariza qanday qoldiriladi (14 soniya). To'xtatish yoki davom ettirish uchun bosing.">
+          <source src="images/qollanma/ariza-qollanma.webm" type="video/webm"/>
+          <source src="images/qollanma/ariza-qollanma.mp4" type="video/mp4"/>
+        </video>
         <span class="sg2-apply-chip"><i class="fas fa-circle"></i> Favqulodda xizmat 24/7</span>
       </div>
       <div class="sg2-apply-form">
@@ -6157,6 +6171,7 @@ body > .cobalt-line{display:none}
 <script src="scripts/hero-carousel.js?v=3" defer></script>
 <script src="scripts/tadbir-slider.js?v=3" defer></script>
 <script src="scripts/litsenziya.js?v=1" defer></script>
+<script src="scripts/qollanma-video.js?v=1" defer></script>
 </body>
 </html>
 
