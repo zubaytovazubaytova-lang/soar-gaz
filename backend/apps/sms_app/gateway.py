@@ -23,7 +23,7 @@ import urllib.request
 from django.conf import settings
 from django.core.cache import cache
 
-from . import telegram
+from . import telegram, tg_gateway
 
 logger = logging.getLogger(__name__)
 
@@ -141,4 +141,4 @@ def sozlanganmi():
     """Haqiqiy provayder ulanganmi (dev konsol rejimi emasmi)."""
     eskiz = (_sozlama('SMS_PROVAYDER', 'konsol') == 'eskiz'
              and bool(_sozlama('ESKIZ_EMAIL')) and bool(_sozlama('ESKIZ_PAROL')))
-    return eskiz or telegram.sozlangan()
+    return eskiz or telegram.sozlangan() or tg_gateway.sozlangan()

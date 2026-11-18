@@ -381,6 +381,10 @@ TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_WEBHOOK_SECRET = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')
 TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', '')
 
+# Telegram Gateway: tasdiqlash kodini raqam bo'yicha Telegram'ga yuboradi (bot/Start shart emas).
+# Token — Telegram Gateway hisobi sozlamalarida. `soargaz-gateway-kalit` yozadi.
+TELEGRAM_GATEWAY_TOKEN = os.environ.get('TELEGRAM_GATEWAY_TOKEN', '')
+
 # ──────────────────────────────────────────────────────────────
 #  TO'LOV TIZIMLARI (Click / Payme)
 #  Kalitlar merchant kabinetdan olinadi va SERVERDA muhit o'zgaruvchisi
