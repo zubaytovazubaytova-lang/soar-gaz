@@ -23,7 +23,9 @@ echo Kutubxonalar o'rnatilmoqda...
 pip install -r requirements.txt -q
 
 echo Ma'lumotlar bazasi sozlanmoqda...
-python manage.py migrate --run-syncdb -v 0
+rem --fake-initial: eski lokal bazalarda sms_app jadvali --run-syncdb bilan yaratilgan
+rem (ilgari migratsiyasi yo'q edi). Jadval bor bo'lsa 0001_initial qayta yaratilmaydi.
+python manage.py migrate --run-syncdb --fake-initial -v 0
 
 echo Admin foydalanuvchi tekshirilmoqda...
 python create_admin.py
