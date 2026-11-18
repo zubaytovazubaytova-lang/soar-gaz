@@ -373,6 +373,14 @@ ESKIZ_EMAIL = os.environ.get('ESKIZ_EMAIL', '')
 ESKIZ_PAROL = os.environ.get('ESKIZ_PAROL', '')
 ESKIZ_FROM = os.environ.get('ESKIZ_FROM', '4546')
 
+# Telegram bot: kirish kodlari va xabarlar SMS o'rniga (bepul). `soargaz-telegram-kalit` yozadi.
+#   TELEGRAM_BOT_TOKEN       @BotFather bergan token
+#   TELEGRAM_WEBHOOK_SECRET  webhook so'rovlarini tasdiqlash uchun tasodifiy satr
+#   TELEGRAM_BOT_USERNAME    botning nomi (@ siz)
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_WEBHOOK_SECRET = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')
+TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', '')
+
 # ──────────────────────────────────────────────────────────────
 #  TO'LOV TIZIMLARI (Click / Payme)
 #  Kalitlar merchant kabinetdan olinadi va SERVERDA muhit o'zgaruvchisi

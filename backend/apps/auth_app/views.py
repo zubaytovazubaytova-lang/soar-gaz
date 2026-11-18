@@ -16,6 +16,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
+from apps.sms_app import telegram as telegram_bot
 from apps.sms_app.gateway import sms_yubor, sozlanganmi as sms_sozlanganmi
 from .hududlar import HUDUDLAR_XARITASI
 from .kabinet_turlari import kabinet_malumoti
@@ -308,7 +309,11 @@ def _admin_2fa_boshla(request, user):
     if settings.DEBUG and not sms_sozlanganmi():
         javob['dev_kod'] = kod
     if not yuborildi:
-        javob['ogohlantirish'] = "SMS yuborilmadi — kodni administratordan so'rang."
+        if telegram_bot.sozlangan() and not telegram_bot.ulangan(user.telefon):
+            javob['ogohlantirish'] = (f"Kod Telegram orqali yuboriladi: @{telegram_bot.bot_nomi()} botini oching, "
+                                      "«Start» va «Raqamni ulashish» ni bosing, so'ng qayta kiring.")
+        else:
+            javob['ogohlantirish'] = "SMS yuborilmadi — kodni administratordan so'rang."
     return Response(javob)
 
 
@@ -399,6 +404,22 @@ def _send_otp_sms(telefon, kod):
     return sms_yubor(telefon, f"SOAR GAZ tasdiqlash kodi: {kod}. Hech kimga aytmang.")
 
 
+def _kod_yuborilmadi_javobi(telefon):
+    """Kod ketmadi. Telegram yoqilgan va raqam botga ulanmagan bo'lsa — ulash yo'riqnomasi."""
+    if telegram_bot.sozlangan() and not telegram_bot.ulangan(telefon):
+        bot = telegram_bot.bot_nomi()
+        return Response({
+            'detail': _("Kod Telegram orqali yuboriladi. Telegramda @%(bot)s botini oching, "
+                        "«Start» va «Raqamni ulashish» tugmalarini bosing, so'ng kodni qayta so'rang.")
+                      % {'bot': bot},
+            'telegram_kerak': True, 'bot': bot, 'havola': f'https://t.me/{bot}',
+        }, status=409)
+    return Response(
+        {'detail': _("SMS yuborilmadi. Birozdan keyin urinib ko'ring yoki operatorga murojaat qiling.")},
+        status=502,
+    )
+
+
 def _kesh_kaliti(nom, telefon):
     return f'otp:{nom}:{telefon}'
 
@@ -450,10 +471,7 @@ def otp_yuborish(request):
     OtpKod.objects.create(telefon=telefon, kod=kod)
 
     if not sinov_kod and not _send_otp_sms(telefon, kod):
-        return Response(
-            {'detail': _("SMS yuborilmadi. Birozdan keyin urinib ko'ring yoki operatorga murojaat qiling.")},
-            status=502,
-        )
+        return _kod_yuborilmadi_javobi(telefon)
 
     # Cheklov hisoblagichlari
     cache.set(_kesh_kaliti('oxirgi', telefon), 1, settings.OTP_QAYTA_SONIYA)
