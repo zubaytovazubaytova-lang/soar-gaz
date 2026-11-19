@@ -398,6 +398,9 @@ TELEGRAM_GATEWAY_FAQAT_MIJOZ = os.environ.get('TELEGRAM_GATEWAY_FAQAT_MIJOZ', '1
 # Ikkalasi berilmaguncha saytdagi tugma ko'rinmaydi. `soargaz-telegram-login-kalit` yozadi.
 TELEGRAM_LOGIN_CLIENT_ID = os.environ.get('TELEGRAM_LOGIN_CLIENT_ID', '')
 TELEGRAM_LOGIN_CLIENT_SECRET = os.environ.get('TELEGRAM_LOGIN_CLIENT_SECRET', '')
+# Telegram orqali kirish yoqilganda kabinetdagi «Telegram yo'qmi? Telefon raqam orqali» oynasi:
+# 0 — «Tez orada» (SMS ulanmaguncha), 1 — ishlaydi. Telegram kirish o'chiq bo'lsa telefon formasi doim ishlaydi.
+TELEFON_KIRISH_YOQILGAN = os.environ.get('TELEFON_KIRISH_YOQILGAN', '0') == '1'
 
 # ──────────────────────────────────────────────────────────────
 #  TO'LOV TIZIMLARI (Click / Payme)

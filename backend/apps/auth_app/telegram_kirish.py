@@ -77,7 +77,8 @@ def _pkce():
 @require_GET
 def holat(request):
     """Saytdagi tugma faqat sozlama kiritilgandan keyin ko'rinadi."""
-    return JsonResponse({'yoqilgan': sozlangan()})
+    return JsonResponse({'yoqilgan': sozlangan(),
+                         'telefon_kirish': bool(getattr(settings, 'TELEFON_KIRISH_YOQILGAN', False))})
 
 
 @require_GET

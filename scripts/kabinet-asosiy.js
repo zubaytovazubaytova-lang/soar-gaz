@@ -246,6 +246,9 @@ async function so(yol, sozlama, qaytaUrinma) {
 let kirishTelefon = '';
 
 function authXato(matn) {
+  // Telefon oynasi ochiq bo'lsa xato oynaning ichida ham ko'rinsin (orqadagisi parda ostida qoladi)
+  const t = el('telXato');
+  if (t) { t.textContent = matn || ''; t.className = matn ? 'auth-error show' : 'auth-error'; }
   const p = el('authXato');
   if (!matn) { p.className = 'auth-error'; return; }
   p.textContent = matn;
@@ -1266,16 +1269,40 @@ const TG_XATOLAR = {
   rad: "Telegram bilan bog'lanishda xatolik. Birozdan keyin qayta urinib ko'ring.",
 };
 
-async function tgHolatTekshir() {
+async function tgHolatTekshir(urinish = 0) {
   if (KORISH || FAYL_REJIM) return;
   try {
-    const d = await (await fetch(API + '/auth/telegram/holat/')).json();
+    const javob = await fetch(API + '/auth/telegram/holat/', { cache: 'no-store' });
+    if (!javob.ok) throw new Error(javob.status);
+    const d = await javob.json();
     if (d && d.yoqilgan) {
       el('tgKirishBtn').href = API + '/auth/telegram/boshlash/';
       el('tgBlok').style.display = 'block';
+      el('qadam1').classList.add('tg-rejim');   // telefon formasi «Telegram yo'qmi?» oynasiga o'tadi
+      if (!d.telefon_kirish) {                  // SMS ulanmaguncha: «Tez orada»
+        el('qadam1').classList.add('tel-tez-orada');
+        el('telefonInput').disabled = true;
+        el('kodBtn').disabled = true;
+      }
     }
-  } catch (e) { /* tugma ko'rinmaydi: telefon orqali kirish ishlayveradi */ }
+  } catch (e) {
+    // Tarmoq bir lahza uzilgan bo'lsa bir marta qayta urinadi; baribir bo'lmasa telefon formasi ishlayveradi
+    if (urinish < 1) setTimeout(() => tgHolatTekshir(urinish + 1), 1500);
+  }
 }
+
+/* «Telegram yo'qmi?» — telefon raqam kiritish oynasi */
+function telOyna(ochiq) {
+  el('telBlok').classList.toggle('ochiq', ochiq);
+  if (ochiq) setTimeout(() => el('telefonInput').focus(), 50);
+  else authXato('');
+}
+el('tgYoqBtn').addEventListener('click', () => telOyna(true));
+el('telYopBtn').addEventListener('click', () => telOyna(false));
+el('telBlok').addEventListener('click', e => { if (e.target === el('telBlok')) telOyna(false); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && el('telBlok').classList.contains('ochiq')) telOyna(false);
+});
 
 /* ---------- boshlash ---------- */
 (async function boshlash() {

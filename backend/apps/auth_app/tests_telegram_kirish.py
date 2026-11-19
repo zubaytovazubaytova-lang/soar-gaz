@@ -54,6 +54,10 @@ class TelegramKirishTest(TestCase):
         self.assertTrue(self.c.get('/api/auth/telegram/holat/').json()['yoqilgan'])
         with override_settings(TELEGRAM_LOGIN_CLIENT_SECRET=''):
             self.assertFalse(self.c.get('/api/auth/telegram/holat/').json()['yoqilgan'])
+        with override_settings(TELEFON_KIRISH_YOQILGAN=False):
+            self.assertFalse(self.c.get('/api/auth/telegram/holat/').json()['telefon_kirish'])
+        with override_settings(TELEFON_KIRISH_YOQILGAN=True):
+            self.assertTrue(self.c.get('/api/auth/telegram/holat/').json()['telefon_kirish'])
 
     @override_settings(TELEGRAM_LOGIN_CLIENT_ID='')
     def test_sozlanmagan_bolsa_boshlanmaydi(self):
