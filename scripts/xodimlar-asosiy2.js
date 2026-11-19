@@ -1696,6 +1696,8 @@ function menyuQur(){
   // Ruxsat etilganlar server bergan tartibda qayta joylanadi
   ruxsatliBolimlar.forEach(kalit => { const b = tugmalar[kalit]; if (b) { b.hidden = false; nav.appendChild(b); } });
   showPage('overview');
+  // Bank to'lovlari: kutilayotgan cheklar soni menyuda (skript keyinroq yuklanadi)
+  if (bolimBormi('bank-chek')) setTimeout(() => window.BankCheklar && BankCheklar.yukla(), 0);
 }
 
 // ═══════ Kadrlar: davomat va kunlik hisobotlar ═══════
@@ -3250,6 +3252,7 @@ function showPage(key){
   closeSidebar();
   if (key === 'op-arizalar' && typeof opXaritaTayyor === 'function') opXaritaTayyor();
   if (key === 'topshiriq' && typeof tsYukla === 'function') tsYukla();
+  if (key === 'bank-chek' && window.BankCheklar) BankCheklar.yukla();
 }
 
 // ═══════ Mobil yon panel ═══════

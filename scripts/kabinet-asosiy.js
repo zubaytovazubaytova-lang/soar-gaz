@@ -564,6 +564,8 @@ async function buyurtmalarYukla() {
         ${b.tavsif ? `<div class="kv"><span>Tavsif</span><span>${xavfsiz(b.tavsif)}</span></div>` : ''}
         ${b.natija ? `<div class="kv"><span>Natija</span><span>${xavfsiz(b.natija)}</span></div>` : ''}
       </div>
+      ${b.holat !== 'bekor'
+        ? `<button class="btn asosiy kichik" style="margin-top:12px;margin-right:6px" data-h-click="c:bankTolovOch" data-a-click="${SG_A([b.id])}"><i class="ti ti-building-bank"></i> Hisob raqamga to'lash</button>` : ''}
       ${b.holat === 'bajarildi' && !b.baholangan
         ? `<button class="btn sokin kichik" style="margin-top:12px" data-h-click="c:sharhModalOch" data-a-click="${SG_A([b.id, String(b.xizmat_nomi)])}"><i class="ti ti-star"></i> Baho qoldirish</button>` : ''}
     </div>`).join('') : '<p class="bosh-holat">Bu bo\'limda buyurtma topilmadi.</p>';
@@ -628,6 +630,90 @@ async function arizaYubor(e) {
     pageOch('buyurtmalar');
   } catch (err) { xabar(err.message, true); }
 }
+
+/* ---------- 2b. HISOB RAQAMGA TO'LOV (chek yuklash) ---------- */
+const BANK_HOLAT_RANG = { tekshirilmoqda: '#92400e;background:#fef3c7', tasdiqlandi: '#166534;background:#dcfce7', rad: '#991b1b;background:#fee2e2' };
+
+function nusxaQator(nom, qiymat) {
+  return `<div class="kv" style="align-items:center"><span>${nom}</span>
+    <span style="display:flex;gap:6px;align-items:center;justify-content:flex-end"><b style="word-break:break-all">${xavfsiz(qiymat)}</b>
+    <button type="button" class="btn sokin kichik" data-nusxa="${xavfsiz(qiymat)}" title="Nusxalash" style="padding:4px 10px;font-size:12px">Nusxa</button></span></div>`;
+}
+
+async function bankTolovOch(id) {
+  try {
+    const d = await so(`/tolovlar/bank/buyurtma/${id}/`);
+    const oldingi = d.tolovlar.map(t => `
+      <div class="kv"><span>${sana(t.yaratilgan, true)} · ${pul(t.summa)}</span>
+        <span style="padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;color:${BANK_HOLAT_RANG[t.holat] || '#334155'}">${xavfsiz(t.holat_nomi)}</span></div>
+      ${t.holat === 'rad' && t.rad_sabab ? `<p class="f-hint" style="color:#b91c1c;margin:-4px 0 8px">Sabab: ${xavfsiz(t.rad_sabab)}</p>` : ''}`).join('');
+    const kutilmoqda = d.tolovlar.some(t => t.holat === 'tekshirilmoqda');
+    const r = d.rekvizit;
+    modalOch("Hisob raqamga to'lash", !r
+      ? `<p class="bosh-holat">Hisob raqam hali kiritilmagan. Iltimos, keyinroq urinib ko'ring yoki operatorga qo'ng'iroq qiling.</p>`
+      : `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+          <p style="margin:0 0 8px;font-weight:800;color:#1e3a8a">1. Pulni shu hisob raqamga o'tkazing</p>
+          ${nusxaQator('Qabul qiluvchi', r.korxona)}
+          ${nusxaQator('Hisob raqam', r.hisob_raqam)}
+          ${nusxaQator('Bank', r.bank)}
+          ${nusxaQator('MFO', r.mfo)}
+          ${nusxaQator('STIR (INN)', r.stir)}
+          ${nusxaQator("To'lov maqsadi", d.maqsad)}
+          <p class="f-hint" style="margin:8px 0 0">Click ilovasida: <b>To'lovlar → Rekvizitlar bo'yicha o'tkazma</b> (yoki bankingiz ilovasida "Yuridik shaxsga o'tkazma"). Har bir qatorni «Nusxa» tugmasi bilan nusxalab qo'ying.</p>
+        </div>
+        ${oldingi ? `<p style="font-weight:700;margin:0 0 6px">Yuborilgan cheklar</p>${oldingi}` : ''}
+        ${kutilmoqda
+          ? `<p class="f-hint" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;color:#78350f">⏳ Chekingiz tekshirilmoqda. Pul hisobimizga tushgani tasdiqlangach Telegram yoki SMS orqali xabar olasiz.</p>`
+          : `<form id="bankTolovForma">
+              <p style="margin:6px 0 8px;font-weight:800;color:#1e3a8a">2. To'lov chekini yuklang</p>
+              <label class="f-label" for="btSumma">O'tkazilgan summa (so'm) *</label>
+              <input class="f-input" id="btSumma" inputmode="numeric" placeholder="Masalan: 350 000" required>
+              <label class="f-label" for="btChek">Chek skrinshoti yoki PDF *</label>
+              <input class="f-input" id="btChek" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+              <label class="f-label" for="btIzoh">Izoh (ixtiyoriy)</label>
+              <input class="f-input" id="btIzoh" maxlength="300" placeholder="Masalan: to'lovchi — Valiyev A.">
+              <button class="btn asosiy" type="submit" id="btYubor" style="width:100%;justify-content:center"><i class="ti ti-send"></i> Chekni yuborish</button>
+              <p class="f-hint" style="margin-top:8px">Chek tekshiriladi: pul hisobimizga tushgani tasdiqlangach to'lov "to'landi" bo'ladi.</p>
+            </form>`}`);
+    const forma = el('bankTolovForma');
+    if (forma) forma.addEventListener('submit', e => bankChekYubor(e, id));
+    el('btSumma') && el('btSumma').addEventListener('input', e => {
+      const raqam = e.target.value.replace(/\D/g, '').slice(0, 11);
+      e.target.value = raqam.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    });
+  } catch (err) { xabar(err.message, true); }
+}
+
+async function bankChekYubor(e, id) {
+  e.preventDefault();
+  const fayl = el('btChek').files[0];
+  if (!fayl) return xabar('Chek faylini tanlang', true);
+  if (fayl.size > 5 * 1024 * 1024) return xabar("Fayl 5 MB dan katta bo'lmasin", true);
+  const fd = new FormData();
+  fd.append('summa', el('btSumma').value.replace(/\s/g, ''));
+  fd.append('chek', fayl);
+  fd.append('izoh', el('btIzoh').value.trim());
+  el('btYubor').disabled = true;
+  try {
+    await so(`/tolovlar/bank/buyurtma/${id}/`, { method: 'POST', body: fd });
+    modalYop();
+    xabar("Chek yuborildi. Tekshirilgach xabar olasiz.");
+  } catch (err) {
+    xabar(err.message, true);
+    el('btYubor') && (el('btYubor').disabled = false);
+  }
+}
+
+// Rekvizitni nusxalash tugmalari (modal ichida)
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-nusxa]');
+  if (!t) return;
+  const matn = t.getAttribute('data-nusxa');
+  (navigator.clipboard ? navigator.clipboard.writeText(matn) : Promise.reject())
+    .then(() => xabar('Nusxalandi: ' + matn))
+    .catch(() => xabar("Nusxalab bo'lmadi — qo'lda belgilab oling", true));
+});
+if (window.SG_H) SG_H['c:bankTolovOch'] = function (e) { bankTolovOch.apply(null, SG_ARGS(this, e)); };
 
 /* ---------- 3. OBYEKTLAR ---------- */
 async function obyektlarKeshYukla() {

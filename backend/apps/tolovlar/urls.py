@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import bank, views
 
 urlpatterns = [
     path('sorov/', views.sorov_yaratish),
@@ -15,4 +15,9 @@ urlpatterns = [
     path('click/prepare/', views.click_prepare),
     path('click/complete/', views.click_complete),
     path('payme/', views.payme_endpoint),
+    # Bank (hisob raqam) orqali to'lov: chek yuklash va tasdiqlash
+    path('bank/buyurtma/<int:pk>/', bank.buyurtma_bank_tolovi),
+    path('bank/cheklar/', bank.cheklar),
+    path('bank/cheklar/<int:pk>/chek/', bank.chek_fayli),
+    path('bank/cheklar/<int:pk>/tekshir/', bank.chek_tekshir),
 ]

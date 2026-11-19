@@ -383,6 +383,7 @@
 
       <div class="sb-group-label">Moliya</div>
       <button class="sb-item" data-page="finance"><i class="ti ti-report-money"></i>Moliya va hisobotlar</button>
+      <button class="sb-item" data-page="bankchek"><i class="ti ti-receipt-2"></i>Bank to'lovlari <span class="tag red" id="bankChekBelgi" style="display:none;margin-left:6px;padding:1px 7px;"></span></button>
       <button class="sb-item" data-page="cash"><i class="ti ti-cash"></i>Xodimlar tushumi <span class="tag red" id="tushBelgi" style="display:none;margin-left:6px;padding:1px 7px;"></span></button>
       <button class="sb-item" data-page="certs"><i class="ti ti-certificate"></i>Sertifikatlar</button>
 
@@ -677,6 +678,21 @@
         </div>
 
         <!-- ========== XODIMLAR TUSHUMI ========== -->
+        <div class="page" id="page-bankchek">
+          <p class="page-title">Bank to'lovlari (cheklar)</p>
+          <p class="page-sub">Mijozlar hisob raqamga o'tkazib, chek skrinshotini yuklagan to'lovlar</p>
+          <div class="ogoh" style="color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;">
+            <span>⚠️ Skrinshotni soxtalashtirish oson. <b>Bank ilovasida yoki ko'chirmada pul haqiqatan tushganini ko'rib</b>, keyin "Tasdiqlash"ni bosing. Tasdiq qaytarilmaydi.</span>
+          </div>
+          <div class="bc-filtrlar">
+            <button type="button" class="bc-filtr active" data-holat="tekshirilmoqda">Tekshirilmoqda</button>
+            <button type="button" class="bc-filtr" data-holat="tasdiqlandi">Tasdiqlangan</button>
+            <button type="button" class="bc-filtr" data-holat="rad">Rad etilgan</button>
+            <button type="button" class="bc-filtr" data-holat="">Hammasi</button>
+          </div>
+          <div id="bankChekPanel"><p class="bc-bosh-holat">Yuklanmoqda...</p></div>
+        </div>
+
         <div class="page" id="page-cash">
           <p class="page-title">Xodimlar tushumi</p>
           <p class="page-sub" id="tushSoni">Xodimlar mijozlardan olgan pul va uni topshirishi</p>
@@ -1024,7 +1040,8 @@
 
 <script src="/vendor/leaflet/leaflet.js"></script>
 <script src="/scripts/hodisa-boshqaruvchi.js?v=1"></script>
-<script src="/scripts/admin-asosiy.js?v=1"></script>
+<script src="/scripts/admin-asosiy.js?v=2"></script>
+<script src="/scripts/bank-cheklar.js?v=1"></script>
 <script src="/scripts/admin-hodisalar.js?v=1"></script>
 </body>
 </html>

@@ -507,6 +507,7 @@
         <button class="sb-item" data-page="topshiriq" hidden><i class="ti ti-checklist"></i>Topshiriqlar <span id="tsNavSoni" class="tag red" style="display:none;margin-left:6px;"></span></button>
         <button class="sb-item" data-page="kadr-davomat" hidden><i class="ti ti-calendar-check"></i>Davomat</button>
         <button class="sb-item" data-page="kadr-hisobot" hidden><i class="ti ti-clipboard-check"></i>Kunlik hisobotlar</button>
+        <button class="sb-item" data-page="bank-chek" hidden><i class="ti ti-receipt-2"></i>Bank to'lovlari<span class="sb-son" id="bankChekBelgi" hidden></span></button>
         <button class="sb-item" data-page="kadr-tushum" hidden><i class="ti ti-report-money"></i>Tushumlarni qabul qilish<span class="sb-son" id="ktBelgi" hidden></span></button>
         <button class="sb-item" data-page="op-arizalar" hidden><i class="ti ti-phone-call"></i>Arizalar</button>
         <button class="sb-item" data-page="op-qongiroq" hidden><i class="ti ti-headset"></i>Chiquvchi qo'ng'iroqlar</button>
@@ -956,6 +957,23 @@
         </div>
 
         <!-- ---------- KADRLAR: XODIMLARDAN PUL QABUL QILISH ---------- -->
+        <div class="page" id="page-bank-chek">
+          <div class="card">
+          <p class="page-title">Bank to'lovlari (cheklar)</p>
+          <p class="page-sub">Mijozlar hisob raqamga o'tkazib, chek skrinshotini yuklagan to'lovlar</p>
+          <div class="ogoh" style="color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;">
+            <span>⚠️ Skrinshotni soxtalashtirish oson. <b>Bank ilovasida yoki ko'chirmada pul haqiqatan tushganini ko'rib</b>, keyin "Tasdiqlash"ni bosing. Tasdiq qaytarilmaydi.</span>
+          </div>
+          <div class="bc-filtrlar">
+            <button type="button" class="bc-filtr active" data-holat="tekshirilmoqda">Tekshirilmoqda</button>
+            <button type="button" class="bc-filtr" data-holat="tasdiqlandi">Tasdiqlangan</button>
+            <button type="button" class="bc-filtr" data-holat="rad">Rad etilgan</button>
+            <button type="button" class="bc-filtr" data-holat="">Hammasi</button>
+          </div>
+          <div id="bankChekPanel"><p class="bc-bosh-holat">Yuklanmoqda...</p></div>
+          </div>
+        </div>
+
         <div class="page" id="page-kadr-tushum">
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-report-money"></i>Xodimlardan pul qabul qilish</h3>
@@ -1361,7 +1379,8 @@
   </div>
 </div>
 
-<script src="/scripts/xodimlar-asosiy2.js?v=1"></script>
+<script src="/scripts/xodimlar-asosiy2.js?v=2"></script>
+<script src="/scripts/bank-cheklar.js?v=1"></script>
 <script src="/scripts/xodimlar-hodisalar.js?v=1"></script>
 </body>
 </html>

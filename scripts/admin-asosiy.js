@@ -234,6 +234,7 @@ async function panelniOch(){
     statistikaYukla(), arizalarYukla(), xodimlarYukla(),
     mijozlarYukla(), moliyaYukla(), jurnalYukla(), tushumYukla(),
   ]);
+  if (window.BankCheklar) BankCheklar.yukla();      // kutilayotgan cheklar soni menyuda
 }
 
 function profilChiz(){
@@ -1518,6 +1519,7 @@ document.querySelectorAll('.sb-item[data-page]').forEach(btn=>{
     if (btn.dataset.page === 'joy') joySahifasiOchildi(); else joySahifasiYopildi();
     if (btn.dataset.page === 'rahbariyat') rahSahifasiOchildi(); else rahSahifasiYopildi();
     if (btn.dataset.page === 'cash') tushumYukla();
+    if (btn.dataset.page === 'bankchek' && window.BankCheklar) BankCheklar.yukla();
     if (btn.dataset.page === 'msg') xabarSahifasiOchildi();
     if (btn.dataset.page === 'nn') nnYukla();
   });

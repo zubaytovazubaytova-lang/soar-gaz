@@ -47,6 +47,30 @@ def _yubor(xizmat, matn):
             logger.exception('Xodimga Telegram xabari yuborilmadi')
 
 
+def tolov_tekshiruvchilari():
+    """Bank to'lovi cheklarini tasdiqlaydiganlar (botga ulangan): administrator va Kadrlar mutaxassisi."""
+    from apps.auth_app.models import Foydalanuvchi
+
+    ulangan = list(TelegramUlanish.objects.values_list('telefon', flat=True))
+    return [u.telefon for u in Foydalanuvchi.objects.filter(telefon__in=ulangan, holat='faol',
+                                                             rol__in=('admin', 'xodim'))
+            if u.rol == 'admin' or kabinet_turi(u.lavozim) == KADRLAR]
+
+
+def tolov_tekshiruvchilarga(matn):
+    """Yangi to'lov cheki haqida tekshiruvchilarga xabar (tranzaksiyadan keyin)."""
+    if not telegram.sozlangan():
+        return
+
+    def _yubor_hammaga():
+        for telefon in tolov_tekshiruvchilari():
+            try:
+                telegram.yubor(telefon, matn)
+            except Exception:                  # noqa: BLE001
+                logger.exception('Tekshiruvchiga Telegram xabari yuborilmadi')
+    transaction.on_commit(_yubor_hammaga)
+
+
 def yangi_ariza(xizmat, sarlavha, mijoz_ism='', telefon='', manzil='', izoh=''):
     """Yangi ariza haqida mas'ul xodimlarga xabar (tranzaksiyadan keyin)."""
     if not telegram.sozlangan():

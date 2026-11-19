@@ -44,7 +44,8 @@ BOLIMLAR = {
     HUJJAT: ['overview', 'hj-ishlar', 'hj-yuborish', 'topshiriq'] + [b for b in _ODDIY_BOLIMLAR if b != 'cash'],
     # Kadrlar: xodimlar nazorati. Mijozdan pul olmaydi — aksincha, har bir xodim topshirgan pulni
     # QABUL QILADI («kadr-tushum»). Qo'ng'iroq vazifasi ham shu kabinetda.
-    KADRLAR: ['overview', 'op-arizalar', 'op-qongiroq', 'topshiriq', 'kadr-davomat', 'kadr-hisobot', 'kadr-tushum', 'kadr-hujjat',
+    # «bank-chek»: mijozlarning hisob raqamga to'lov cheklarini tasdiqlash (administrator bilan birga)
+    KADRLAR: ['overview', 'op-arizalar', 'op-qongiroq', 'topshiriq', 'bank-chek', 'kadr-davomat', 'kadr-hisobot', 'kadr-tushum', 'kadr-hujjat',
               'certs', 'pay', 'team', 'settings'],
 }
 

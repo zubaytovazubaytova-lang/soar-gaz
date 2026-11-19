@@ -247,6 +247,8 @@ AUDIT_AMAL_CHOICES = [
     ('tushum_kiritildi', 'Xodim mijozdan olingan pulni kiritdi'),
     ('tushum_qabul', 'Administrator xodimdan pulni qabul qildi'),
     ('tushum_rad', 'Tushum yozuvi rad etildi'),
+    ('bank_chek', "Mijoz bank to'lovi chekini yukladi"),
+    ('bank_tekshir', "Bank to'lovi cheki tasdiqlandi/rad etildi"),
     ('xabar_yuborildi', 'Xodimlarga xabar yuborildi'),
     ('narx_ozgardi', "Xizmat narxi o'zgartirildi"),
     ('narx_qoshildi', "Narxnomaga yangi qator qo'shildi"),
