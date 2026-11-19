@@ -309,4 +309,7 @@ def metrologiya_ariza_yaratish(request):
         f"SOAR GAZ: metrologiya{tur} arizangiz #{ariza.id} qabul qilindi! "
         f"24 soat ichida bog'lanamiz."
     )
+    from apps.sms_app import xodim_xabar
+    xodim_xabar.yangi_ariza('metrologiya', f"Yangi metrologiya arizasi #{ariza.id}{tur} (saytdan)",
+                            ariza.ism, ariza.telefon, ariza.manzil, ariza.izoh)
     return Response(MetrologiyaArizasiSerializer(ariza).data, status=201)

@@ -10,6 +10,7 @@ from rest_framework.response import Response
 
 from apps.auth_app.models import Foydalanuvchi, audit_yoz
 from apps.narxnoma.models import TARMOQ_CHOICES
+from apps.sms_app import xodim_xabar
 from apps.sms_app.gateway import sms_yubor
 from apps.sms_app.models import SmsXabar
 from .models import Buyurtma, BuyurtmaFoto
@@ -75,6 +76,8 @@ def buyurtmalar_list(request):
         tarmoq = 'ulgurji' if getattr(user, 'mulk_turi', '') == 'korxona' else 'aholi'
         b = ser.save(mijoz=user, tarmoq=tarmoq)
         _sms_yuborish(user, f"Buyurtmangiz qabul qilindi! #{b.id} — {b.xizmat_nomi}. Tez orada bog'lanamiz.")
+        xodim_xabar.yangi_ariza(b.xizmat, f"Yangi buyurtma #{b.id} — {b.xizmat_nomi}",
+                                user.ism, user.telefon, b.manzil or b.tuman, b.tavsif)
         return Response(BuyurtmaSerializer(b).data, status=201)
     return Response(ser.errors, status=400)
 

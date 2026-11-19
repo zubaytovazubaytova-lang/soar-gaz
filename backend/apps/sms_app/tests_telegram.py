@@ -99,10 +99,10 @@ class YuborishTest(TestCase):
         api.assert_called_once_with('sendMessage', {'chat_id': 555, 'text': 'kod: 123456'})
 
     @mock.patch('apps.sms_app.telegram._api')
-    def test_oddiy_xabar_telegramga_ketmaydi(self, api):
-        """Ariza/buyurtma xabarlari mijozlarga SMS bilan boradi: ulangan bo'lsa ham botga emas."""
-        self.assertFalse(sms_yubor('998901234567', 'Arizangiz qabul qilindi'))
-        api.assert_not_called()
+    def test_oddiy_xabar_ulangan_raqamga_telegramdan(self, api):
+        """Ariza/buyurtma xabarlari botga ulangan raqamga Telegram'dan (tekin) boradi."""
+        self.assertTrue(sms_yubor('998901234567', 'Arizangiz qabul qilindi'))
+        api.assert_called_once()
 
     @mock.patch('apps.sms_app.telegram._api')
     def test_ulanmagan_raqamga_ketmaydi(self, api):

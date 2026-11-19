@@ -326,6 +326,9 @@ def tekshiruvga_yozilish(request, pk):
         # Modelda max_length=100: uzun matn bazani buzmasligi uchun qirqiladi
         vaqt_istagi=str(request.data.get('vaqt_istagi') or "Operator bog'lansin")[:100],
     )
+    from apps.sms_app import xodim_xabar
+    xodim_xabar.yangi_ariza('metrologiya', f"Yangi metrologiya buyurtmasi #{b.id} (hisoblagich tekshiruvi)",
+                            request.user.ism, request.user.telefon, h.obyekt.nom, b.tavsif)
     _bildirishnoma(
         request.user,
         'Tekshiruvga yozildingiz',
