@@ -40,13 +40,14 @@ def click_url(sorov):
     params = {
         'service_id': sid,
         'merchant_id': mid,
-        'amount': sorov.summa,
+        # Click hujjati: summa N.NN formatida (docs.click.uz/click-button)
+        'amount': f'{float(sorov.summa):.2f}',
         'transaction_param': sorov.id,
     }
     ret = getattr(settings, 'TOLOV_RETURN_URL', '')
     if ret:
         params['return_url'] = ret
-    return 'https://my.click.uz/services/pay?' + urlencode(params)
+    return 'https://my.click.uz/services/pay/?' + urlencode(params)
 
 
 def payme_url(sorov):
