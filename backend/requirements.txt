@@ -8,3 +8,5 @@ Pillow==10.4.0
 redis==5.0.8
 # Faqat DB_NOMI o'rnatilganda (serverda PostgreSQL) kerak. Lokalda SQLite — o'rnatish shart emas.
 psycopg2-binary==2.9.9
+# «Telegram orqali kirish»: id_token imzosini (RS256) tekshirish uchun (PyJWT bilan)
+cryptography==46.0.7

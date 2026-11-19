@@ -394,6 +394,11 @@ TELEGRAM_BOT_MIJOZLARGA = os.environ.get('TELEGRAM_BOT_MIJOZLARGA', '0') == '1'
 # Sinov uchun vaqtincha TELEGRAM_GATEWAY_FAQAT_MIJOZ=0.
 TELEGRAM_GATEWAY_FAQAT_MIJOZ = os.environ.get('TELEGRAM_GATEWAY_FAQAT_MIJOZ', '1') == '1'
 
+# «Telegram orqali kirish» (OpenID Connect): @BotFather → bot → Login Widget dan olinadi.
+# Ikkalasi berilmaguncha saytdagi tugma ko'rinmaydi. `soargaz-telegram-login-kalit` yozadi.
+TELEGRAM_LOGIN_CLIENT_ID = os.environ.get('TELEGRAM_LOGIN_CLIENT_ID', '')
+TELEGRAM_LOGIN_CLIENT_SECRET = os.environ.get('TELEGRAM_LOGIN_CLIENT_SECRET', '')
+
 # ──────────────────────────────────────────────────────────────
 #  TO'LOV TIZIMLARI (Click / Payme)
 #  Kalitlar merchant kabinetdan olinadi va SERVERDA muhit o'zgaruvchisi

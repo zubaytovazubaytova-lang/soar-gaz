@@ -1253,11 +1253,47 @@ function modalYop() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') modalYop(); });
 
+/* ---------- Telegram orqali ro'yxatdan o'tish ----------
+   Tugma faqat server sozlangan bo'lsa ko'rinadi. Telegram'da tasdiqlangach server sessiya
+   cookie'sini qo'yib /kabinet/?tg=ok ga qaytaradi; biz cookie bilan access token olamiz. */
+const TG_XATOLAR = {
+  sozlanmagan: "Telegram orqali kirish hozircha yoqilmagan. Telefon raqam orqali kiring.",
+  bekor: "Telegram'da ruxsat berilmadi. Qayta urinib ko'ring yoki telefon raqam orqali kiring.",
+  muddat: "Kirish muddati tugadi. «Telegram orqali ro'yxatdan o'tish» tugmasini qaytadan bosing.",
+  telefon: "Telegram telefon raqamingizni ulashmadi. Ruxsat oynasida raqamni ulashishga rozilik bering.",
+  xodim: "Bu raqam xodim yoki administratorga tegishli. Xodimlar /xodimlar sahifasidan kiradi.",
+  bloklangan: "Hisobingiz bloklangan. Administrator bilan bog'laning.",
+  rad: "Telegram bilan bog'lanishda xatolik. Birozdan keyin qayta urinib ko'ring.",
+};
+
+async function tgHolatTekshir() {
+  if (KORISH || FAYL_REJIM) return;
+  try {
+    const d = await (await fetch(API + '/auth/telegram/holat/')).json();
+    if (d && d.yoqilgan) {
+      el('tgKirishBtn').href = API + '/auth/telegram/boshlash/';
+      el('tgBlok').style.display = 'block';
+    }
+  } catch (e) { /* tugma ko'rinmaydi: telefon orqali kirish ishlayveradi */ }
+}
+
 /* ---------- boshlash ---------- */
 (async function boshlash() {
   el('qaytishHavola').href = ASOSIY_SAYT;
   el('saytHavola').href = ASOSIY_SAYT;
   tumanlarniQoy(el('pTuman'));
+  tgHolatTekshir();
+
+  // Telegram'dan qaytish: ?tg=ok (muvaffaqiyat) yoki ?tg_xato=<sabab>
+  const qs = new URLSearchParams(location.search);
+  const tgOk = qs.get('tg') === 'ok', tgXato = qs.get('tg_xato');
+  if (tgOk || tgXato) history.replaceState(null, '', location.pathname);
+  if (tgXato) { kirishKorsat(); authXato(TG_XATOLAR[tgXato] || TG_XATOLAR.rad); return; }
+  if (tgOk && !KORISH) {
+    saqlash.removeItem('sg_token');           // eski sessiya o'rniga Telegram'dan kelgani
+    if (!(await tokenYangila())) { kirishKorsat(); authXato(TG_XATOLAR.muddat); return; }
+  }
+
   const token = saqlash.getItem('sg_token');
   if (!token) { kirishKorsat(); return; }
   try {

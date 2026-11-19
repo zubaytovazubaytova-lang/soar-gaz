@@ -1,5 +1,5 @@
 from django.urls import path
-from . import rahbariyat, views
+from . import rahbariyat, telegram_kirish, views
 
 urlpatterns = [
     path('admin/login/', views.admin_login),
@@ -11,6 +11,10 @@ urlpatterns = [
     path('royxat/', views.royxatdan_otish),
     path('otp/yuborish/', views.otp_yuborish),
     path('otp/tasdiqlash/', views.otp_tasdiqlash),
+    # Telegram orqali kirish / ro'yxatdan o'tish (kodsiz, tekin): apps/auth_app/telegram_kirish.py
+    path('telegram/holat/', telegram_kirish.holat),
+    path('telegram/boshlash/', telegram_kirish.boshlash),
+    path('telegram/callback/', telegram_kirish.callback),
     path('profil/', views.profil),
     path('tasdiq-kodi/', views.tasdiq_kodi_yuborish),
     path('hududlar/', views.hududlar),
