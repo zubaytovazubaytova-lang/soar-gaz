@@ -1,0 +1,110 @@
+#!/bin/bash
+# SOAR GAZ zaxira nusxasi: baza (PostgreSQL) + yuklangan fayllar (media) + server sozlamasi (env).
+#
+#  * Saytni TO'XTATMAYDI: pg_dump ishlab turgan bazadan nusxa oladi (yozishni bloklamaydi).
+#  * Serverda /var/backups/soargaz da oxirgi 14 kun saqlanadi (faqat root o'qiy oladi).
+#  * Shifr paroli o'rnatilgan bo'lsa (soargaz-zaxira-parol), nusxa AES-256 bilan shifrlanib
+#    administratorning Telegram'iga (@soargaz_bot orqali) yuboriladi. Parolsiz Telegram'ga
+#    HECH QACHON yuborilmaydi (bazada shaxsiy ma'lumotlar bor).
+#  * Xato bo'lsa administratorga Telegram'da ogohlantirish ketadi.
+#
+# Qo'lda ishga tushirish:  systemctl start soargaz-zaxira   (jurnal: journalctl -u soargaz-zaxira)
+set -euo pipefail
+umask 077
+
+ZAX=/var/backups/soargaz
+PAROL=/root/.config/soargaz/zaxira.parol
+SAQLASH_KUN=14
+TG_LIMIT=$((49 * 1024 * 1024))     # Telegram bot fayl chegarasi 50 MB
+
+exec 9>/run/soargaz-zaxira.lock
+flock -n 9 || { echo "Boshqa zaxira jarayoni ishlayapti, chiqildi."; exit 0; }
+
+set -a; . /etc/soargaz/env; set +a
+
+# Administratorlarning Telegram chatlari (bot orqali ulangan raqamlar)
+admin_chatlar() {
+    runuser -u postgres -- psql -d soargaz -Atc \
+      "select t.chat_id from sms_app_telegramulanish t join auth_app_foydalanuvchi f on f.telefon=t.telefon where f.rol='admin' and f.holat='faol'" 2>/dev/null || true
+}
+
+tg_xabar() {   # tg_xabar "matn"
+    [ -n "${TELEGRAM_BOT_TOKEN:-}" ] || return 0
+    for c in $(admin_chatlar); do
+        curl -sS -m 30 -o /dev/null "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=$c" --data-urlencode "text=$1" || true
+    done
+}
+
+tg_fayl() {    # tg_fayl fayl "izoh"  -> kamida bitta chatga yetsa 0
+    [ -n "${TELEGRAM_BOT_TOKEN:-}" ] || return 1
+    local ok=1
+    for c in $(admin_chatlar); do
+        if curl -sS -m 300 "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+               -F "chat_id=$c" -F "document=@$1" -F "caption=$2" | grep -q '"ok":true'; then
+            ok=0
+        fi
+    done
+    return $ok
+}
+
+xato() {
+    echo "XATO: zaxira $LINENO-qatorda to'xtadi"
+    tg_xabar "⚠️ SOAR GAZ: kunlik zaxira nusxa OLINMADI ($(date '+%d.%m.%Y %H:%M')). Serverni tekshiring: journalctl -u soargaz-zaxira"
+}
+trap xato ERR
+
+mkdir -p "$ZAX"
+chmod 700 "$ZAX"
+VAQT=$(date +%Y%m%d-%H%M)
+DB="$ZAX/db-$VAQT.dump"
+MEDIA="$ZAX/media-$VAQT.tar.gz"
+ENVF="$ZAX/env-$VAQT"
+PAKET="$ZAX/soargaz-$VAQT.tar"
+
+echo "== $(date '+%F %T') zaxira boshlandi =="
+# 1) Baza: custom format (siqilgan), ishlab turgan bazadan izchil nusxa
+runuser -u postgres -- pg_dump -Fc -d soargaz > "$DB"
+pg_restore -l "$DB" > /dev/null                 # fayl butun va o'qiladigan ekanini tekshiradi
+# 2) Yuklangan fayllar va sozlama
+tar -czf "$MEDIA" -C /srv/soargaz/backend media
+cp /etc/soargaz/env "$ENVF"
+# 3) Bitta paket
+tar -cf "$PAKET" -C "$ZAX" "$(basename "$DB")" "$(basename "$MEDIA")" "$(basename "$ENVF")"
+rm -f "$DB" "$MEDIA" "$ENVF"
+chmod 600 "$PAKET"
+echo "paket: $(basename "$PAKET") ($(du -h "$PAKET" | cut -f1))"
+
+# 4) Shifrlab Telegram'ga (faqat parol bo'lsa)
+if [ -s "$PAROL" ]; then
+    SHIFR="$PAKET.gpg"
+    gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$PAROL" \
+        --symmetric --cipher-algo AES256 -o "$SHIFR" "$PAKET"
+    HAJM=$(stat -c %s "$SHIFR")
+    IZOH="SOAR GAZ zaxira $(date '+%d.%m.%Y %H:%M') — baza, fayllar, sozlama. Shifrlangan (AES-256), ochish uchun zaxira paroli kerak."
+    if [ "$HAJM" -gt "$TG_LIMIT" ]; then
+        # Juda katta: Telegram'ga faqat baza va sozlama (fayllar serverdagi nusxada qoladi)
+        KICHIK="$ZAX/soargaz-$VAQT-baza.tar"
+        tar -xf "$PAKET" -C "$ZAX" "db-$VAQT.dump" "env-$VAQT"
+        tar -cf "$KICHIK" -C "$ZAX" "db-$VAQT.dump" "env-$VAQT"
+        rm -f "$ZAX/db-$VAQT.dump" "$ZAX/env-$VAQT" "$SHIFR"
+        SHIFR="$KICHIK.gpg"
+        gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$PAROL" \
+            --symmetric --cipher-algo AES256 -o "$SHIFR" "$KICHIK"
+        rm -f "$KICHIK"
+        IZOH="$IZOH Hajm katta bo'lgani uchun faqat baza va sozlama (fayllar serverda)."
+    fi
+    if tg_fayl "$SHIFR" "$IZOH"; then
+        echo "Telegram'ga yuborildi: $(basename "$SHIFR") ($(du -h "$SHIFR" | cut -f1))"
+    else
+        echo "OGOHLANTIRISH: Telegram'ga yuborib bo'lmadi (admin botga ulanmagan yoki tarmoq xatosi)"
+    fi
+    rm -f "$SHIFR"
+else
+    echo "Shifr paroli o'rnatilmagan: nusxa faqat serverda (Telegram'ga yuborilmadi). O'rnatish: soargaz-zaxira-parol"
+fi
+
+# 5) Eski nusxalarni tozalash (faqat shu papkadagi soargaz-*.tar, 14 kundan eski)
+find /var/backups/soargaz -maxdepth 1 -type f -name 'soargaz-*.tar' -mtime +"$SAQLASH_KUN" -print -delete
+echo "serverdagi nusxalar: $(find /var/backups/soargaz -maxdepth 1 -type f -name 'soargaz-*.tar' | wc -l) ta"
+echo "== $(date '+%F %T') zaxira tugadi =="
