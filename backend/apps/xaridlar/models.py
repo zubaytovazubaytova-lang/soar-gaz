@@ -67,6 +67,7 @@ TOLOV_USULI_CHOICES = [
     ('payme', 'Payme'),
     ('karta', 'Uzcard / Humo'),
     ('bolib', "Bo'lib to'lash"),
+    ('bank', "Hisob raqamga o'tkazma (chek bilan)"),
 ]
 
 # Onlayn to'lov havolasi quriladigan usullar.

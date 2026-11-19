@@ -136,6 +136,7 @@ class MetrologiyaArizasi(models.Model):
 YONALISH_CHOICES = [
     ('servis', 'Servis xizmatlari'),
     ('montaj', 'Qurilish-montaj xizmatlari'),
+    ('xarid', "Mahsulot xaridlari (do'kon)"),
 ]
 
 # Buyurtma xizmati → qaysi hisob raqamga to'lanadi
@@ -184,8 +185,14 @@ BANK_TOLOV_HOLAT = [
 
 
 class BankTolovi(models.Model):
-    buyurtma = models.ForeignKey('buyurtmalar.Buyurtma', on_delete=models.CASCADE, related_name='bank_tolovlari')
-    mijoz = models.ForeignKey('auth_app.Foydalanuvchi', on_delete=models.CASCADE, related_name='bank_tolovlari')
+    # Bittasi to'ldiriladi: xizmat buyurtmasi YOKI do'kon xaridi
+    buyurtma = models.ForeignKey('buyurtmalar.Buyurtma', on_delete=models.CASCADE, null=True, blank=True,
+                                 related_name='bank_tolovlari')
+    xarid = models.ForeignKey('xaridlar.Xarid', on_delete=models.CASCADE, null=True, blank=True,
+                              related_name='bank_tolovlari')
+    # Do'kondan mehmon sifatida (kirmasdan) xarid qilgan mijozda hisob bo'lmasligi mumkin
+    mijoz = models.ForeignKey('auth_app.Foydalanuvchi', on_delete=models.CASCADE, null=True, blank=True,
+                              related_name='bank_tolovlari')
     summa = models.BigIntegerField(verbose_name="Summa (so'm)")
     hisob_raqam = models.CharField(max_length=20, blank=True, verbose_name="To'langan hisob raqam")
     # nginx `hujjatlar_maxfiy/` ni ochiq bermaydi: chek faqat ruxsatli ko'rinish orqali ochiladi
@@ -206,4 +213,5 @@ class BankTolovi(models.Model):
         ordering = ['-yaratilgan']
 
     def __str__(self):
-        return f"#{self.buyurtma_id} — {self.summa} so'm ({self.get_holat_display()})"
+        nom = self.xarid.raqam if self.xarid_id else f'#{self.buyurtma_id}'
+        return f"{nom} — {self.summa} so'm ({self.get_holat_display()})"

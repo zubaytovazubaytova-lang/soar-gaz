@@ -132,3 +132,68 @@ class BankTolovTest(TestCase):
         r = self._c(self.ruxsora).get('/api/tolovlar/bank/cheklar/?holat=tekshirilmoqda').json()
         self.assertEqual(r['kutilmoqda'], 1)
         self.assertEqual(r['royxat'][0]['telefon'], '+998901111111')
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+@mock.patch('apps.tolovlar.bank.sms_yubor')
+@mock.patch('apps.sms_app.xodim_xabar.tolov_tekshiruvchilarga')
+class XaridBankTolovTest(TestCase):
+    """Do'kon xaridi: mehmon ham telefon oxiri bilan chek yuklaydi; tasdiq xaridni «to'landi» qiladi."""
+
+    def setUp(self):
+        from apps.xaridlar.models import Xarid
+        from apps.xaridlar.tolov import tolov_sorovi_yarat
+        self.ruxsora = Foydalanuvchi.objects.create(telefon='+998904444444', rol='xodim',
+                                                    lavozim="Kadrlar bo'yicha mutaxassis")
+        self.x = Xarid.objects.create(ism='Vali', telefon='+998907776655', manzil='Buxoro',
+                                      jami=480000, tolov_usuli='bank')
+        tolov_sorovi_yarat(self.x)
+        Rekvizit.objects.create(yonalish='xarid', korxona='SOAR GAZ MChJ', bank='Bank', hisob_raqam='4' * 20,
+                                mfo='00001', stir='123456789')
+        self.url = f'/api/tolovlar/bank/xarid/{self.x.raqam}/'
+
+    def _yukla(self, telefon='6655'):
+        return APIClient().post(self.url, {'chek': chek(), 'telefon': telefon}, format='multipart')
+
+    def test_egaliksiz_korinmaydi(self, *_):
+        self.assertEqual(APIClient().get(self.url).status_code, 403)
+        self.assertEqual(self._yukla(telefon='0000').status_code, 403)
+
+    def test_rekvizit_va_summa(self, *_):
+        r = APIClient().get(self.url, HTTP_X_TELEFON_OXIRI='6655').json()
+        self.assertEqual((r['rekvizit']['hisob_raqam'], r['summa']), ('4' * 20, 480000))
+
+    def test_mehmon_yuklaydi_tasdiqdan_keyin_xarid_tolandi(self, xabar, sms):
+        r = self._yukla()
+        self.assertEqual(r.status_code, 201, r.content)
+        t = BankTolovi.objects.get()
+        self.assertEqual((t.summa, t.xarid_id, t.mijoz_id), (480000, self.x.id, None))
+        self.assertEqual(t.tolov_sorovi_id, self.x.tolov_sorovi_id)
+        c = APIClient()
+        c.force_authenticate(self.ruxsora)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(c.post(f'/api/tolovlar/bank/cheklar/{t.id}/tekshir/', {'natija': 'tasdiq'}).status_code, 200)
+        self.x.refresh_from_db()
+        self.assertTrue(self.x.tolandi)
+        self.assertEqual(self.x.tolov_holati, 'tolandi')
+        self.assertEqual(sms.call_args.args[0], '+998907776655')
+        self.assertIn(self.x.raqam, sms.call_args.args[1])
+        royxat = c.get('/api/tolovlar/bank/cheklar/').json()['royxat']
+        self.assertIn("Do'kon xaridi", royxat[0]['xizmat'])
+
+    def test_rad_etilsa_qayta_yuklash(self, *_):
+        self._yukla()
+        t = BankTolovi.objects.get()
+        c = APIClient()
+        c.force_authenticate(self.ruxsora)
+        c.post(f'/api/tolovlar/bank/cheklar/{t.id}/tekshir/', {'natija': 'rad', 'sabab': 'Pul kelmadi'})
+        self.x.refresh_from_db()
+        self.assertFalse(self.x.tolandi)
+        self.assertEqual(self._yukla().status_code, 201)
+        self.assertEqual(BankTolovi.objects.count(), 2)
+        self.assertEqual(BankTolovi.objects.latest('id').tolov_sorovi.holat, 'kutilmoqda')
+
+    def test_boshqa_usuldagi_xaridga_yuklanmaydi(self, *_):
+        self.x.tolov_usuli = 'naqd'
+        self.x.save(update_fields=['tolov_usuli'])
+        self.assertEqual(self._yukla().status_code, 400)

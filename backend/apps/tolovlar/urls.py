@@ -17,6 +17,7 @@ urlpatterns = [
     path('payme/', views.payme_endpoint),
     # Bank (hisob raqam) orqali to'lov: chek yuklash va tasdiqlash
     path('bank/buyurtma/<int:pk>/', bank.buyurtma_bank_tolovi),
+    path('bank/xarid/<str:raqam>/', bank.xarid_bank_tolovi),
     path('bank/cheklar/', bank.cheklar),
     path('bank/cheklar/<int:pk>/chek/', bank.chek_fayli),
     path('bank/cheklar/<int:pk>/tekshir/', bank.chek_tekshir),

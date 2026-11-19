@@ -16,7 +16,7 @@ from django.db import transaction
 from django.http import FileResponse, Http404
 from django.utils import timezone, translation
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
@@ -65,16 +65,27 @@ def _rekvizit_json(r):
             'bank': r.bank, 'hisob_raqam': r.hisob_raqam, 'mfo': r.mfo, 'stir': r.stir}
 
 
+def _nomi(t):
+    """Chek nimaga tegishli: «#12 buyurtma» yoki «XA-0001 xarid»."""
+    return f"{t.xarid.raqam} xarid" if t.xarid_id else f"#{t.buyurtma_id} buyurtma"
+
+
 def _tolov_json(t, tekshiruvchi=False):
-    d = {'id': t.id, 'buyurtma': t.buyurtma_id, 'summa': t.summa, 'holat': t.holat,
+    d = {'id': t.id, 'buyurtma': t.buyurtma_id, 'xarid': t.xarid.raqam if t.xarid_id else None,
+         'summa': t.summa, 'holat': t.holat,
          'holat_nomi': t.get_holat_display(), 'rad_sabab': t.rad_sabab, 'izoh': t.izoh,
          'yaratilgan': t.yaratilgan, 'tekshirilgan': t.tekshirilgan,
          'chek_url': f'/api/tolovlar/bank/cheklar/{t.id}/chek/'}
     if tekshiruvchi:
-        b = t.buyurtma
-        d.update({'mijoz': t.mijoz.ism, 'telefon': t.mijoz.telefon, 'xizmat': xizmat_uz(b),
-                  'tasdiq_summa': b.tasdiq_summa, 'hisob_raqam': t.hisob_raqam,
-                  'tekshirdi': t.tekshirdi.ism if t.tekshirdi else ''})
+        if t.xarid_id:
+            x = t.xarid
+            d.update({'mijoz': x.ism, 'telefon': x.telefon, 'xizmat': f"Do'kon xaridi {x.raqam}",
+                      'tasdiq_summa': x.jami})
+        else:
+            b = t.buyurtma
+            d.update({'mijoz': t.mijoz.ism if t.mijoz else '', 'telefon': t.mijoz.telefon if t.mijoz else '',
+                      'xizmat': f"Buyurtma #{b.id} — {xizmat_uz(b)}", 'tasdiq_summa': b.tasdiq_summa})
+        d.update({'hisob_raqam': t.hisob_raqam, 'tekshirdi': t.tekshirdi.ism if t.tekshirdi else ''})
     return d
 
 
@@ -142,12 +153,71 @@ def buyurtma_bank_tolovi(request, pk):
     return Response(_tolov_json(t), status=201)
 
 
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+@throttle_classes([ChekThrottle])
+def xarid_bank_tolovi(request, raqam):
+    """Do'kon xaridi uchun hisob raqamga to'lov. Mehmon xaridi ham: egalik telefon oxiri bilan
+    (apps.xaridlar.views._egalik_tekshir — boshqa xarid amallari bilan bir xil qoida)."""
+    from apps.xaridlar.models import Xarid
+    from apps.xaridlar.tolov import tolov_sorovi_yarat
+    from apps.xaridlar.views import _egalik_tekshir
+
+    x = Xarid.objects.filter(raqam=raqam).first()
+    if not x:
+        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+    rad = _egalik_tekshir(request, x)
+    if rad:
+        return rad
+    rekvizit = Rekvizit.objects.filter(yonalish='xarid', faol=True).first()
+    maqsad = f"{x.raqam} buyurtma bo'yicha mahsulot xaridi uchun"
+
+    if request.method == 'GET':
+        return Response({'rekvizit': _rekvizit_json(rekvizit), 'maqsad': maqsad, 'summa': x.jami,
+                         'tolandi': x.tolandi,
+                         'tolovlar': [_tolov_json(t) for t in x.bank_tolovlari.all()]})
+
+    if x.tolov_usuli != 'bank':
+        return Response({'detail': "Avval to'lov usulini «Hisob raqamga o'tkazma» ga o'zgartiring"}, status=400)
+    if x.tolandi:
+        return Response({'detail': "Bu buyurtma allaqachon to'langan"}, status=400)
+    if x.holat == 'bekor':
+        return Response({'detail': "Bekor qilingan buyurtmani to'lab bo'lmaydi"}, status=400)
+    if not rekvizit:
+        return Response({'detail': "Hisob raqam hali kiritilmagan. Iltimos, keyinroq urinib ko'ring"}, status=400)
+    if x.bank_tolovlari.filter(holat='tekshirilmoqda').exists():
+        return Response({'detail': "Bu buyurtma bo'yicha yuborilgan chek hali tekshirilmoqda"}, status=400)
+    fayl = request.FILES.get('chek')
+    xato = _chek_tekshir(fayl)
+    if xato:
+        return Response({'detail': xato}, status=400)
+
+    user = request.user if request.user.is_authenticated else None
+    with transaction.atomic():
+        # Joriy so'rov to'lanmagan «bank» so'rovi bo'lmasa (masalan, oldingi chek rad etilgan) — yangisi
+        s = x.tolov_sorovi
+        if not s or s.tolov_turi != 'bank' or s.holat != 'kutilmoqda' or BankTolovi.objects.filter(tolov_sorovi=s).exists():
+            s = tolov_sorovi_yarat(x)
+        t = BankTolovi.objects.create(
+            xarid=x, mijoz=x.mijoz or (user if user and user.rol == 'mijoz' else None), summa=x.jami,
+            hisob_raqam=rekvizit.hisob_raqam, chek=fayl, izoh=str(request.data.get('izoh') or '')[:300],
+            tolov_sorovi=s)
+        audit_yoz(request, 'bank_chek', f"Bank to'lovi cheki yuklandi: xarid {x.raqam}, {x.jami} so'm",
+                  user=x.mijoz or user)
+    summa_matn = f"{x.jami:,}".replace(',', ' ')
+    xodim_xabar.tolov_tekshiruvchilarga(
+        f"💳 Yangi to'lov cheki: do'kon xaridi {x.raqam}\n"
+        f"👤 {x.ism} {x.telefon}\n💰 {summa_matn} so'm\n"
+        f"Bankda tushumni tekshirib tasdiqlang: {xodim_xabar.XODIM_KABINETI}")
+    return Response(_tolov_json(t), status=201)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def cheklar(request):
     if not tekshiruvchimi(request.user):
         return Response({'detail': 'Ruxsat yo\'q'}, status=403)
-    qs = BankTolovi.objects.select_related('buyurtma', 'mijoz', 'tekshirdi')
+    qs = BankTolovi.objects.select_related('buyurtma', 'xarid', 'mijoz', 'tekshirdi')
     holat = request.query_params.get('holat')
     if holat:
         qs = qs.filter(holat=holat)
@@ -159,7 +229,7 @@ def cheklar(request):
 @permission_classes([IsAuthenticated])
 def chek_fayli(request, pk):
     t = BankTolovi.objects.filter(pk=pk).first()
-    if not t or not (t.mijoz_id == request.user.id or tekshiruvchimi(request.user)):
+    if not t or not ((t.mijoz_id and t.mijoz_id == request.user.id) or tekshiruvchimi(request.user)):
         raise Http404
     try:
         javob = FileResponse(t.chek.open('rb'))
@@ -177,7 +247,7 @@ def tekshir(t, user, natija, sabab='', request=None):
     if natija == 'rad' and not sabab.strip():
         return 'Rad etish sababini yozing'
     with transaction.atomic():
-        t = BankTolovi.objects.select_for_update(of=('self',)).select_related('buyurtma', 'mijoz').get(pk=t.pk)
+        t = BankTolovi.objects.select_for_update(of=('self',)).get(pk=t.pk)
         if t.holat != 'tekshirilmoqda':
             return 'Bu chek allaqachon ko\'rib chiqilgan'
         t.holat = 'tasdiqlandi' if natija == 'tasdiq' else 'rad'
@@ -185,18 +255,22 @@ def tekshir(t, user, natija, sabab='', request=None):
         t.tekshirdi, t.tekshirilgan = user, timezone.now()
         t.save(update_fields=['holat', 'rad_sabab', 'tekshirdi', 'tekshirilgan'])
         if t.tolov_sorovi_id:
-            TolovSorovi.objects.filter(pk=t.tolov_sorovi_id).update(
-                holat='tolandi' if natija == 'tasdiq' else 'bekor')
+            # save() — signal (apps.xaridlar.signals) xaridni ham «to'landi» / «xato» qiladi
+            s = TolovSorovi.objects.select_for_update().get(pk=t.tolov_sorovi_id)
+            s.holat = 'tolandi' if natija == 'tasdiq' else 'bekor'
+            s.save(update_fields=['holat', 'yangilangan'])
         if request is not None:
-            audit_yoz(request, 'bank_tekshir', f"Bank to'lovi #{t.id} (buyurtma #{t.buyurtma_id}) "
+            audit_yoz(request, 'bank_tekshir', f"Bank to'lovi #{t.id} ({_nomi(t)}) "
                       + ('tasdiqlandi' if natija == 'tasdiq' else f'rad etildi: {t.rad_sabab}'))
     summa = f"{t.summa:,}".replace(',', ' ')
     if natija == 'tasdiq':
-        matn = f"SOAR GAZ: #{t.buyurtma_id} buyurtma bo'yicha {summa} so'm to'lovingiz qabul qilindi. Rahmat!"
+        matn = f"SOAR GAZ: {_nomi(t)} bo'yicha {summa} so'm to'lovingiz qabul qilindi. Rahmat!"
     else:
-        matn = (f"SOAR GAZ: #{t.buyurtma_id} buyurtma bo'yicha {summa} so'm to'lov tasdiqlanmadi. "
-                f"Sabab: {t.rad_sabab}. Kabinetda chekni qayta yuborishingiz mumkin.")
-    transaction.on_commit(lambda: sms_yubor(t.mijoz.telefon, matn))
+        matn = (f"SOAR GAZ: {_nomi(t)} bo'yicha {summa} so'm to'lov tasdiqlanmadi. "
+                f"Sabab: {t.rad_sabab}. Chekni qayta yuborishingiz mumkin.")
+    telefon = t.xarid.telefon if t.xarid_id else (t.mijoz.telefon if t.mijoz else '')
+    if telefon:
+        transaction.on_commit(lambda: sms_yubor(telefon, matn))
     return None
 
 

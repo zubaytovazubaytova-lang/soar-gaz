@@ -47,14 +47,14 @@
     const farq = t.tasdiq_summa && Number(t.tasdiq_summa) !== Number(t.summa);
     return `<div class="bc-karta">
       <div class="bc-bosh">
-        <div><h4>Buyurtma #${t.buyurtma} — ${esc(t.xizmat)}</h4>
+        <div><h4>${esc(t.xizmat)}</h4>
           <div class="bc-qator"><span>${esc(t.mijoz || '—')}</span><span>${esc(t.telefon)}</span><span>${esc(sana(t.yaratilgan))}</span></div></div>
         <div style="text-align:right"><div class="bc-summa">${pul(t.summa)}</div>
           <span class="bc-teg ${esc(t.holat)}">${esc(t.holat_nomi)}</span></div>
       </div>
       <div class="bc-qator"><span>Hisob raqam:</span><b>${esc(t.hisob_raqam)}</b></div>
       ${t.izoh ? `<div class="bc-qator"><span>Mijoz izohi:</span><b>${esc(t.izoh)}</b></div>` : ''}
-      ${farq ? `<div class="bc-ogoh">⚠️ Buyurtmaning tasdiqlangan summasi: <b>${pul(t.tasdiq_summa)}</b>. Mijoz kiritgan summa boshqacha.</div>` : ''}
+      ${farq ? `<div class="bc-ogoh">⚠️ Buyurtma summasi: <b>${pul(t.tasdiq_summa)}</b>. Mijoz kiritgan summa boshqacha.</div>` : ''}
       ${t.holat === 'rad' ? `<div class="bc-qator"><span>Rad sababi:</span><b>${esc(t.rad_sabab)}</b></div>` : ''}
       ${t.tekshirdi ? `<div class="bc-qator"><span>Tekshirdi:</span><b>${esc(t.tekshirdi)}</b><span>${esc(sana(t.tekshirilgan))}</span></div>` : ''}
       <div class="bc-tugmalar">

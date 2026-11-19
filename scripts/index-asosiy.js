@@ -451,6 +451,7 @@
     payme: 'Payme',
     karta: 'Uzcard / Humo',
     bolib: "Bo'lib to'lash",
+    bank:  "Hisob raqamga o'tkazma",
   };
 
   async function xaridNarxlarYukla() {
@@ -1690,6 +1691,8 @@
       </div>`;
     }
 
+    if (p.method === 'bank') return bankPanel(b);
+
     // Onlayn to'lov (click / payme / karta)
     const xato = p.state === 'xato';
     const sozlanmagan = p.configured === false;
@@ -1751,6 +1754,128 @@
       if (urinish >= 20) clearInterval(timer);   // ~2 daqiqa
     }, 6000);
   }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Hisob raqamga o'tkazma (chek bilan) — do'kon xaridi
+  //  Mijoz pulni Click/bank ilovasidan o'tkazadi, chekni shu yerda yuklaydi;
+  //  admin yoki Kadrlar mutaxassisi bankda ko'rib tasdiqlaydi (apps/tolovlar/bank.py).
+  // ─────────────────────────────────────────────────────────────
+  const bankYol = raqam => '/tolovlar/bank/xarid/' + encodeURIComponent(raqam) + '/';
+  const bankTelOxiri = raqam => { try { return sessionStorage.getItem('sg_tel_' + raqam) || ''; } catch (e) { return ''; } };
+  const bankEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  async function bankSorov(raqam, sozlama) {
+    // Mehmon xaridi: egalik telefon oxiri bilan; kerak bo'lsa bir marta so'raladi
+    for (let urinish = 0; urinish < 2; urinish++) {
+      const headers = {};
+      const tok = apiToken();
+      if (tok) headers['Authorization'] = 'Bearer ' + tok;
+      const tel = bankTelOxiri(raqam);
+      if (tel) headers['X-Telefon-Oxiri'] = tel;
+      const res = await fetch(API + bankYol(raqam), { ...(sozlama || {}), headers });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) return data;
+      if (res.status === 403 && data.telefon_kerak && urinish === 0) {
+        const t = prompt("Buyurtma egasini tasdiqlash uchun telefon raqamingizning oxirgi 4 raqamini kiriting:");
+        if (!t) throw new Error(data.detail);
+        try { sessionStorage.setItem('sg_tel_' + raqam, t.replace(/\D/g, '').slice(-4)); } catch (e) {}
+        continue;
+      }
+      throw new Error(data.detail || 'Server xatosi');
+    }
+  }
+
+  function bankQator(nom, qiymat) {
+    return `<div class="flex items-center justify-between gap-2 py-1.5" style="border-bottom:1px dashed rgba(120,170,235,0.25)">
+      <span class="text-xs" style="color:#5b7fa6">${nom}</span>
+      <span class="flex items-center gap-2 text-right"><b class="text-sm text-ink-900" style="word-break:break-all">${bankEsc(qiymat)}</b>
+        <button type="button" data-xa-nusxa="${bankEsc(qiymat)}" class="text-xs font-bold rounded-lg"
+          style="padding:4px 9px;background:#e8f1ff;color:#0d6efd;border:1px solid rgba(120,170,235,0.35)">Nusxa</button></span>
+    </div>`;
+  }
+
+  function bankPanel(b) {
+    setTimeout(() => bankPanelYukla(b.id), 0);
+    return `<div class="xarid-card" id="xa-bank-panel">
+      <div class="text-sm" style="color:#5b7fa6"><i class="fas fa-spinner fa-spin mr-2"></i>Hisob raqam yuklanmoqda...</div>
+    </div>`;
+  }
+
+  async function bankPanelYukla(raqam) {
+    const box = document.getElementById('xa-bank-panel');
+    if (!box) return;
+    let d;
+    try { d = await bankSorov(raqam); }
+    catch (e) {
+      box.innerHTML = `<p class="text-sm" style="color:#dc2626">${bankEsc(e.message)}</p>${tolovUsulTugmasi()}`;
+      return;
+    }
+    const kutilmoqda = d.tolovlar.some(t => t.holat === 'tekshirilmoqda');
+    const oxirgiRad = d.tolovlar.find(t => t.holat === 'rad');
+    const r = d.rekvizit;
+    box.innerHTML = !r ? `
+        <div class="flex items-start gap-3"><i class="fas fa-university mt-1" style="color:#0d6efd"></i>
+          <div class="text-sm" style="color:#5b7fa6">Hisob raqam hali kiritilmagan. Operator siz bilan bog'lanadi yoki boshqa to'lov usulini tanlang.</div></div>
+        ${tolovUsulTugmasi()}` : `
+      <div class="font-bold text-ink-900 text-sm mb-2"><i class="fas fa-university mr-2" style="color:#0d6efd"></i>1. ${somFmt(d.summa)} ni shu hisob raqamga o'tkazing</div>
+      ${bankQator('Qabul qiluvchi', r.korxona)}
+      ${bankQator('Hisob raqam', r.hisob_raqam)}
+      ${bankQator('Bank', r.bank)}
+      ${bankQator('MFO', r.mfo)}
+      ${bankQator('STIR (INN)', r.stir)}
+      ${bankQator("To'lov maqsadi", d.maqsad)}
+      <p class="text-[11px] mt-2 mb-4" style="color:#5b7fa6">Click ilovasida: <b>To'lovlar → Rekvizitlar bo'yicha o'tkazma</b> yoki bankingiz ilovasida "Yuridik shaxsga o'tkazma".</p>
+      ${kutilmoqda ? `
+        <div class="rounded-xl text-sm p-3" style="background:#fffbeb;border:1px solid #fde68a;color:#78350f">
+          <i class="fas fa-hourglass-half mr-1"></i> Chekingiz tekshirilmoqda. Pul hisobimizga tushgani tasdiqlangach xabar olasiz.</div>` : `
+        ${oxirgiRad ? `<p class="text-xs mb-2" style="color:#dc2626"><i class="fas fa-circle-exclamation mr-1"></i>Oldingi chek tasdiqlanmadi: ${bankEsc(oxirgiRad.rad_sabab)}</p>` : ''}
+        <form id="xa-bank-forma">
+          <div class="font-bold text-ink-900 text-sm mb-2">2. To'lov chekini yuklang</div>
+          <input type="file" id="xa-bank-chek" accept="image/jpeg,image/png,image/webp,application/pdf" required
+            class="w-full text-sm mb-2 rounded-xl" style="padding:10px;background:#f1f7ff;border:1px solid rgba(120,170,235,0.28)">
+          <input type="text" id="xa-bank-izoh" maxlength="300" placeholder="Izoh (ixtiyoriy): masalan, to'lovchi — Valiyev A."
+            class="w-full text-sm mb-3 rounded-xl" style="padding:10px;background:#f1f7ff;border:1px solid rgba(120,170,235,0.28)">
+          <button type="submit" id="xa-bank-yubor" class="w-full font-black rounded-xl active:scale-95 transition-all"
+            style="padding:14px;background:linear-gradient(135deg,#0d6efd,#17538f);color:#fff">
+            <i class="fas fa-paper-plane mr-2"></i>Chekni yuborish</button>
+          <p class="text-[11px] text-center mt-2" style="color:#5b7fa6">Skrinshot yoki PDF, 5 MB gacha</p>
+        </form>`}
+      <div class="mt-3">${tolovUsulTugmasi()}</div>`;
+    const forma = document.getElementById('xa-bank-forma');
+    if (forma) forma.addEventListener('submit', e => bankChekYubor(e, raqam));
+  }
+
+  async function bankChekYubor(e, raqam) {
+    e.preventDefault();
+    const fayl = document.getElementById('xa-bank-chek').files[0];
+    if (!fayl) { showToast('Chek faylini tanlang'); return; }
+    if (fayl.size > 5 * 1024 * 1024) { showToast("Fayl 5 MB dan katta bo'lmasin"); return; }
+    const fd = new FormData();
+    fd.append('chek', fayl);
+    fd.append('izoh', document.getElementById('xa-bank-izoh').value.trim());
+    const tel = bankTelOxiri(raqam);
+    if (tel) fd.append('telefon', tel);
+    const tugma = document.getElementById('xa-bank-yubor');
+    tugma.disabled = true;
+    try {
+      await bankSorov(raqam, { method: 'POST', body: fd });
+      showToast('Chek yuborildi. Tekshirilgach xabar olasiz.');
+      bankPanelYukla(raqam);
+    } catch (err) {
+      showToast(err.message || 'Chek yuborilmadi');
+      tugma.disabled = false;
+    }
+  }
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-xa-nusxa]');
+    if (!t) return;
+    const matn = t.getAttribute('data-xa-nusxa');
+    (navigator.clipboard ? navigator.clipboard.writeText(matn) : Promise.reject())
+      .then(() => showToast('Nusxalandi'))
+      .catch(() => showToast("Nusxalab bo'lmadi — qo'lda belgilab oling"));
+  });
+  if (window.SG_H) SG_H['hBank'] = function () { xaridTolov('bank'); };
 
   async function tolovUsulOch() {
     const box = document.getElementById('xa-usul-royxat');
