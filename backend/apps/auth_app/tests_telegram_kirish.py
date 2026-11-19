@@ -86,6 +86,10 @@ class TelegramKirishTest(TestCase):
         self.assertEqual(TelegramUlanish.objects.get(telefon=TEL).chat_id, 777)  # bot xabar yubora oladi
         self.assertTrue(43 <= len(alm.call_args[0][1]) <= 128)       # PKCE verifier (RFC 7636) serverda saqlangan
 
+    def test_id_matn_korinishida_kelsa_ham_bot_boglanadi(self):
+        self._callback(cl=claims(id='777'))
+        self.assertEqual(TelegramUlanish.objects.get(telefon=TEL).chat_id, 777)
+
     def test_kirgandan_keyin_sessiya_ishlaydi(self):
         self._callback()
         ya = self.c.post('/api/auth/token/yangilash/', {}, content_type='application/json')

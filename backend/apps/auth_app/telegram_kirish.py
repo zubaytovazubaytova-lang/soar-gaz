@@ -143,8 +143,20 @@ def id_token_tekshir(id_token):
                           audience=_sozlama('TELEGRAM_LOGIN_CLIENT_ID'), issuer=ISSUER,
                           options={'require': ['exp', 'iat', 'iss', 'aud']}, leeway=30)
     except Exception as xato:                 # noqa: BLE001 — har qanday tekshiruv xatosi = rad
-        logger.warning('Telegram id_token tekshiruvdan o\'tmadi: %s', type(xato).__name__)
+        logger.warning('Telegram id_token tekshiruvdan o\'tmadi: %s: %s | %s', type(xato).__name__,
+                       str(xato)[:200], _token_tuzilishi(id_token), exc_info=True)
         raise TelegramKirishXato('token')
+
+
+def _token_tuzilishi(id_token):
+    """Diagnostika uchun: tokenning o'zini emas, faqat tuzilishi va sarlavhasini qaytaradi."""
+    try:
+        qismlar = str(id_token).split('.')
+        bosh = qismlar[0] + '=' * (-len(qismlar[0]) % 4)
+        sarlavha = base64.urlsafe_b64decode(bosh).decode('utf-8', 'replace')[:150]
+        return f'tur={type(id_token).__name__} qismlar={len(qismlar)} uzunlik={[len(q) for q in qismlar]} sarlavha={sarlavha}'
+    except Exception as x:                    # noqa: BLE001
+        return f'tuzilish aniqlanmadi: {type(x).__name__}'
 
 
 @require_GET
@@ -187,7 +199,10 @@ def callback(request):
     # Kirishda bot xabar yuborishiga ruxsat berildi (telegram:bot_access): buyurtma va ariza
     # xabarlari shu Telegram hisobiga tekin yuborilishi uchun bog'laymiz.
     tg_id = claims.get('id')
-    if isinstance(tg_id, int) and tg_id > 0:
+    tg_id = int(tg_id) if str(tg_id or '').isdigit() else None      # son yoki raqamli matn
+    if not tg_id:
+        logger.warning('Telegram kirishda id maydoni yo\'q yoki noodatiy: %s', type(claims.get('id')).__name__)
+    if tg_id:
         TelegramUlanish.objects.filter(chat_id=tg_id).exclude(telefon=telefon).delete()
         TelegramUlanish.objects.update_or_create(
             telefon=telefon,
