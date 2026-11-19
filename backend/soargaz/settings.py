@@ -472,3 +472,19 @@ GEOKOD_URL = os.environ.get('GEOKOD_URL', 'https://nominatim.openstreetmap.org/s
 GEOKOD_USER_AGENT = os.environ.get('GEOKOD_USER_AGENT', f'SoarGaz/1.0 ({SAYT_MANZIL})')
 GEOKOD_STANDART_HUDUD = "Buxoro viloyati"     # tuman/shaharda viloyat ko'rsatilmasa qidiruvga qo'shiladi
 GEOKOD_TIMEOUT = 6
+
+# ──────────────────────────────────────────────────────────────
+#  JURNAL: server xatolari (500) to'liq tafsiloti (traceback) bilan journalctl ga yozilsin.
+#  Django standart holatda DEBUG=0 da xatoni faqat email bilan yuboradi — email sozlanmagani uchun
+#  xato izsiz yo'qolardi. Ko'rish: journalctl -u soargaz
+# ──────────────────────────────────────────────────────────────
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'konsol': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['konsol'], 'level': 'WARNING'},
+    'loggers': {
+        'django.request': {'handlers': ['konsol'], 'level': 'ERROR', 'propagate': False},
+        'apps': {'handlers': ['konsol'], 'level': 'INFO', 'propagate': False},
+    },
+}

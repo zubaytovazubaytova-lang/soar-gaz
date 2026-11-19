@@ -286,7 +286,9 @@ def hujjat_yuborish(request, pk):
         return _ruxsat_yoq()
     try:
         with transaction.atomic():
-            h = HujjatLoyiha.objects.select_for_update().select_related('ariza', 'buyurtma__mijoz').filter(pk=pk).first()
+            # of=('self',): faqat hujjat qatori bloklanadi. PostgreSQL bo'sh bo'lishi mumkin bo'lgan (LEFT JOIN)
+            # bog'liq jadvallarni FOR UPDATE bilan bloklashni rad etadi (SQLite'da bu xato ko'rinmaydi).
+            h = HujjatLoyiha.objects.select_for_update(of=('self',)).select_related('ariza', 'buyurtma__mijoz').filter(pk=pk).first()
             if h is None:
                 return Response({'detail': _('Topilmadi')}, status=404)
             if h.yuborilgan:
