@@ -20,6 +20,7 @@ import urllib.error
 import urllib.request
 
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,34 @@ def kod_yubor(telefon, kod, ttl=None):
         logger.info('Telegram Gateway kodi yuborilmadi (%s): %s', raqam[-4:], xato)
         return False
     logger.info('Telegram Gateway kodi yuborildi: ...%s (narx %s)', raqam[-4:], natija.get('request_cost'))
+    qoldiq = natija.get('remaining_balance')
+    if qoldiq is not None:
+        balans_nazorati(qoldiq)
+    return True
+
+
+BALANS_KESH = 'tg_gateway:balans_ogohlantirildi'
+
+
+def balans_nazorati(qoldiq):
+    """Balans chegaradan kam qolsa administratorlarga bot orqali kuniga bir marta ogohlantirish.
+    Balans tugasa mijozlar kod ololmay qoladi (kod SMS'ga o'tadi yoki umuman ketmaydi)."""
+    try:
+        qoldiq = float(qoldiq)
+    except (TypeError, ValueError):
+        return False
+    chegara = float(getattr(settings, 'TELEGRAM_GATEWAY_BALANS_CHEGARA', 1.0))
+    if qoldiq >= chegara or cache.get(BALANS_KESH):
+        return False
+    cache.set(BALANS_KESH, 1, 24 * 3600)
+    logger.warning('Telegram Gateway balansi kam: $%.2f', qoldiq)
+    from apps.auth_app.models import Foydalanuvchi
+    from . import telegram
+    matn = (f"⚠️ SOAR GAZ: Telegram Gateway balansi kam qoldi: ${qoldiq:.2f} "
+            f"(taxminan {int(qoldiq / 0.01)} ta kirish kodi). Balans tugasa mijozlar saytga kira olmaydi. "
+            "To'ldirish: https://gateway.telegram.org/account/budget")
+    for tel in Foydalanuvchi.objects.filter(rol='admin', holat='faol').values_list('telefon', flat=True):
+        telegram.yubor(tel, matn)
     return True
 
 

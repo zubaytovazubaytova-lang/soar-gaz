@@ -166,3 +166,33 @@ class FaqatMijozTest(TestCase):
         with override_settings(TELEGRAM_GATEWAY_FAQAT_MIJOZ=False),                 mock.patch('apps.sms_app.tg_gateway._api', return_value={'request_id': 'r'}) as gw:
             self.assertTrue(_send_otp_sms(TEL, '123456'))
         gw.assert_called_once()
+
+
+@override_settings(**GW)
+class BalansOgohlantirishTest(TestCase):
+    def setUp(self):
+        cache.clear()
+        from apps.auth_app.models import Foydalanuvchi
+        Foydalanuvchi.objects.create(telefon='+998911111111', rol='admin', holat='faol')
+
+    def test_kam_balansda_adminga_bir_marta_xabar(self):
+        with mock.patch('apps.sms_app.tg_gateway._api', return_value={'request_id': 'r', 'remaining_balance': 0.4}), \
+                mock.patch('apps.sms_app.telegram.yubor', return_value=True) as bot:
+            self.assertTrue(tg_gateway.kod_yubor(TEL, '123456'))
+            self.assertTrue(tg_gateway.kod_yubor(TEL, '654321'))       # ikkinchisida takrorlanmaydi
+        bot.assert_called_once()
+        self.assertEqual(bot.call_args[0][0], '+998911111111')
+        self.assertIn('$0.40', bot.call_args[0][1])
+        self.assertIn('40 ta', bot.call_args[0][1])
+
+    def test_yetarli_balansda_xabar_yoq(self):
+        with mock.patch('apps.sms_app.tg_gateway._api', return_value={'request_id': 'r', 'remaining_balance': 1.8}), \
+                mock.patch('apps.sms_app.telegram.yubor') as bot:
+            tg_gateway.kod_yubor(TEL, '123456')
+        bot.assert_not_called()
+
+    def test_balans_berilmasa_xabar_yoq(self):
+        with mock.patch('apps.sms_app.tg_gateway._api', return_value={'request_id': 'r'}), \
+                mock.patch('apps.sms_app.telegram.yubor') as bot:
+            tg_gateway.kod_yubor(TEL, '123456')
+        bot.assert_not_called()
