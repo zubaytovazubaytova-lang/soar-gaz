@@ -74,6 +74,9 @@ TOLOV_USULI_CHOICES = [
 # 'karta' (Uzcard/Humo) provayder checkout sahifasi orqali o'tadi —
 # qaysi provayder ishlatilishi settings.KARTA_PROVAYDER da belgilanadi.
 ONLAYN_USULLAR = {'click', 'payme', 'karta'}
+# Saytda HOZIR tanlash mumkin bo'lgan usullar: onlayn faqat Click (Payme va karta provayderi ulanmagan).
+# Eski usullar modelda qoladi — ilgari shunday berilgan buyurtmalar buzilmasin.
+FAOL_TOLOV_USULLARI = {'naqd', 'click', 'bolib', 'bank'}
 
 TOLOV_HOLAT_CHOICES = [
     ('kutilmoqda', 'To\'lov kutilmoqda'),

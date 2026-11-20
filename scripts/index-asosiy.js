@@ -1886,8 +1886,9 @@
     const bolibBor = (XARID_NARX.bolib || []).length &&
                      (!XARID_NARX.bolib_eng_kam || (t && t.amount >= XARID_NARX.bolib_eng_kam));
 
+    const FAOL_USULLAR = ['naqd', 'click', 'bolib', 'bank'];
     box.innerHTML = Object.keys(TOLOV_NOMI)
-      .filter(u => u !== joriy && (u !== 'bolib' || bolibBor))
+      .filter(u => FAOL_USULLAR.includes(u) && u !== joriy && (u !== 'bolib' || bolibBor))
       .map(u => `
         <button data-h-click="c:tolovUsulTanla" data-a-click="${SG_A([String(u)])}" class="w-full text-left rounded-xl text-sm transition-all"
           style="padding:12px;background:#f1f7ff;color:#1c3d63;border:1px solid rgba(120,170,235,0.22)">
@@ -2839,8 +2840,8 @@
     document.querySelectorAll('#tolov-page .card').forEach(c => c.style.borderColor = '');
     el.style.borderColor = '#f83600';
     const pt = document.getElementById('payType');
-    if (pt) pt.value = type === 'bank' ? 'Bank o\'tkazmasi' : type === 'online' ? 'Onlayn (Click/Payme)' : 'Shartnoma / Bo\'lib to\'lash';
-    if (type === 'bank')       _openOverlay('bankDetails');
+    if (pt) pt.value = type === 'bank' ? 'Bank o\'tkazmasi' : type === 'online' ? 'Onlayn (Click)' : 'Shartnoma / Bo\'lib to\'lash';
+    if (type === 'bank')       { _openOverlay('bankDetails'); bankRekvizitlarYukla(); }
     else if (type === 'online') _openOverlay('onlineDetails');
     else                        _openOverlay('shartnomaDetails');
   }
@@ -2860,11 +2861,39 @@
     document.body.style.overflow = tolovOchiqmi() ? 'hidden' : '';
   }
 
-  function copyBankCard() {
-    const card = '8600 1234 5678 9012';
-    navigator.clipboard.writeText(card).then(
-      () => showToast('Karta raqami nusxalandi: ' + card),
-      () => showToast('Karta raqami: ' + card)
+  // Haqiqiy rekvizitlar serverdan (admin panelidagi «To'lov rekvizitlari»)
+  let BANK_REKVIZITLAR = null;
+  async function bankRekvizitlarYukla() {
+    const box = document.getElementById('bankRekvizitlar');
+    try {
+      if (!BANK_REKVIZITLAR) BANK_REKVIZITLAR = (await apiGetPub('/tolovlar/bank/rekvizitlar/')).royxat || [];
+    } catch (e) { BANK_REKVIZITLAR = null; if (box) box.textContent = "Rekvizitlarni yuklab bo'lmadi. Operatorga qo'ng'iroq qiling."; return []; }
+    if (!box) return BANK_REKVIZITLAR;
+    // Bir xil hisob raqam bir marta, yo'nalishlari birga ko'rsatiladi
+    const guruh = {};
+    BANK_REKVIZITLAR.forEach(r => {
+      (guruh[r.hisob_raqam] = guruh[r.hisob_raqam] || { ...r, nomlar: [] }).nomlar.push(r.yonalish_nomi);
+    });
+    const q = (n, v) => `<div class="flex justify-between gap-3 border-b border-navy-700 py-1.5"><span class="text-gray-400">${n}</span><span class="text-ink-900 font-mono text-right" style="word-break:break-all">${bankEsc(v)}</span></div>`;
+    const ruyxat = Object.values(guruh);
+    box.innerHTML = !ruyxat.length ? "Hisob raqam hali kiritilmagan. Operatorga qo'ng'iroq qiling." : ruyxat.map(r => `
+      <div class="mb-4">
+        <div class="text-xs font-bold mb-1" style="color:#0d6efd">${bankEsc(r.nomlar.join(', '))}</div>
+        <div class="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm">
+          ${q('Qabul qiluvchi', r.korxona)}${q('Hisob raqami', r.hisob_raqam)}${q('Bank', r.bank)}${q('MFO', r.mfo)}${q('STIR (INN)', r.stir)}
+          <div class="flex items-center py-1.5"><button type="button" data-xa-nusxa="${bankEsc(r.hisob_raqam)}" class="text-xs font-bold rounded-lg" style="padding:5px 10px;background:#e8f1ff;color:#0d6efd;border:1px solid rgba(120,170,235,0.35)">Hisob raqamni nusxalash</button></div>
+        </div>
+      </div>`).join('');
+    return BANK_REKVIZITLAR;
+  }
+
+  async function copyBankCard() {
+    const r = (await bankRekvizitlarYukla()) || [];
+    if (!r.length) { showToast("Hisob raqam hali kiritilmagan"); return; }
+    const raqam = r[0].hisob_raqam;
+    (navigator.clipboard ? navigator.clipboard.writeText(raqam) : Promise.reject()).then(
+      () => showToast('Hisob raqam nusxalandi: ' + raqam),
+      () => showToast('Hisob raqam: ' + raqam)
     );
   }
 
@@ -2909,7 +2938,7 @@
   async function submitForm(e, type) {
     e.preventDefault();
     if (type === 'invoice') {
-      const turiMap = { 'Bank o\'tkazmasi': 'bank', 'Onlayn (Click/Payme)': 'online', 'Shartnoma / Bo\'lib to\'lash': 'shartnoma' };
+      const turiMap = { 'Bank o\'tkazmasi': 'bank', 'Onlayn (Click)': 'online', 'Onlayn (Click/Payme)': 'online', 'Shartnoma / Bo\'lib to\'lash': 'shartnoma' };
       const ptv = document.getElementById('payType').value;
       const turi = turiMap[ptv] || 'bank';
       const tizimi = turi === 'online' ? 'click' : '';
@@ -5554,18 +5583,18 @@
     const detail = document.getElementById('md-pay-detail');
     detail.classList.remove('hidden');
     const info = {
-      click: '📱 Click ilovasini oching → To\'lov → Telefon raqam: <strong>+998712345678</strong>',
-      payme: '💳 Payme ilovasini oching → Uzcard/Humo karta orqali to\'lang: <strong>8600 1234 5678 9012</strong>',
-      bank: '🏦 Bank hisob raqami: <strong>2020 1234 5678 9012</strong> | Bank: NBU Buxoro filiali'
+      click: '📱 <b>Click orqali to\'lov</b>: «Davom etish»ni bosing — Click to\'lov oynasi ochiladi, summani kiritib karta yoki Click ilovasi orqali to\'laysiz. To\'lov avtomatik tasdiqlanadi.',
+      bank: '🏦 <b>Hisob raqamga o\'tkazma</b>: «Davom etish»ni bosing — kabinetingizda buyurtma ostidagi «Hisob raqamga to\'lash» tugmasi orqali rekvizitlarni ko\'rasiz va to\'lov chekini yuklaysiz.'
     };
     detail.innerHTML = info[method] || '';
   }
 
   async function mijozConfirmPayment() {
     if (!selectedPayMethod) { showToast('To\'lov usulini tanlang!'); return; }
-    showToast('To\'lov tasdiqlandi! SMS yuborildi ✓');
-    mijozRenderTolov();
-    mijozUpdateStats();
+    // To'lov faqat haqiqiy yo'l orqali: Click — onlayn to'lov oynasi, bank — kabinetda chek yuklash
+    if (selectedPayMethod === 'bank') { window.location.href = '/kabinet/'; return; }
+    const kartochka = document.querySelector('#tolov-page .card[data-h-click="h36"]');
+    if (kartochka) selectPayment(kartochka, 'online'); else window.location.href = '/#tolov';
   }
 
   async function mijozRenderTarix() {

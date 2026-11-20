@@ -21,6 +21,7 @@ from .models import Xarid, XaridQatori, Promokod, ONLAYN_USULLAR
 from .tolov import tolov_sorovi_yarat, tolov_url, sozlanganmi, eski_sorovni_bekor
 from .serializers import (XaridSerializer, XaridKirishSerializer,
                           HOLATLAR, TOLOV_USULLARI, MUAMMOLAR)
+from .models import FAOL_TOLOV_USULLARI
 
 
 def _telefon_raqamlari(telefon):
@@ -311,7 +312,7 @@ def tolov_boshqarish(request, raqam):
         return Response({'detail': _('Bekor qilingan buyurtmani to\'lab bo\'lmaydi')}, status=400)
 
     yangi_usul = request.data.get('method') or xarid.tolov_usuli
-    if yangi_usul not in TOLOV_USULLARI:
+    if yangi_usul not in TOLOV_USULLARI or (yangi_usul != xarid.tolov_usuli and yangi_usul not in FAOL_TOLOV_USULLARI):
         return Response({'detail': _("Bunday to'lov usuli yo'q")}, status=400)
 
     eski_jami = xarid.jami

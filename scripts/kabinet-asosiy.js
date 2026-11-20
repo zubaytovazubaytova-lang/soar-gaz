@@ -997,8 +997,7 @@ async function tolovlarYukla() {
 function tolovUsul(usul) {
   const matn = {
     click: "Click orqali to'lash uchun kutilayotgan to'lov ro'yxatidan buyurtmani tanlang — Click checkout sahifasi ochiladi.",
-    payme: "Payme orqali to'lash uchun kutilayotgan to'lov ro'yxatidan buyurtmani tanlang — Payme checkout sahifasi ochiladi.",
-    bank: "Bank o'tkazmasi uchun operator siz bilan bog'lanadi va hisob-faktura yuboradi.",
+    bank: "Buyurtmalarim bo'limida buyurtma ostidagi «Hisob raqamga to'lash» tugmasini bosing: rekvizitlarni ko'rasiz va to'lov chekini yuklaysiz.",
   };
   xabar(matn[usul]);
 }

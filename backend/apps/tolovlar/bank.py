@@ -213,6 +213,13 @@ def xarid_bank_tolovi(request, raqam):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
+def rekvizitlar_ochiq(request):
+    """Saytdagi «Bank o'tkazmasi» sahifasi uchun haqiqiy rekvizitlar (hisob-fakturadagi ochiq ma'lumot)."""
+    return Response({'royxat': [_rekvizit_json(r) for r in Rekvizit.objects.filter(faol=True).order_by('yonalish')]})
+
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def cheklar(request):
     if not tekshiruvchimi(request.user):

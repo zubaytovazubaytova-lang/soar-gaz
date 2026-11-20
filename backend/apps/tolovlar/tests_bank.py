@@ -197,3 +197,31 @@ class XaridBankTolovTest(TestCase):
         self.x.tolov_usuli = 'naqd'
         self.x.save(update_fields=['tolov_usuli'])
         self.assertEqual(self._yukla().status_code, 400)
+
+
+class FaqatClickTest(TestCase):
+    """Saytdan yangi onlayn to'lov faqat Click; ulanmagan Payme/karta tanlanmaydi; rekvizitlar ochiq."""
+
+    def test_rekvizitlar_ochiq_royxat(self):
+        Rekvizit.objects.create(yonalish='servis', korxona='SOAR GAZ', bank='Bank', hisob_raqam='2' * 20,
+                                mfo='00001', stir='123456789')
+        Rekvizit.objects.create(yonalish='montaj', korxona='X', bank='B', hisob_raqam='3' * 20,
+                                mfo='00001', stir='123456789', faol=False)
+        r = APIClient().get('/api/tolovlar/bank/rekvizitlar/')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual([x['hisob_raqam'] for x in r.json()['royxat']], ['2' * 20])
+
+    def test_tolov_sorovi_payme_rad(self):
+        tana = {'ism': 'Ali', 'telefon': '+998901112233', 'tolov_turi': 'online', 'summa': 5000}
+        self.assertEqual(APIClient().post('/api/tolovlar/sorov/', {**tana, 'tolov_tizimi': 'payme'},
+                                          format='json').status_code, 400)
+        self.assertEqual(APIClient().post('/api/tolovlar/sorov/', {**tana, 'tolov_tizimi': 'click'},
+                                          format='json').status_code, 201)
+
+    def test_xaridda_payme_tanlanmaydi(self):
+        from apps.xaridlar.models import Xarid
+        x = Xarid.objects.create(ism='A', telefon='+998907776655', manzil='B', jami=1000, tolov_usuli='naqd')
+        r = APIClient().post(f'/api/xaridlar/{x.raqam}/tolov/', {'method': 'payme', 'telefon': '6655'}, format='json')
+        self.assertEqual(r.status_code, 400)
+        r = APIClient().post(f'/api/xaridlar/{x.raqam}/tolov/', {'method': 'click', 'telefon': '6655'}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
