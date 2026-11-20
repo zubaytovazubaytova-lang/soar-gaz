@@ -277,3 +277,85 @@ class AloqaRaqamiTest(TestCase):
         self.u.qoshimcha_telefon = ''
         self.u.save(update_fields=['qoshimcha_telefon'])
         self.assertEqual(Buyurtma.objects.create(mijoz=self.u, xizmat='servis').mijoz_telefon, TEL)
+
+
+@override_settings(TELEGRAM_BOT_TOKEN='123:TEST', TELEGRAM_BOT_USERNAME='soargaz_bot')
+@mock.patch('apps.sms_app.telegram._api')
+class BotOrqaliKirishTest(TestCase):
+    """Tanlov sahifasisiz: sayt → bot (/start k_<token>) → raqam ulashish → sayt kabinetni ochadi."""
+
+    def setUp(self):
+        cache.clear()
+        self.c = Client()
+
+    def _boshlash(self):
+        r = self.c.get('/api/auth/telegram/bot/boshlash/')
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertTrue(d['url'].startswith('https://t.me/soargaz_bot?start=k_'))
+        return d['token']
+
+    def _yangilanish(self, matn=None, kontakt=None, chat=777):
+        from apps.sms_app import telegram
+        xabar = {'chat': {'id': chat, 'type': 'private'}, 'from': {'id': chat, 'first_name': 'Ali', 'last_name': 'Valiyev'}}
+        if matn is not None:
+            xabar['text'] = matn
+        if kontakt:
+            xabar['contact'] = {'user_id': chat, 'phone_number': kontakt}
+        telegram.yangilanishni_qayta_ishla({'message': xabar})
+
+    def _holat(self, token, c=None):
+        return (c or self.c).get('/api/auth/telegram/bot/holat/', {'t': token})
+
+    def test_yangi_mijoz_raqam_ulashib_kiradi(self, api):
+        token = self._boshlash()
+        self.assertEqual(self._holat(token).json()['holat'], 'kutilmoqda')
+        self._yangilanish(f'/start k_{token}')
+        self.assertTrue(api.call_args.args[1]['reply_markup']['keyboard'][0][0].get('request_contact'))
+        self._yangilanish(kontakt='998901234567')
+        r = self._holat(token)
+        self.assertEqual(r.json()['holat'], 'ok')
+        self.assertIn(REFRESH_COOKIE, r.cookies)
+        u = Foydalanuvchi.objects.get(telefon=TEL)
+        self.assertEqual((u.rol, u.ism), ('mijoz', 'Ali Valiyev'))
+        self.assertEqual(TelegramUlanish.objects.get(telefon=TEL).chat_id, 777)
+        self.assertEqual(self._holat(token).json()['holat'], 'muddat')        # bir martalik
+
+    def test_ulangan_mijoz_bir_bosishda_kiradi(self, api):
+        Foydalanuvchi.objects.create(telefon=TEL, rol='mijoz', ism='Eski')
+        TelegramUlanish.objects.create(telefon=TEL, chat_id=777)
+        token = self._boshlash()
+        self._yangilanish(f'/start k_{token}')
+        self.assertEqual(api.call_args.args[1]['reply_markup']['keyboard'][0][0]['text'], tk.BOT_KIRISH_TUGMA)
+        self._yangilanish(tk.BOT_KIRISH_TUGMA)
+        self.assertEqual(self._holat(token).json()['holat'], 'ok')
+        self.assertEqual(Foydalanuvchi.objects.filter(telefon=TEL).count(), 1)
+
+    def test_boshqa_brauzer_tokenni_ishlata_olmaydi(self, api):
+        token = self._boshlash()
+        self._yangilanish(f'/start k_{token}')
+        self._yangilanish(kontakt='998901234567')
+        self.assertEqual(self._holat(token, c=Client()).json()['holat'], 'muddat')   # cookie yo'q
+        self.assertEqual(self._holat(token).json()['holat'], 'ok')
+
+    def test_xodim_raqami_bilan_kirib_bolmaydi(self, api):
+        Foydalanuvchi.objects.create(telefon=TEL, rol='xodim')
+        token = self._boshlash()
+        self._yangilanish(f'/start k_{token}')
+        self._yangilanish(kontakt='998901234567')
+        self.assertEqual(self._holat(token).json(), {'holat': 'xato', 'sabab': 'xodim'})
+
+    def test_bekor_qilish(self, api):
+        TelegramUlanish.objects.create(telefon=TEL, chat_id=777)
+        token = self._boshlash()
+        self._yangilanish(f'/start k_{token}')
+        self._yangilanish(tk.BOT_BEKOR_TUGMA)
+        self.assertEqual(self._holat(token).json()['holat'], 'bekor')
+
+    def test_eskirgan_token(self, api):
+        self._yangilanish('/start k_soxta')
+        self.assertIn('eskirgan', api.call_args.args[1]['text'])
+
+    def test_holatda_bot_belgisi(self, api):
+        d = self.c.get('/api/auth/telegram/holat/').json()
+        self.assertTrue(d['bot'] and d['yoqilgan'])

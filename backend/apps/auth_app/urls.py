@@ -15,6 +15,8 @@ urlpatterns = [
     path('telegram/holat/', telegram_kirish.holat),
     path('telegram/boshlash/', telegram_kirish.boshlash),
     path('telegram/callback/', telegram_kirish.callback),
+    path('telegram/bot/boshlash/', telegram_kirish.bot_boshlash),     # bot orqali (tanlov sahifasisiz)
+    path('telegram/bot/holat/', telegram_kirish.bot_holat),
     path('profil/', views.profil),
     path('tasdiq-kodi/', views.tasdiq_kodi_yuborish),
     path('hududlar/', views.hududlar),

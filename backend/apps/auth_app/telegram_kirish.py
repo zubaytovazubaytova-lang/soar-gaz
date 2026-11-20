@@ -78,7 +78,7 @@ def _pkce():
 @require_GET
 def holat(request):
     """Saytdagi tugma faqat sozlama kiritilgandan keyin ko'rinadi."""
-    return JsonResponse({'yoqilgan': sozlangan(),
+    return JsonResponse({'yoqilgan': sozlangan() or bot_bormi(), 'bot': bot_bormi(),
                          'telefon_kirish': bool(getattr(settings, 'TELEFON_KIRISH_YOQILGAN', False))})
 
 
@@ -211,33 +211,156 @@ def callback(request):
     raqamlar = ''.join(ch for ch in str(claims.get('phone_number') or '') if ch.isdigit())
     if not raqamlar or claims.get('phone_number_verified') is False:
         return _qaytish('telefon')                # raqam ulashilmadi yoki tasdiqlanmagan
-    telefon = '+' + raqamlar
 
-    user = Foydalanuvchi.objects.filter(telefon=telefon).first()
-    if user is not None and user.rol in OTP_YOPIQ_ROLLAR:
-        return _qaytish('xodim')
-    if user is not None and user.holat == 'nofaol':
-        return _qaytish('bloklangan')
-    yangi = user is None
-    if yangi:
-        user = Foydalanuvchi.objects.create_user(telefon=telefon, rol='mijoz',
-                                                 ism=str(claims.get('name') or '')[:100])
-
-    # Kirishda bot xabar yuborishiga ruxsat berildi (telegram:bot_access): buyurtma va ariza
-    # xabarlari shu Telegram hisobiga tekin yuborilishi uchun bog'laymiz.
     tg_id = claims.get('id')
     tg_id = int(tg_id) if str(tg_id or '').isdigit() else None      # son yoki raqamli matn
     if not tg_id:
         logger.warning('Telegram kirishda id maydoni yo\'q yoki noodatiy: %s', type(claims.get('id')).__name__)
-    if tg_id:
-        TelegramUlanish.objects.filter(chat_id=tg_id).exclude(telefon=telefon).delete()
-        TelegramUlanish.objects.update_or_create(
-            telefon=telefon,
-            defaults={'chat_id': tg_id, 'username': str(claims.get('preferred_username') or '')[:64]})
-
-    audit_yoz(request, 'kirish', "Telegram orqali ro'yxatdan o'tdi" if yangi else 'Telegram orqali kirdi',
-              user=user)
+    user, xato = mijozni_kirit(request, '+' + raqamlar, claims.get('name'), tg_id,
+                               claims.get('preferred_username'))
+    if xato:
+        return _qaytish(xato)
     javob = _qaytish()
     _refresh_cookie_yoz(javob, _tokens_for_user(user)['refresh'], False, doimiy=True)
     javob.delete_cookie(STATE_COOKIE, path=STATE_YOL)
     return javob
+
+
+def mijozni_kirit(request, telefon, ism=None, tg_id=None, username=None):
+    """Telegram tasdiqlagan raqam bo'yicha mijozni topadi yoki ro'yxatdan o'tkazadi va botga bog'laydi.
+    Qaytaradi: (user, None) yoki (None, xato_kodi). Xodim/admin bu yo'ldan kira olmaydi."""
+    from apps.sms_app.models import TelegramUlanish
+    from .models import Foydalanuvchi, audit_yoz
+    from .views import OTP_YOPIQ_ROLLAR
+
+    user = Foydalanuvchi.objects.filter(telefon=telefon).first()
+    if user is not None and user.rol in OTP_YOPIQ_ROLLAR:
+        return None, 'xodim'
+    if user is not None and user.holat == 'nofaol':
+        return None, 'bloklangan'
+    yangi = user is None
+    if yangi:
+        user = Foydalanuvchi.objects.create_user(telefon=telefon, rol='mijoz', ism=str(ism or '')[:100])
+    # Buyurtma va ariza xabarlari shu Telegram hisobiga tekin yuborilishi uchun bog'laymiz
+    if tg_id:
+        TelegramUlanish.objects.filter(chat_id=tg_id).exclude(telefon=telefon).delete()
+        TelegramUlanish.objects.update_or_create(
+            telefon=telefon, defaults={'chat_id': tg_id, 'username': str(username or '')[:64]})
+    audit_yoz(request, 'kirish', "Telegram orqali ro'yxatdan o'tdi" if yangi else 'Telegram orqali kirdi',
+              user=user)
+    return user, None
+
+
+# ──────────────────────────────────────────────────────────────
+#  BOT ORQALI KIRISH (tanlov sahifasisiz, to'g'ridan-to'g'ri Telegram ilovasiga)
+#
+#  1. Sayt: GET /api/auth/telegram/bot/boshlash/ → bir martalik token (10 daqiqa) + shu brauzerga cookie;
+#     havola https://t.me/<bot>?start=k_<token> — bosilganda Telegram ilovasi ochiladi.
+#  2. Bot: /start k_<token> → mijoz «📱 Raqamni ulashish» (yoki oldin ulangan bo'lsa «✅ Saytga kirish»)
+#     ni bosadi → token tasdiqlanadi (raqamni Telegram o'zi beradi — kontakt egasi tekshiriladi).
+#  3. Sayt har 2 soniyada GET /api/auth/telegram/bot/holat/?t=<token> so'raydi; tasdiqlangach
+#     sessiya cookie'si qo'yiladi. Token faqat uni olgan brauzerda (cookie) ishlaydi va bir martalik.
+# ──────────────────────────────────────────────────────────────
+BOT_KESH = 'tgbot:{}'
+BOT_CHAT = 'tgbot_chat:{}'
+BOT_COOKIE = 'sg_tgbot'
+BOT_MUDDAT = 600
+BOT_KIRISH_TUGMA = '✅ Saytga kirish'
+BOT_BEKOR_TUGMA = '❌ Bekor qilish'
+
+
+def bot_bormi():
+    from apps.sms_app import telegram
+    return telegram.sozlangan() and bool(telegram.bot_nomi())
+
+
+@require_GET
+def bot_boshlash(request):
+    from apps.sms_app import telegram
+    if not bot_bormi():
+        return JsonResponse({'detail': 'Bot sozlanmagan'}, status=400)
+    token = secrets.token_urlsafe(18)                  # Telegram start parametri: A-Z a-z 0-9 _ - (64 gacha)
+    cache.set(BOT_KESH.format(token), {'holat': 'kutilmoqda'}, BOT_MUDDAT)
+    javob = JsonResponse({'token': token, 'muddat': BOT_MUDDAT,
+                          'url': f'https://t.me/{telegram.bot_nomi()}?start=k_{token}'})
+    javob.set_cookie(BOT_COOKIE, token, max_age=BOT_MUDDAT, httponly=True,
+                     secure=not settings.DEBUG, samesite='Lax', path=STATE_YOL)
+    return javob
+
+
+@require_GET
+def bot_holat(request):
+    from .views import _refresh_cookie_yoz, _tokens_for_user
+    token = request.GET.get('t', '')
+    if not token or request.COOKIES.get(BOT_COOKIE) != token:
+        return JsonResponse({'holat': 'muddat'})
+    d = cache.get(BOT_KESH.format(token))
+    if not d:
+        return JsonResponse({'holat': 'muddat'})
+    if d['holat'] == 'kutilmoqda':
+        return JsonResponse({'holat': 'kutilmoqda'})
+    cache.delete(BOT_KESH.format(token))              # bir martalik
+    if d['holat'] != 'tasdiq':
+        return JsonResponse({'holat': 'bekor'})
+    user, xato = mijozni_kirit(request, d['telefon'], d.get('ism'), d.get('chat_id'), d.get('username'))
+    if xato:
+        return JsonResponse({'holat': 'xato', 'sabab': xato})
+    javob = JsonResponse({'holat': 'ok'})
+    _refresh_cookie_yoz(javob, _tokens_for_user(user)['refresh'], False, doimiy=True)
+    javob.delete_cookie(BOT_COOKIE, path=STATE_YOL)
+    return javob
+
+
+def _niqob(telefon):
+    return telefon[:6] + '***' + telefon[-2:] if len(telefon) > 8 else telefon
+
+
+def bot_start(token, chat_id, kimdan):
+    """Botga «/start k_<token>» keldi (webhook). Mijozdan raqam yoki bir bosish bilan tasdiq so'raladi."""
+    from apps.sms_app import telegram
+    from apps.sms_app.models import TelegramUlanish
+    d = cache.get(BOT_KESH.format(token))
+    if not d or d.get('holat') != 'kutilmoqda':
+        telegram._javob(chat_id, "Bu kirish havolasi eskirgan. Saytda «Telegram orqali kirish»ni qayta bosing.",
+                        {'remove_keyboard': True})
+        return
+    cache.set(BOT_CHAT.format(chat_id), token, BOT_MUDDAT)
+    ulanish = TelegramUlanish.objects.filter(chat_id=chat_id).first()
+    ogoh = "\n\n⚠️ Faqat saytda o'zingiz «Telegram orqali kirish»ni bosgan bo'lsangiz davom eting."
+    if ulanish:
+        telegram._javob(chat_id, f"SOAR GAZ saytiga {_niqob(ulanish.telefon)} raqami bilan kirasizmi?" + ogoh, {
+            'keyboard': [[{'text': BOT_KIRISH_TUGMA}], [{'text': BOT_BEKOR_TUGMA}]],
+            'resize_keyboard': True, 'one_time_keyboard': True})
+    else:
+        telegram._javob(chat_id, "SOAR GAZ saytiga kirish uchun pastdagi «📱 Raqamni ulashish» tugmasini bosing." + ogoh,
+                        telegram.RAQAM_TUGMASI)
+
+
+def bot_tasdiq(chat_id, telefon, kimdan):
+    """Mijoz raqamini ulashdi yoki «Saytga kirish»ni bosdi — kutilayotgan kirish tasdiqlanadi. Bo'lsa True."""
+    from apps.sms_app import telegram
+    token = cache.get(BOT_CHAT.format(chat_id))
+    if not token:
+        return False
+    cache.delete(BOT_CHAT.format(chat_id))
+    d = cache.get(BOT_KESH.format(token))
+    if not d or d.get('holat') != 'kutilmoqda':
+        telegram._javob(chat_id, "Kirish havolasi eskirgan. Saytda qayta bosing.", {'remove_keyboard': True})
+        return True
+    ism = ' '.join(x for x in ((kimdan or {}).get('first_name'), (kimdan or {}).get('last_name')) if x)
+    cache.set(BOT_KESH.format(token), {'holat': 'tasdiq', 'telefon': telefon, 'chat_id': chat_id,
+                                       'username': (kimdan or {}).get('username') or '', 'ism': ism}, BOT_MUDDAT)
+    telegram._javob(chat_id, "✅ Tasdiqlandi! Brauzerga qayting — kabinetingiz o'zi ochiladi.", {'remove_keyboard': True})
+    return True
+
+
+def bot_bekor(chat_id):
+    from apps.sms_app import telegram
+    token = cache.get(BOT_CHAT.format(chat_id))
+    if not token:
+        return False
+    cache.delete(BOT_CHAT.format(chat_id))
+    if cache.get(BOT_KESH.format(token)):
+        cache.set(BOT_KESH.format(token), {'holat': 'bekor'}, BOT_MUDDAT)
+    telegram._javob(chat_id, "Kirish bekor qilindi.", {'remove_keyboard': True})
+    return True

@@ -165,10 +165,27 @@ def yangilanishni_qayta_ishla(yangilanish):
                 telefon=telefon,
                 defaults={'chat_id': chat_id, 'username': (kimdan.get('username') or '')[:64]},
             )
+        from apps.auth_app import telegram_kirish
+        if telegram_kirish.bot_tasdiq(chat_id, telefon, kimdan):       # saytga kirish kutilayotgan edi
+            return
         _javob(chat_id, ULANDI, {'remove_keyboard': True})
         return
 
-    matn = (xabar.get('text') or '').strip().lower()
+    asl_matn = (xabar.get('text') or '').strip()
+    if asl_matn.startswith('/start k_'):                               # saytdan «Telegram orqali kirish»
+        from apps.auth_app import telegram_kirish
+        telegram_kirish.bot_start(asl_matn[len('/start k_'):][:64], chat_id, kimdan)
+        return
+    if asl_matn in ('✅ Saytga kirish', '❌ Bekor qilish'):
+        from apps.auth_app import telegram_kirish
+        if asl_matn.startswith('❌'):
+            telegram_kirish.bot_bekor(chat_id)
+            return
+        ulanish = TelegramUlanish.objects.filter(chat_id=chat_id).first()
+        if ulanish and telegram_kirish.bot_tasdiq(chat_id, ulanish.telefon, kimdan):
+            return
+
+    matn = asl_matn.lower()
     if matn.startswith('/stop') or matn.startswith('/uzish'):
         TelegramUlanish.objects.filter(chat_id=chat_id).delete()
         _javob(chat_id, UZILDI, {'remove_keyboard': True})

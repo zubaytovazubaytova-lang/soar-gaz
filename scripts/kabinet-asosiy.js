@@ -1448,6 +1448,7 @@ async function tgHolatTekshir(urinish = 0) {
     const d = await javob.json();
     if (d && d.yoqilgan) {
       el('tgKirishBtn').href = API + '/auth/telegram/boshlash/';
+      if (d.bot) botHavolaTayyorla();            // to'g'ridan-to'g'ri Telegram ilovasiga (tanlov sahifasisiz)
       el('tgBlok').style.display = 'block';
       el('qadam1').classList.add('tg-rejim');   // telefon formasi «Telegram yo'qmi?» oynasiga o'tadi
       if (!d.telefon_kirish) {                  // SMS ulanmaguncha: «Tez orada»
@@ -1461,6 +1462,58 @@ async function tgHolatTekshir(urinish = 0) {
     if (urinish < 1) setTimeout(() => tgHolatTekshir(urinish + 1), 1500);
   }
 }
+
+/* ---------- Bot orqali kirish: tugma Telegram ilovasini ochadi, sahifa tasdiqni kutadi ---------- */
+let botToken = null, botTaymer = null, botYangilash = null;
+
+async function botHavolaTayyorla() {
+  // Havola oldindan olinadi: bosilganda Telegram darhol ochilsin (brauzer yangi oynani bloklamasin)
+  try {
+    const r = await fetch(API + '/auth/telegram/bot/boshlash/', { cache: 'no-store', credentials: 'same-origin' });
+    if (!r.ok) return;
+    const d = await r.json();
+    botToken = d.token;
+    const btn = el('tgKirishBtn');
+    btn.href = d.url;
+    btn.target = '_blank';
+    btn.rel = 'noopener';
+    clearTimeout(botYangilash);
+    botYangilash = setTimeout(botHavolaTayyorla, (d.muddat - 60) * 1000);   // muddati tugashidan oldin yangilanadi
+  } catch (e) { /* bo'lmasa oddiy Telegram kirish havolasi qoladi */ }
+}
+
+function botKutishKorsat(korinsin) {
+  let p = el('tgKutish');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'tgKutish';
+    p.style.cssText = 'margin:12px 0 0;padding:12px 14px;border-radius:12px;background:#eff6ff;border:1px solid #93c5fd;font-size:13px;color:#1e3a8a;line-height:1.5';
+    p.innerHTML = "⏳ <b>Telegram ochildi.</b> Botda <b>«Start»</b>, so'ng <b>«📱 Raqamni ulashish»</b> (yoki «✅ Saytga kirish») ni bosing va shu sahifaga qayting — kabinetingiz o'zi ochiladi.";
+    el('tgKirishBtn').insertAdjacentElement('afterend', p);
+  }
+  p.style.display = korinsin ? 'block' : 'none';
+}
+
+function botKutishBoshla() {
+  if (!botToken) return;
+  botKutishKorsat(true);
+  clearInterval(botTaymer);
+  const token = botToken;
+  botTaymer = setInterval(async () => {
+    try {
+      const d = await (await fetch(API + '/auth/telegram/bot/holat/?t=' + encodeURIComponent(token),
+                                   { cache: 'no-store', credentials: 'same-origin' })).json();
+      if (d.holat === 'kutilmoqda') return;
+      clearInterval(botTaymer);
+      botKutishKorsat(false);
+      if (d.holat === 'ok') { location.href = '/kabinet/?tg=ok'; return; }
+      authXato(d.holat === 'xato' ? (TG_XATOLAR[d.sabab] || TG_XATOLAR.rad)
+        : d.holat === 'bekor' ? "Telegram'da kirish bekor qilindi." : TG_XATOLAR.muddat);
+      botHavolaTayyorla();                         // keyingi urinish uchun yangi havola
+    } catch (e) { /* tarmoq uzilsa keyingi so'rovda qayta uriniladi */ }
+  }, 2000);
+}
+el('tgKirishBtn').addEventListener('click', () => { if (botToken) botKutishBoshla(); });
 
 /* «Telegram yo'qmi?» — telefon raqam kiritish oynasi */
 function telOyna(ochiq) {
@@ -1510,7 +1563,6 @@ document.addEventListener('keydown', e => {
       el('pMahalla').value = profil.mahalla || '';
       el('pTuman').viloyatniMoslash && el('pTuman').viloyatniMoslash();
       el('pManzil').value = profil.manzil || '';
-      if (tgOk && !profil.qoshimcha_telefon) telTasdiqKorsat(profil.telefon);
       qadamgaOt(3);
       return;
     }
