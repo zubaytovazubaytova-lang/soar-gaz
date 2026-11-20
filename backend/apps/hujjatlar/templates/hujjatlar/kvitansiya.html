@@ -82,7 +82,7 @@
   {% if k.holat == 'bekor' %}<div class="bekor">BEKOR</div>
     <div class="bekor-yozuv">Bu kvitansiya bekor qilingan{% if k.bekor_sababi %}: {{ k.bekor_sababi }}{% endif %}</div>{% endif %}
 
-  <div class="kompaniya">{{ sozlama.kompaniya_nomi }}</div>
+  <div class="kompaniya">{{ kompaniya.nomi }}</div>
   <div class="sarlavha">Gaz jihozlariga xizmat ko'rsatish kvitansiyasi</div>
   <div class="varaq-raqam">To'lov varaqasi raqami №: <span>{{ k.raqam }}</span></div>
 
@@ -120,10 +120,8 @@
 
   <div class="pastki">
     <div>«CALL centre» telefon raqami: {{ sozlama.telefon|default:"—" }}</div>
-    <div><b>{{ sozlama.kompaniya_nomi }}</b> Servis xizmat ko'rsatish bo'limi boshlig'i{% if sozlama.servis_boshligi %}: <b>{{ sozlama.servis_boshligi }}</b>{% endif %}</div>
-    {% if sozlama.manzil or sozlama.stir or sozlama.hisob_raqam %}
-    <div style="color:#444;font-size:12px;margin-top:4px;">{% if sozlama.manzil %}{{ sozlama.manzil }}{% endif %}{% if sozlama.stir %} · STIR {{ sozlama.stir }}{% endif %}{% if sozlama.hisob_raqam %} · h/r {{ sozlama.hisob_raqam }}{% if sozlama.bank_nomi %}, {{ sozlama.bank_nomi }}{% endif %}{% if sozlama.mfo %}, MFO {{ sozlama.mfo }}{% endif %}{% endif %}</div>
-    {% endif %}
+    <div><b>{{ kompaniya.nomi }}</b> Servis xizmat ko'rsatish bo'limi boshlig'i{% if sozlama.servis_boshligi %}: <b>{{ sozlama.servis_boshligi }}</b>{% endif %}</div>
+    {% if kompaniya.rekvizit_qator %}<div style="color:#444;font-size:12px;margin-top:4px;">{{ kompaniya.rekvizit_qator }}</div>{% endif %}
     {% if sozlama.kvitansiya_izoh %}<div style="margin-top:6px;font-size:12.5px;">{{ sozlama.kvitansiya_izoh }}</div>{% endif %}
   </div>
 </div>

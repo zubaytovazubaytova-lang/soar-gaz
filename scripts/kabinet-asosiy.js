@@ -1063,6 +1063,18 @@ async function tolovlarYukla() {
         </tr>`).join('')}</tbody>
     </table></div>` : '<p class="bosh-holat">To\'lov tarixi bo\'sh.</p>';
 
+  const kvlar = d.kvitansiyalar || [];
+  el('kvitansiyaRoyxat').innerHTML = kvlar.length ? kvlar.map(k => `
+    <div class="row-item">
+      <div class="row-ikon"><i class="ti ti-receipt"></i></div>
+      <div class="r-info">
+        <h5>${xavfsiz(k.raqam)} — ${pul(k.summa)}${k.holat === 'bekor' ? ' <span class="tag bad">Bekor qilingan</span>' : ''}</h5>
+        <p>${xavfsiz(k.usul)} · ${sana(k.sana)}${k.buyurtma ? ' · buyurtma #' + k.buyurtma : ''}</p>
+      </div>
+      <a class="btn sokin kichik" href="${xavfsiz(k.url)}" target="_blank" rel="noopener"><i class="ti ti-eye"></i> Ochish</a>
+    </div>`).join('')
+    : '<p class="bosh-holat">Kvitansiya hali yo\'q. Usta ishni yakunlab to\'lovni qabul qilganda shu yerda chiqadi.</p>';
+
   el('fakturaRoyxat').innerHTML = d.fakturalar.length
     ? d.fakturalar.map(f => hujjatQatori(f)).join('')
     : '<p class="bosh-holat">Hisob-faktura hali yaratilmagan. Yaratilgach shu yerda yuklab olish mumkin bo\'ladi.</p>';

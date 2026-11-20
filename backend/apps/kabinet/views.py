@@ -400,7 +400,20 @@ def tolovlarim(request):
             Hujjat.objects.filter(mijoz=user, turi='faktura'),
             many=True, context={'request': request},
         ).data,
+        'kvitansiyalar': _kvitansiyalarim(user),
     })
+
+
+def _kvitansiyalarim(user):
+    """Mijozga berilgan kvitansiyalar (havola bilan) — xodim chiqargan, to'lov qabul qilingan paytdagi hujjat."""
+    from apps.hujjatlar.models import Kvitansiya
+    from apps.hujjatlar.xizmat import sayt_havolasi
+    qs = Kvitansiya.objects.filter(Q(mijoz=user) | Q(mijoz_telefon__in=_telefon_variantlari(user.telefon)))
+    return [{
+        'raqam': k.raqam, 'summa': k.summa, 'usul': k.usul_nomi, 'sana': k.yaratilgan,
+        'holat': k.holat, 'buyurtma': k.buyurtma_id,
+        'url': sayt_havolasi('/kvitansiya/' + k.token + '/'),
+    } for k in qs.order_by('-yaratilgan')[:50]]
 
 
 # ──────────────────────────────────────────────────────────────

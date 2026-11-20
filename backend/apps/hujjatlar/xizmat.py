@@ -134,6 +134,37 @@ def kvitansiya_qatorlari(tushum):
     return qatorlar
 
 
+def kvitansiya_rekviziti(tushum):
+    """Kvitansiyadagi korxona: buyurtma xizmati (yoki tushum bo'limi) yo'nalishidagi to'lov rekviziti."""
+    from apps.tolovlar.models import Rekvizit, xizmat_yonalishi
+    if tushum.buyurtma_id:
+        yonalish = xizmat_yonalishi(tushum.buyurtma.xizmat)
+    else:
+        yonalish = 'montaj' if tushum.bolim == 'ornatish' else 'servis'
+    r = Rekvizit.objects.filter(yonalish=yonalish, faol=True).first()
+    if not r:
+        return {}
+    return {'yonalish': r.yonalish, 'korxona': r.korxona, 'bank': r.bank, 'hisob_raqam': r.hisob_raqam,
+            'mfo': r.mfo, 'stir': r.stir}
+
+
+def kvitansiya_tarqat(kv):
+    """Yangi kvitansiya: mijoz kabinetiga bildirishnoma, Ruxsora (tekshiruvchi) kabinetiga va Telegram'iga xabar.
+    Mijozning Telegram/SMS xabarini `kvitansiya_sms` alohida yuboradi."""
+    havola = sayt_havolasi('/kvitansiya/' + kv.token + '/')
+    if kv.mijoz_id:
+        from apps.kabinet.models import Bildirishnoma
+        Bildirishnoma.objects.create(
+            mijoz_id=kv.mijoz_id, turi='tolov', bolim='tolovlar',
+            sarlavha=f"Kvitansiya {kv.raqam}: {pul(kv.summa)} so'm",
+            matn=f"To'lovingiz qabul qilindi ({kv.usul_nomi}). Kvitansiyani ochish: {havola}")
+    from apps.sms_app import xodim_xabar
+    xodim_xabar.tolov_tekshiruvchilarga(
+        f"🧾 Kvitansiya {kv.raqam}: {pul(kv.summa)} so'm ({kv.usul_nomi})\n"
+        + (f"Buyurtma #{kv.buyurtma_id}\n" if kv.buyurtma_id else '')
+        + f"👤 {kv.mijoz_ism} {kv.mijoz_telefon}\n🔧 Xodim: {kv.xodim.ism or kv.xodim.telefon}\n{havola}")
+
+
 def kvitansiya_yarat(tushum, ism, telefon, manzil):
     """Tushum uchun kvitansiya va mijozni ro'yxatga olish. Qaytaradi: (kvitansiya, yangi_yaratildimi)."""
     if tushum.holat == 'rad':
@@ -153,7 +184,7 @@ def kvitansiya_yarat(tushum, ism, telefon, manzil):
                 mijoz_ism=ism, mijoz_telefon=telefon, manzil=manzil,
                 buyurtma_id=tushum.buyurtma_id, ish_turi=tushum.ish_turi, summa=tushum.summa,
                 usul_nomi=tushum.get_usul_display(), izoh=tushum.izoh,
-                qatorlar=kvitansiya_qatorlari(tushum),
+                qatorlar=kvitansiya_qatorlari(tushum), rekvizit=kvitansiya_rekviziti(tushum),
                 shartnoma_raqami=shartnoma.raqam if shartnoma else '',
                 buyurtma_summa=b.tasdiq_summa if b else None)
             # Buyurtma mijozsiz (saytdan emas, xodim yozgan) bo'lsa, endi shu mijozga bog'lanadi
