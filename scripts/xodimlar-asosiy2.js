@@ -554,6 +554,45 @@ async function vazifaYakunla(id, tugma, b){
   } catch (xato) {
     alert('Yakunlanmadi: ' + xato.message);
     tugma.disabled = false;
+    return;
+  }
+  await yakunlashKvitansiyasi(b);
+}
+
+// Ish yakunlangach: mijozdan olingan pulni yozib, darhol kvitansiya chiqarish.
+// Kvitansiya chop etish uchun ochiladi va havolasi mijozga avval Telegram'ga, bo'lmasa SMS'ga yuboriladi.
+async function yakunlashKvitansiyasi(b){
+  if (!b || KORISH) return;
+  if (b.tolandi) {
+    alert("Ish yakunlandi ✓\nBu buyurtma oldindan to'langan (Click yoki hisob raqamga o'tkazma) — kvitansiya shart emas.");
+    return;
+  }
+  const tasdiq = b.xizmatlar && b.xizmatlar.tasdiq_summa;
+  if (tasdiq == null) {
+    alert("Ish yakunlandi ✓\nKvitansiya uchun avval buyurtma summasini tasdiqlang, so'ng «Pul tushumi» bo'limida kvitansiya chiqaring.");
+    return;
+  }
+  const kiritilgan = prompt(`Ish yakunlandi ✓\n\nMijozdan qancha oldingiz (so'm)? Kvitansiya chiqariladi.\nPul olinmagan bo'lsa «Bekor»ni bosing — keyin «Pul tushumi» bo'limidan kiritasiz.`, String(tasdiq));
+  if (kiritilgan === null) return;
+  const summa = parseInt(String(kiritilgan).replace(/\D/g, ''), 10);
+  if (!summa) { alert("Summa noto'g'ri. «Pul tushumi» bo'limidan kiriting."); return; }
+  const tanlov = prompt("To'lov usuli:\n1 — Naqd\n2 — Karta (terminal)\n3 — Pul o'tkazmasi", '1');
+  if (tanlov === null) return;
+  const usul = { '1': 'naqd', '2': 'karta', '3': 'otkazma' }[String(tanlov).trim()] || 'naqd';
+  let t;
+  try {
+    t = await apiSorov('/tushum/', { method: 'POST', body: JSON.stringify({ summa, usul, buyurtma: b.id }) });
+  } catch (e) {
+    alert("To'lov yozilmadi: " + e.message + "\n«Pul tushumi» bo'limidan qayta urinib ko'ring.");
+    return;
+  }
+  try {
+    const k = await kvitansiyaChiqar(t);
+    if (k) alert(`Kvitansiya ${k.raqam} chiqarildi ✓\n` + (k.sms_yuborildi === false
+      ? "Mijozga yuborilmadi — «Pul tushumi» bo'limidagi «Yuborish» tugmasi bilan qayta urinib ko'ring."
+      : `Havolasi mijozga yuborildi (Telegram yoki SMS): ${k.mijoz_telefon}`));
+  } catch (e) {
+    alert('Kvitansiya chiqmadi: ' + e.message + "\nTo'lov yozildi — «Pul tushumi» bo'limidan kvitansiyani chiqaring.");
   }
 }
 
@@ -1407,7 +1446,7 @@ async function kvitansiyaChiqar(t){
       "Mijoz saytda ro'yxatdan o'tmagan bo'lsa, shu ma'lumot bilan avtomatik ro'yxatga olinadi.",
     ism: a.ism, telefon: a.telefon, manzil: a.manzil, smsKorsat: true, tugma: 'Kvitansiya chiqarish',
   }, (d) => apiSorov('/hujjatlar/kvitansiya/', { method: 'POST', body: JSON.stringify({ tushum: t.id, ...d }) }));
-  if (!k) return;
+  if (!k) return null;
   await tushumYukla();
   hujjatlarYukla();
   const havola = hujjatHavolasi(k.url);
@@ -1415,7 +1454,8 @@ async function kvitansiyaChiqar(t){
   if (k.sms_yuborildi === false) {
     tushXabari(`Kvitansiya ${k.raqam} chiqarildi, lekin mijozga SMS yuborilmadi. Jadvaldagi "SMS yuborish" tugmasi bilan qayta urinib ko'ring.`, havola);
   } else if (k.yangi_mijoz) tushXabari(`${k.mijoz_ism} mijozlar ro'yxatiga olindi. ${k.mijoz_telefon} raqamiga SMS yuborildi.`, havola);
-  else tushXabari(`Kvitansiya ${k.raqam} chiqarildi. ${k.mijoz_telefon} raqamiga SMS yuborildi.`, havola);
+  else tushXabari(`Kvitansiya ${k.raqam} chiqarildi. Havolasi ${k.mijoz_telefon} raqamiga (Telegram yoki SMS) yuborildi.`, havola);
+  return k;
 }
 
 // Pul tushumi formasi tagida yashil xabar (xato emas)
