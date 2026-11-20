@@ -33,8 +33,8 @@ def _sms_yuborish(telefon, matn):
     sms_yubor(telefon, matn)
 
 
-def click_url(sorov):
-    """Click checkout redirect havolasi (merchant kalitlaridan quriladi)."""
+def click_url(sorov, qaytish=None):
+    """Click checkout redirect havolasi (merchant kalitlaridan quriladi). `qaytish` — to'lovdan keyingi sahifa."""
     sid = getattr(settings, 'CLICK_SERVICE_ID', '')
     mid = getattr(settings, 'CLICK_MERCHANT_ID', '')
     params = {
@@ -44,7 +44,7 @@ def click_url(sorov):
         'amount': f'{float(sorov.summa):.2f}',
         'transaction_param': sorov.id,
     }
-    ret = getattr(settings, 'TOLOV_RETURN_URL', '')
+    ret = qaytish or getattr(settings, 'TOLOV_RETURN_URL', '')
     if ret:
         params['return_url'] = ret
     return 'https://my.click.uz/services/pay/?' + urlencode(params)

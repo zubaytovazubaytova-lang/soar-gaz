@@ -64,8 +64,9 @@ class BuyurtmaSerializer(serializers.ModelSerializer):
             'mijoz_malumot', 'xodim_malumot', 'xizmatlar', 'shartnoma',
         ]
         # `tarmoq`ni mijoz belgilay olmaydi: uni faqat server (korxona -> ulgurji) yoki administrator qo'yadi
+        # `tolandi`ni mijoz o'zi qo'ya olmaydi: uni faqat to'lov (Click / tasdiqlangan chek) yoki tushum belgilaydi
         read_only_fields = ['id', 'xizmat_nomi', 'holat_nomi', 'yaratilgan',
-                            'yangilangan', 'tarmoq', 'tarmoq_nomi']
+                            'yangilangan', 'tarmoq', 'tarmoq_nomi', 'tolandi']
         extra_kwargs = {
             'mijoz_ism': {'required': False},
             'mijoz_telefon': {'required': False},

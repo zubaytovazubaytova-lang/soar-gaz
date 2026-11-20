@@ -564,8 +564,11 @@ async function buyurtmalarYukla() {
         ${b.tavsif ? `<div class="kv"><span>Tavsif</span><span>${xavfsiz(b.tavsif)}</span></div>` : ''}
         ${b.natija ? `<div class="kv"><span>Natija</span><span>${xavfsiz(b.natija)}</span></div>` : ''}
       </div>
-      ${b.holat !== 'bekor'
-        ? `<button class="btn asosiy kichik" style="margin-top:12px;margin-right:6px" data-h-click="c:bankTolovOch" data-a-click="${SG_A([b.id])}"><i class="ti ti-building-bank"></i> Hisob raqamga to'lash</button>` : ''}
+      ${b.tolandi
+        ? `<span style="display:inline-block;margin-top:12px;margin-right:6px;padding:6px 12px;border-radius:999px;background:#dcfce7;color:#166534;font-weight:700;font-size:13px"><i class="ti ti-circle-check"></i> To'langan</span>`
+        : (b.holat !== 'bekor'
+          ? `<button class="btn asosiy kichik" style="margin-top:12px;margin-right:6px;background:#0d6efd" data-h-click="c:clickTolovOch" data-a-click="${SG_A([b.id])}"><i class="ti ti-credit-card"></i> Click orqali to'lash</button>
+             <button class="btn sokin kichik" style="margin-top:12px;margin-right:6px" data-h-click="c:bankTolovOch" data-a-click="${SG_A([b.id])}"><i class="ti ti-building-bank"></i> Hisob raqamga to'lash</button>` : '')}
       ${b.holat === 'bajarildi' && !b.baholangan
         ? `<button class="btn sokin kichik" style="margin-top:12px" data-h-click="c:sharhModalOch" data-a-click="${SG_A([b.id, String(b.xizmat_nomi)])}"><i class="ti ti-star"></i> Baho qoldirish</button>` : ''}
     </div>`).join('') : '<p class="bosh-holat">Bu bo\'limda buyurtma topilmadi.</p>';
@@ -714,6 +717,54 @@ document.addEventListener('click', e => {
     .catch(() => xabar("Nusxalab bo'lmadi — qo'lda belgilab oling", true));
 });
 if (window.SG_H) SG_H['c:bankTolovOch'] = function (e) { bankTolovOch.apply(null, SG_ARGS(this, e)); };
+
+/* ---------- 2c. CLICK ORQALI TO'LASH ---------- */
+async function clickTolovOch(id) {
+  try {
+    const d = await so(`/tolovlar/click/buyurtma/${id}/`);
+    if (!d.mumkin) {
+      modalOch("Click orqali to'lash", `
+        <p class="bosh-holat" style="text-align:left">${xavfsiz(d.sabab)}</p>
+        ${d.tolandi ? '' : `<button class="btn asosiy" style="width:100%;justify-content:center" data-h-click="c:bankTolovOch" data-a-click="${SG_A([id])}"><i class="ti ti-building-bank"></i> Hisob raqamga to'lash</button>`}`);
+      return;
+    }
+    modalOch("Click orqali to'lash", `
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px;margin-bottom:14px">
+        <div class="kv"><span>Buyurtma</span><span><b>#${id} — ${xavfsiz(d.xizmat)}</b></span></div>
+        ${d.summa ? `<div class="kv"><span>To'lanadigan summa</span><span><b style="font-size:18px">${pul(d.summa)}</b></span></div>` : ''}
+      </div>
+      <form id="clickTolovForma">
+        ${d.summa ? '' : `
+          <label class="f-label" for="ctSumma">To'lov summasi (so'm) *</label>
+          <input class="f-input" id="ctSumma" inputmode="numeric" placeholder="Masalan: 350 000" required>
+          <p class="f-hint" style="margin:-6px 0 12px">Summa hali tasdiqlanmagan: usta yoki operator aytgan summani kiriting.</p>`}
+        <button class="btn asosiy" type="submit" id="ctYubor" style="width:100%;justify-content:center;background:#0d6efd">
+          <i class="ti ti-credit-card"></i> Click orqali to'lash</button>
+        <p class="f-hint" style="margin-top:10px">Click'ning himoyalangan sahifasi ochiladi: Uzcard / Humo karta yoki Click ilovasi orqali to'laysiz, bank SMS kodini o'sha yerda kiritasiz. Click xizmat haqi to'lov sahifasida ko'rsatiladi. To'lovdan keyin buyurtma avtomatik «To'langan» bo'ladi.</p>
+      </form>`);
+    el('clickTolovForma').addEventListener('submit', e => clickTolovYubor(e, id, !d.summa));
+    if (el('ctSumma')) el('ctSumma').addEventListener('input', e => {
+      const raqam = e.target.value.replace(/\D/g, '').slice(0, 11);
+      e.target.value = raqam.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    });
+  } catch (err) { xabar(err.message, true); }
+}
+
+async function clickTolovYubor(e, id, summaKerak) {
+  e.preventDefault();
+  const tana = {};
+  if (summaKerak) tana.summa = el('ctSumma').value.replace(/\s/g, '');
+  el('ctYubor').disabled = true;
+  try {
+    const r = await so(`/tolovlar/click/buyurtma/${id}/`, { method: 'POST', body: tana });
+    xabar("Click to'lov sahifasiga o'tilmoqda...");
+    window.location.href = r.url;
+  } catch (err) {
+    xabar(err.message, true);
+    if (el('ctYubor')) el('ctYubor').disabled = false;
+  }
+}
+if (window.SG_H) SG_H['c:clickTolovOch'] = function (e) { clickTolovOch.apply(null, SG_ARGS(this, e)); };
 
 /* ---------- 3. OBYEKTLAR ---------- */
 async function obyektlarKeshYukla() {
@@ -996,7 +1047,7 @@ async function tolovlarYukla() {
 
 function tolovUsul(usul) {
   const matn = {
-    click: "Click orqali to'lash uchun kutilayotgan to'lov ro'yxatidan buyurtmani tanlang — Click checkout sahifasi ochiladi.",
+    click: "Buyurtmalarim bo'limida buyurtma ostidagi «Click orqali to'lash» tugmasini bosing — Click'ning himoyalangan to'lov sahifasi ochiladi.",
     bank: "Buyurtmalarim bo'limida buyurtma ostidagi «Hisob raqamga to'lash» tugmasini bosing: rekvizitlarni ko'rasiz va to'lov chekini yuklaysiz.",
   };
   xabar(matn[usul]);
@@ -1399,7 +1450,8 @@ document.addEventListener('keydown', e => {
   // Telegram'dan qaytish: ?tg=ok (muvaffaqiyat) yoki ?tg_xato=<sabab>
   const qs = new URLSearchParams(location.search);
   const tgOk = qs.get('tg') === 'ok', tgXato = qs.get('tg_xato');
-  if (tgOk || tgXato) history.replaceState(null, '', location.pathname);
+  const clickQaytdi = qs.get('click') === '1';
+  if (tgOk || tgXato || clickQaytdi) history.replaceState(null, '', location.pathname);
   if (tgXato) { kirishKorsat(); authXato(TG_XATOLAR[tgXato] || TG_XATOLAR.rad); return; }
   if (tgOk && !KORISH) {
     saqlash.removeItem('sg_token');           // eski sessiya o'rniga Telegram'dan kelgani
@@ -1427,6 +1479,11 @@ document.addEventListener('keydown', e => {
       return;
     }
     kabinetOch();
+    // Click to'lov sahifasidan qaytish: buyurtmalar ro'yxati ochiladi (holat Click tasdig'idan keyin yangilanadi)
+    if (clickQaytdi) {
+      pageOch('buyurtmalar');
+      xabar("Click'dan qaytdingiz. To'lov tasdiqlangach buyurtma «To'langan» bo'ladi va Telegram'ga xabar keladi.");
+    }
   } catch (e) {
     kirishKorsat();
   }

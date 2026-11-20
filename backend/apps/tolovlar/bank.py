@@ -140,7 +140,7 @@ def buyurtma_bank_tolovi(request, pk):
     user = request.user
     with transaction.atomic():
         sorov = TolovSorovi.objects.create(
-            ism=user.ism or user.telefon, telefon=user.telefon, tolov_turi='bank',
+            buyurtma=b, ism=user.ism or user.telefon, telefon=user.telefon, tolov_turi='bank',
             xizmat_turi=f"Buyurtma #{b.id} — {xizmat_uz(b)}", summa=summa, holat='kutilmoqda')
         t = BankTolovi.objects.create(
             buyurtma=b, mijoz=user, summa=summa, hisob_raqam=rekvizit.hisob_raqam, chek=fayl,
@@ -210,6 +210,69 @@ def xarid_bank_tolovi(request, raqam):
         f"👤 {x.ism} {x.telefon}\n💰 {summa_matn} so'm\n"
         f"Bankda tushumni tekshirib tasdiqlang: {xodim_xabar.XODIM_KABINETI}")
     return Response(_tolov_json(t), status=201)
+
+
+def click_yonalishlari():
+    """Click (37118 — «SOAR GAZ LUX SERVIS») qaysi yo'nalish pulini qabul qiladi. Montaj uchun alohida
+    korxona xizmati ochilmaguncha faqat servis: montaj puli boshqa korxona hisobiga tushmasin."""
+    from django.conf import settings
+    return [y.strip() for y in str(getattr(settings, 'CLICK_YONALISHLAR', 'servis')).split(',') if y.strip()]
+
+
+class ClickHavolaThrottle(UserRateThrottle):
+    scope = 'kabinet_click'
+    rate = '30/hour'
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([ClickHavolaThrottle])
+def buyurtma_click(request, pk):
+    """Mijoz kabineti: xizmat buyurtmasini Click orqali to'lash (Click sahifasiga havola)."""
+    from django.conf import settings
+    from .views import click_url
+
+    b = Buyurtma.objects.filter(pk=pk, mijoz=request.user).first()
+    if not b:
+        return Response({'detail': 'Buyurtma topilmadi'}, status=404)
+    sozlangan = bool(getattr(settings, 'CLICK_SERVICE_ID', '') and getattr(settings, 'CLICK_SECRET_KEY', ''))
+    yonalish = xizmat_yonalishi(b.xizmat)
+    sabab = ''
+    if not sozlangan:
+        sabab = "Click to'lovi hozircha sozlanmagan"
+    elif yonalish not in click_yonalishlari():
+        sabab = ("Bu xizmat uchun Click orqali to'lov tez orada ishga tushadi. "
+                 "Hozircha «Hisob raqamga to'lash» orqali to'lashingiz mumkin")
+    elif b.tolandi:
+        sabab = "Bu buyurtma allaqachon to'langan"
+    elif b.holat == 'bekor':
+        sabab = "Bekor qilingan buyurtma uchun to'lov qabul qilinmaydi"
+
+    if request.method == 'GET':
+        return Response({'mumkin': not sabab, 'sabab': sabab, 'summa': b.tasdiq_summa,
+                         'tolandi': b.tolandi, 'xizmat': xizmat_uz(b)})
+    if sabab:
+        return Response({'detail': sabab}, status=400)
+
+    # Xodim tasdiqlagan summa bo'lsa — aynan shu; bo'lmasa mijoz kiritgani
+    summa = b.tasdiq_summa
+    if not summa:
+        try:
+            summa = int(str(request.data.get('summa', '')).replace(' ', ''))
+        except ValueError:
+            summa = 0
+    if not MIN_SUMMA <= int(summa or 0) <= MAX_SUMMA:
+        return Response({'detail': "To'lov summasini to'g'ri kiriting (kamida 1 000 so'm)"}, status=400)
+
+    user = request.user
+    with transaction.atomic():
+        # Shu buyurtma uchun boshlanmagan eski Click so'rovlari bekor — bir buyurtma ikki marta to'lanmasin
+        TolovSorovi.objects.filter(buyurtma=b, tolov_tizimi='click', holat='yangi').update(holat='bekor')
+        s = TolovSorovi.objects.create(
+            buyurtma=b, ism=user.ism or user.telefon, telefon=user.telefon, tolov_turi='online',
+            tolov_tizimi='click', xizmat_turi=f"Buyurtma #{b.id} — {xizmat_uz(b)}", summa=int(summa), holat='yangi')
+    qaytish = str(getattr(settings, 'SAYT_MANZIL', '')).rstrip('/') + '/kabinet/?click=1'
+    return Response({'url': click_url(s, qaytish=qaytish), 'summa': s.summa, 'sorov': s.id})
 
 
 @api_view(['GET'])

@@ -35,6 +35,9 @@ class TolovSorovi(models.Model):
     muddat = models.CharField(max_length=60, blank=True)  # shartnoma: bo'lib to'lash muddati
     holat = models.CharField(max_length=20, choices=HOLAT_CHOICES, default='yangi')
     tashqi_id = models.CharField(max_length=120, blank=True)  # Click/Payme tranzaksiya id
+    # Mijoz kabinetidan xizmat buyurtmasi uchun to'lov (Click yoki bank o'tkazmasi): to'lansa buyurtma «to'langan»
+    buyurtma = models.ForeignKey('buyurtmalar.Buyurtma', on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='tolov_sorovlari')
     # Payme holat mashinasi (millisekundda, Payme o'zi shu formatda kutadi).
     # Bitta so'rov — bitta Payme tranzaksiya: bekor qilingan so'rov qayta
     # to'lanmaydi, mijoz yangi so'rov oladi (apps.xaridlar.tolov).
