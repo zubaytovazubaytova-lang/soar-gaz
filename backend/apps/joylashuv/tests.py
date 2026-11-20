@@ -29,6 +29,7 @@ def mijoz_ochish(user):
     return c
 
 
+@override_settings(JOYLASHUV_GPS_MAJBURIY=True)    # bu testlar GPS rejimi uchun (qo'l rejimi — QolRejimiTestlari)
 class Asos(TestCase):
     def setUp(self):
         cache.clear()
@@ -232,3 +233,24 @@ class TozalashTestlari(Asos):
         Nuqta.objects.filter(pk=eski.pk).update(vaqt=timezone.now() - timedelta(days=31))
         call_command('joylashuv_tozala', verbosity=0)
         self.assertEqual(list(Nuqta.objects.values_list('pk', flat=True)), [yangi.pk])
+
+
+@override_settings(JOYLASHUV_GPS_MAJBURIY=False)
+class QolRejimiTestlari(TestCase):
+    """Qo'l rejimi: GPS va kuzatuv roziligisiz ish kuni (davomat) boshlanadi."""
+
+    def setUp(self):
+        cache.clear()
+        self.x = Foydalanuvchi.objects.create(telefon='+998900000077', rol='xodim', ism='Usta')
+        self.c = APIClient()
+        self.c.force_authenticate(self.x)
+
+    def test_rozilik_va_gpssiz_boshlanadi(self):
+        h = self.c.get('/api/joylashuv/smena/').json()
+        self.assertFalse(h['gps_majburiy'])
+        r = self.c.post('/api/joylashuv/smena/boshlash/', {}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(r.json()['faol'])
+        self.assertTrue(Smena.objects.filter(xodim=self.x, tugadi__isnull=True).exists())
+        self.assertFalse(Rozilik.objects.filter(xodim=self.x).exists())
+        self.assertFalse(self.c.post('/api/joylashuv/smena/tugatish/').json()['faol'])

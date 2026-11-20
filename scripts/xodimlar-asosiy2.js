@@ -586,6 +586,17 @@ function smenaChiz(){
   const rozi = document.getElementById('smenaRozilik');
   belgi.textContent = smena.faol ? 'Smena ochiq' : 'Smena yopiq';
   belgi.className = 'tag ' + (smena.faol ? 'done' : 'wait');
+  if (!smena.gps_majburiy) {
+    // QO'L REJIMI: GPS shart emas, joylashuv olinmaydi — xodim bosqichlarni o'zi belgilaydi
+    rozi.style.display = 'none';
+    btn.disabled = false;
+    matn.textContent = smena.faol
+      ? "Ish kuningiz boshlangan. Vazifalarda «Yo'lga chiqdim», «Ishni boshladim», «Ishni yakunlash» tugmalarini o'zingiz bosing. Kun tugagach «Ishni tugatish»ni bosing."
+      : "Ish kuningizni boshlash uchun bosing (GPS shart emas). Keyin vazifalarda har bir bosqichni o'zingiz belgilaysiz.";
+    btn.textContent = smena.faol ? 'Ishni tugatish' : 'Ishni boshlash';
+    btn.className = 'mini-btn ' + (smena.faol ? 'qizil' : 'yashil') + ' smena-btn';
+    return;
+  }
   rozi.style.display = (!smena.faol && !smena.rozilik) ? 'block' : 'none';
   btn.disabled = false;
   if (smena.faol) {
@@ -655,7 +666,7 @@ async function smenaYukla(){
     return;
   }
   smenaChiz();
-  if (smena.faol) joyKuzatuvBoshla();
+  if (smena.faol && smena.gps_majburiy) joyKuzatuvBoshla();
 }
 
 // Ruxsatni smena ochishdan OLDIN so'raymiz: rad etilsa, smena ochilmaydi va
@@ -682,11 +693,11 @@ document.getElementById('smenaBtn').addEventListener('click', async () => {
       smena = await apiSorov('/joylashuv/smena/tugatish/', { method: 'POST' });
       joyKuzatuvToxtat();
     } else {
-      await joyRuxsatiniSora();
+      if (smena.gps_majburiy) await joyRuxsatiniSora();     // qo'l rejimida GPS so'ralmaydi
       smena = await apiSorov('/joylashuv/smena/boshlash/', { method: 'POST',
         body: JSON.stringify({ rozilik: document.getElementById('roziBelgi').checked || smena.rozilik }) });
       oxirgiYuborilgan = 0;
-      joyKuzatuvBoshla();
+      if (smena.gps_majburiy) joyKuzatuvBoshla();
     }
   } catch (e) {
     smenaXato(e.message);

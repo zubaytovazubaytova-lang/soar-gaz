@@ -331,6 +331,10 @@ if DEBUG:
 #  XODIMLAR JOYLASHUVI (faqat smena davomida, xodim roziligi bilan)
 # ──────────────────────────────────────────────────────────────
 JOYLASHUV_MIN_SONIYA = 15      # Nuqtalar orasidagi eng kam vaqt (server shundan tezini tashlaydi)
+# GPS majburiymi: 1 — «Ishni boshlash» uchun joylashuvga ruxsat va GPS shart, smena davomida kuzatiladi;
+# 0 — QO'L REJIMI: xodim ish kunini GPS'siz boshlaydi, bosqichlarni (yo'lga chiqdim, ishni boshladim,
+# yakunladim) o'zi belgilaydi, joylashuv olinmaydi. Hozircha 0.
+JOYLASHUV_GPS_MAJBURIY = os.environ.get('JOYLASHUV_GPS_MAJBURIY', '0') == '1'
 JOYLASHUV_ALOQA_SONIYA = 120   # Shuncha vaqt nuqta kelmasa, xodim "aloqada emas" hisoblanadi
 JOYLASHUV_SMENA_MAX_SOAT = 16  # Unutilgan smena shuncha soatdan keyin o'zi yopiladi
 JOYLASHUV_SAQLASH_KUN = 30     # Nuqtalar shuncha kundan keyin o'chiriladi (joylashuv_tozala)
