@@ -297,6 +297,19 @@ def cheklar(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def click_tolovlar(request):
+    """Tekshiruvchi oynasi: Click orqali kelgan to'lovlar (avtomatik tasdiqlangan; qo'lda tasdiq kerak emas)."""
+    if not tekshiruvchimi(request.user):
+        return Response({'detail': 'Ruxsat yo\'q'}, status=403)
+    qs = TolovSorovi.objects.filter(tolov_tizimi='click', holat='tolandi').order_by('-yangilangan')[:200]
+    return Response({'royxat': [{
+        'id': s.id, 'buyurtma': s.buyurtma_id, 'nomi': s.xizmat_turi, 'mijoz': s.ism, 'telefon': s.telefon,
+        'summa': s.summa, 'click_id': s.tashqi_id, 'vaqt': s.yangilangan,
+    } for s in qs]})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def chek_fayli(request, pk):
     t = BankTolovi.objects.filter(pk=pk).first()
     if not t or not ((t.mijoz_id and t.mijoz_id == request.user.id) or tekshiruvchimi(request.user)):

@@ -65,9 +65,29 @@
       </div></div>`;
   }
 
+  function clickKarta(s) {
+    return `<div class="bc-karta">
+      <div class="bc-bosh">
+        <div><h4>${esc(s.nomi || ('Buyurtma #' + s.buyurtma))}</h4>
+          <div class="bc-qator"><span>${esc(s.mijoz || '—')}</span><span>${esc(s.telefon)}</span><span>${esc(sana(s.vaqt))}</span></div></div>
+        <div style="text-align:right"><div class="bc-summa">${pul(s.summa)}</div>
+          <span class="bc-teg tasdiqlandi">Click — to'langan</span></div>
+      </div>
+      <div class="bc-qator"><span>Click tranzaksiya:</span><b>${esc(s.click_id || '—')}</b><span>· avtomatik tasdiqlangan</span></div>
+    </div>`;
+  }
+
   async function yukla() {
     const panel = $('bankChekPanel');
     if (!panel || typeof apiSorov !== 'function') return;
+    if (holatFiltr === 'click') {
+      try {
+        const d = await apiSorov('/tolovlar/bank/click-tolovlar/');
+        panel.innerHTML = d.royxat.length ? d.royxat.map(clickKarta).join('')
+          : '<p class="bc-bosh-holat">Click orqali to\'lov hali yo\'q.</p>';
+      } catch (e) { panel.innerHTML = `<p class="bc-bosh-holat">${esc(e.message)}</p>`; }
+      return;
+    }
     try {
       const d = await apiSorov('/tolovlar/bank/cheklar/' + (holatFiltr ? '?holat=' + holatFiltr : ''));
       panel.innerHTML = d.royxat.length ? d.royxat.map(karta).join('')

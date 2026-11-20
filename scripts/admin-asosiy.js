@@ -457,13 +457,13 @@ function halqaGrafik(bolaklar, markazBelgi){
 function kanbanChiz(){
   const ustunlar = [
     ['yangi',        'kanbanYangi'],
-    ['qabul',        'kanbanQabul'],
+    [['qabul', 'yolda'], 'kanbanQabul'],          // «yo'lda» ham shu ustunda
     ['bajarilmoqda', 'kanbanJarayon'],
     ['bajarildi',    'kanbanBajarildi'],
   ];
 
   ustunlar.forEach(([holat, id]) => {
-    const royxat = arizalar.filter(a => a.holat === holat);
+    const royxat = arizalar.filter(a => [].concat(holat).includes(a.holat));
     const quti = document.getElementById(id);
     const soni = document.getElementById(id + 'Soni');
     if (soni) soni.textContent = royxat.length;

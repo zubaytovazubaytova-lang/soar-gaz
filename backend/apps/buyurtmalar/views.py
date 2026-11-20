@@ -242,6 +242,46 @@ def qabul(request, pk):
     b.holat = 'qabul'
     b.save()
     _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangiz xodim tomonidan qabul qilindi. Tez orada borishadi.")
+    xodim_xabar.ish_holati(b, _ish_matni(b, "✅ qabul qildi"))
+    return Response(BuyurtmaSerializer(b).data)
+
+
+def _ish_matni(b, amal):
+    xodim = (b.xodim.ism or b.xodim.telefon) if b.xodim_id else 'Xodim'
+    mijoz = ' '.join(x for x in (b.mijoz_ism, b.mijoz_telefon) if x)
+    return (f"{xodim} {amal}: #{b.id} — {_xizmat(b)}\n"
+            f"👤 {mijoz or '—'}\n📍 {b.manzil or b.tuman or '—'}")
+
+
+# Xodim bosqichlari: qaysi holatdan qaysi holatga o'tsa bo'ladi
+BOSQICH_OTISH = {
+    'yolda': ('qabul',),
+    'bajarilmoqda': ('qabul', 'yolda'),
+}
+BOSQICH_MATNI = {
+    'yolda': ("🚗 yo'lga chiqdi", "#{id} buyurtmangiz bo'yicha usta yo'lga chiqdi. Tez orada yetib boradi."),
+    'bajarilmoqda': ("🔧 yetib bordi va ishni boshladi", "#{id} buyurtmangiz bo'yicha usta yetib keldi va ishni boshladi."),
+}
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bosqich(request, pk):
+    """Xodim: «Yo'lga chiqdim» (yolda) va «Yetib keldim — ishni boshladim» (bajarilmoqda)."""
+    try:
+        b = Buyurtma.objects.select_related('xodim').get(pk=pk, xodim=request.user)
+    except Buyurtma.DoesNotExist:
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
+    holat = request.data.get('holat')
+    if holat not in BOSQICH_OTISH:
+        return Response({'detail': _("Holat noto'g'ri")}, status=400)
+    if b.holat not in BOSQICH_OTISH[holat]:
+        return Response({'detail': _("Avval oldingi bosqichni bajaring")}, status=409)
+    b.holat = holat
+    b.save()
+    operatorga, mijozga = BOSQICH_MATNI[holat]
+    _sms_yuborish(b.mijoz, mijozga.format(id=b.id))
+    xodim_xabar.ish_holati(b, _ish_matni(b, operatorga))
     return Response(BuyurtmaSerializer(b).data)
 
 
@@ -263,6 +303,8 @@ def natija(request, pk):
 
     if holat == 'bajarildi':
         _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangiz bajarildi! ✓ Natija: {b.natija[:80] if b.natija else '—'}")
+        xodim_xabar.ish_holati(b, _ish_matni(b, "🏁 ishni yakunladi")
+                               + (f"\n📝 {b.natija[:200]}" if b.natija else ''))
 
     return Response(BuyurtmaSerializer(b).data)
 

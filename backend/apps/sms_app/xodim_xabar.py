@@ -47,6 +47,43 @@ def _yubor(xizmat, matn):
             logger.exception('Xodimga Telegram xabari yuborilmadi')
 
 
+def operatorlar():
+    """Arizalarni kuzatuvchilar: qo'ng'iroq vazifasidagi faol xodimlar (Ruxsora, Nargiza)."""
+    from apps.auth_app.models import Foydalanuvchi
+    return [u for u in Foydalanuvchi.objects.filter(rol='xodim', holat='faol')
+            if kabinet_turi(u.lavozim) in (QONGIROQ, KADRLAR)]
+
+
+def _kabinetga(xodimlar, matn):
+    """Xodim kabinetidagi qo'ng'iroqcha (bildirishnoma) — botga ulanmagan bo'lsa ham ko'radi."""
+    from apps.aloqa.models import Xabar
+    Xabar.objects.bulk_create([Xabar(xodim=x, matn=matn[:500]) for x in xodimlar])
+
+
+def ish_holati(b, matn):
+    """Xodim buyurtma bosqichini o'zgartirdi (qabul, yo'lda, boshladi, yakunladi): operatorlar kabinetiga
+    va Telegram'iga (Ruxsora, Nargiza), administratorga — Telegram'ga. Tranzaksiyadan keyin."""
+    from apps.auth_app.models import Foydalanuvchi
+
+    def _yubor_hammaga():
+        ops = operatorlar()
+        try:
+            _kabinetga(ops, matn)
+        except Exception:                      # noqa: BLE001
+            logger.exception('Operator kabinet xabari yozilmadi')
+        if not telegram.sozlangan():
+            return
+        ulangan = set(TelegramUlanish.objects.values_list('telefon', flat=True))
+        telefonlar = {u.telefon for u in ops} | set(
+            Foydalanuvchi.objects.filter(rol='admin', holat='faol').values_list('telefon', flat=True))
+        for telefon in telefonlar & ulangan:
+            try:
+                telegram.yubor(telefon, matn)
+            except Exception:                  # noqa: BLE001
+                logger.exception('Ish holati Telegram xabari yuborilmadi')
+    transaction.on_commit(_yubor_hammaga)
+
+
 def tolov_tekshiruvchilari():
     """Bank to'lovi cheklarini tasdiqlaydiganlar (botga ulangan): administrator va Kadrlar mutaxassisi."""
     from apps.auth_app.models import Foydalanuvchi
@@ -58,11 +95,17 @@ def tolov_tekshiruvchilari():
 
 
 def tolov_tekshiruvchilarga(matn):
-    """Yangi to'lov cheki haqida tekshiruvchilarga xabar (tranzaksiyadan keyin)."""
-    if not telegram.sozlangan():
-        return
+    """Yangi to'lov (chek yoki Click) haqida tekshiruvchilarga: kabinet + Telegram (tranzaksiyadan keyin)."""
 
     def _yubor_hammaga():
+        try:
+            from apps.auth_app.models import Foydalanuvchi
+            _kabinetga([u for u in Foydalanuvchi.objects.filter(rol='xodim', holat='faol')
+                        if kabinet_turi(u.lavozim) == KADRLAR], matn)
+        except Exception:                      # noqa: BLE001
+            logger.exception('Tekshiruvchi kabinet xabari yozilmadi')
+        if not telegram.sozlangan():
+            return
         for telefon in tolov_tekshiruvchilari():
             try:
                 telegram.yubor(telefon, matn)
@@ -72,9 +115,7 @@ def tolov_tekshiruvchilarga(matn):
 
 
 def yangi_ariza(xizmat, sarlavha, mijoz_ism='', telefon='', manzil='', izoh=''):
-    """Yangi ariza haqida mas'ul xodimlarga xabar (tranzaksiyadan keyin)."""
-    if not telegram.sozlangan():
-        return
+    """Yangi ariza haqida mas'ul xodimlarga xabar: kabinetdagi qo'ng'iroqcha + Telegram (tranzaksiyadan keyin)."""
     qatorlar = [f'🆕 {sarlavha}']
     if mijoz_ism or telefon:
         qatorlar.append(f"👤 {' '.join(x for x in (mijoz_ism, telefon) if x)}")
@@ -84,4 +125,12 @@ def yangi_ariza(xizmat, sarlavha, mijoz_ism='', telefon='', manzil='', izoh=''):
         qatorlar.append(f'📝 {izoh[:200]}')
     qatorlar.append(f'Kabinet: {XODIM_KABINETI}')
     matn = '\n'.join(qatorlar)
-    transaction.on_commit(lambda: _yubor(xizmat, matn))
+
+    def _hammasi():
+        try:
+            _kabinetga(operatorlar(), matn)
+        except Exception:                      # noqa: BLE001
+            logger.exception('Yangi ariza kabinet xabari yozilmadi')
+        if telegram.sozlangan():
+            _yubor(xizmat, matn)
+    transaction.on_commit(_hammasi)

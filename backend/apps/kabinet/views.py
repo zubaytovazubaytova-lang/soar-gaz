@@ -131,7 +131,7 @@ def _bosqich(b):
         return 'yakunlandi'
     if b.holat == 'bajarilmoqda':
         return 'bajarilmoqda'
-    if b.holat == 'qabul':
+    if b.holat in ('qabul', 'yolda'):
         return 'tayinlandi'
     return 'tayinlandi' if b.xodim_id else 'yangi'
 

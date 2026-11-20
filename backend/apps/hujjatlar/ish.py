@@ -40,9 +40,9 @@ ARIZA_HOLAT = {'yangi': 'Yangi', 'korildi': 'Qabul qilingan', 'boglandi': "Mijoz
                'yakunlandi': 'Yakunlangan', 'bekor': 'Bekor qilingan'}
 ARIZA_QABUL = ('korildi', 'boglandi', 'yakunlandi')
 ARIZA_YAKUN = ('yakunlandi', 'bekor')
-BUYURTMA_HOLAT = {'yangi': 'Yangi', 'qabul': 'Xodim qabul qildi', 'bajarilmoqda': 'Jarayonda',
+BUYURTMA_HOLAT = {'yangi': 'Yangi', 'qabul': 'Xodim qabul qildi', 'yolda': "Xodim yo'lda", 'bajarilmoqda': 'Jarayonda',
                   'bajarildi': 'Bajarildi', 'bekor': 'Bekor qilingan'}
-BUYURTMA_QABUL = ('qabul', 'bajarilmoqda', 'bajarildi')
+BUYURTMA_QABUL = ('qabul', 'yolda', 'bajarilmoqda', 'bajarildi')
 BUYURTMA_YAKUN = ('bajarildi', 'bekor')
 BUYURTMA_XIZMAT = {'loyiha': 'Loyihalashtirish', 'metrologiya': 'Metrologiya'}
 KALIT = re.compile(r'^([ab])(\d+)$')
@@ -142,7 +142,7 @@ def _xulosa():
         'yangi': MetrologiyaArizasi.objects.filter(holat='yangi').count()
                  + Buyurtma.objects.filter(xizmat__in=list(BUYURTMA_XIZMAT), holat='yangi').count(),
         'qabul': MetrologiyaArizasi.objects.filter(holat__in=('korildi', 'boglandi')).count()
-                 + Buyurtma.objects.filter(xizmat__in=list(BUYURTMA_XIZMAT), holat__in=('qabul', 'bajarilmoqda')).count(),
+                 + Buyurtma.objects.filter(xizmat__in=list(BUYURTMA_XIZMAT), holat__in=('qabul', 'yolda', 'bajarilmoqda')).count(),
         'tayyor': HujjatLoyiha.objects.filter(yuborilgan__isnull=True).count(),
         'bugun_yuborilgan': HujjatLoyiha.objects.filter(yuborilgan__gte=bugun).count(),
     }

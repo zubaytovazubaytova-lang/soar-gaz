@@ -15,6 +15,7 @@ XIZMAT_CHOICES = [
 HOLAT_CHOICES = [
     ('yangi', _('Yangi')),
     ('qabul', _('Qabul qilindi')),
+    ('yolda', _("Xodim yo'lda")),
     ('bajarilmoqda', _('Bajarilmoqda')),
     ('bajarildi', _('Bajarildi')),
     ('bekor', _('Bekor qilindi')),

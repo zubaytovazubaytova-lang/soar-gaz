@@ -21,6 +21,7 @@ urlpatterns = [
     path('bank/rekvizitlar/', bank.rekvizitlar_ochiq),
     path('click/buyurtma/<int:pk>/', bank.buyurtma_click),
     path('bank/cheklar/', bank.cheklar),
+    path('bank/click-tolovlar/', bank.click_tolovlar),
     path('bank/cheklar/<int:pk>/chek/', bank.chek_fayli),
     path('bank/cheklar/<int:pk>/tekshir/', bank.chek_tekshir),
 ]

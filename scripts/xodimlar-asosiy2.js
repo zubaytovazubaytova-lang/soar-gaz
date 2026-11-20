@@ -225,13 +225,13 @@ async function jamoaYukla(){
 // ═══════ Vazifalar (buyurtmalar) ═══════
 // GET /api/buyurtmalar/ — backend rol='xodim' bo'lsa faqat shu xodimga
 // tayinlangan buyurtmalarni qaytaradi, shuning uchun qo'shimcha filtr shart emas.
-const FAOL_HOLATLAR = ['yangi', 'qabul', 'bajarilmoqda'];
+const FAOL_HOLATLAR = ['yangi', 'qabul', 'yolda', 'bajarilmoqda'];
 const HOLAT_MATN = {
-  yangi: 'Kutilmoqda', qabul: 'Qabul qilindi',
+  yangi: 'Kutilmoqda', qabul: 'Qabul qilindi', yolda: "Yo'lda",
   bajarilmoqda: 'Jarayonda', bajarildi: 'Bajarildi', bekor: 'Bekor qilindi'
 };
 const HOLAT_TAG = {
-  yangi: 'wait', qabul: 'progress',
+  yangi: 'wait', qabul: 'progress', yolda: 'progress',
   bajarilmoqda: 'progress', bajarildi: 'done', bekor: 'plan'
 };
 
@@ -394,10 +394,24 @@ function vazifaQator(b, amallar){
     tugma.addEventListener('click', ()=> vazifaQabul(b.id, tugma));
     amal.appendChild(tugma);
   }
-  if (amallar && (b.holat === 'qabul' || b.holat === 'bajarilmoqda')) {
+  if (amallar && b.holat === 'qabul') {
+    const tugma = document.createElement('button');
+    tugma.className = 'mini-btn asosiy';
+    tugma.textContent = "🚗 Yo'lga chiqdim";
+    tugma.addEventListener('click', ()=> vazifaBosqich(b.id, 'yolda', tugma));
+    amal.appendChild(tugma);
+  }
+  if (amallar && (b.holat === 'qabul' || b.holat === 'yolda')) {
+    const tugma = document.createElement('button');
+    tugma.className = 'mini-btn ' + (b.holat === 'yolda' ? 'asosiy' : '');
+    tugma.textContent = '🔧 Yetib keldim — ishni boshladim';
+    tugma.addEventListener('click', ()=> vazifaBosqich(b.id, 'bajarilmoqda', tugma));
+    amal.appendChild(tugma);
+  }
+  if (amallar && b.holat === 'bajarilmoqda') {
     const tugma = document.createElement('button');
     tugma.className = 'mini-btn yashil';
-    tugma.textContent = 'Yakunlash';
+    tugma.textContent = '🏁 Ishni yakunlash';
     tugma.addEventListener('click', ()=> vazifaYakunla(b.id, tugma, b));
     amal.appendChild(tugma);
   }
@@ -499,6 +513,17 @@ async function vazifaQabul(id, tugma){
     await vazifalarYukla();
   } catch (xato) {
     alert('Qabul qilinmadi: ' + xato.message);
+    tugma.disabled = false;
+  }
+}
+
+async function vazifaBosqich(id, holat, tugma){
+  tugma.disabled = true;
+  try {
+    await apiSorov(`/buyurtmalar/${id}/bosqich/`, { method: 'POST', body: JSON.stringify({ holat }) });
+    await vazifalarYukla();
+  } catch (xato) {
+    alert("Saqlanmadi: " + xato.message);
     tugma.disabled = false;
   }
 }
@@ -2272,6 +2297,7 @@ function arizalarChiz(){
     h.appendChild(a.holat === 'bajarildi' ? belgi('Bajarildi', 'done')
       : a.holat === 'bekor' ? belgi('Bekor qilindi', 'plan')
       : a.holat === 'bajarilmoqda' ? belgi('Jarayonda', 'progress')
+      : a.holat === 'yolda' ? belgi("Xodim yo'lda", 'progress')
       : a.holat === 'qabul' ? belgi('Xodim qabul qildi', 'progress')
       : a.xodim_id ? belgi('Xodimga berilgan', 'wait') : belgi("Xodimi yo'q", 'red'));
     if (a.kechikkan) h.appendChild(belgi('Kechikkan', 'kech'));
