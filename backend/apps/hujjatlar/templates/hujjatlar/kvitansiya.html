@@ -74,6 +74,11 @@
     .amallar{margin-bottom:14px;}
     .amallar button{width:calc(100% - 24px);padding:9px 16px;font-size:13px;}
   }
+  .tasdiq{display:flex;gap:12px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed #999;}
+  .tasdiq .qr{flex:none;width:96px;height:96px;}
+  .tasdiq .qr svg{width:100%;height:100%;}
+  .tasdiq .izoh{font-size:11.5px;color:#333;line-height:1.45;}
+  @media (max-width:600px){ .tasdiq .qr{width:78px;height:78px;} .tasdiq .izoh{font-size:9.5px;} }
   @media print{ body{background:#fff;} .varaq{border:0;margin:0;max-width:none;padding:0;} .amallar{display:none;} }
 </style>
 </head>
@@ -122,7 +127,16 @@
     <div>«CALL centre» telefon raqami: {{ sozlama.telefon|default:"—" }}</div>
     <div><b>{{ kompaniya.nomi }}</b> Servis xizmat ko'rsatish bo'limi boshlig'i{% if sozlama.servis_boshligi %}: <b>{{ sozlama.servis_boshligi }}</b>{% endif %}</div>
     {% if kompaniya.rekvizit_qator %}<div style="color:#444;font-size:12px;margin-top:4px;">{{ kompaniya.rekvizit_qator }}</div>{% endif %}
+    {% if kompaniya.ruxsatnoma %}<div style="font-size:12px;margin-top:4px;">Faoliyat ruxsatnomasi (Sanoat, radiatsiya va yadro xavfsizligi qo'mitasi): <b>{{ kompaniya.ruxsatnoma }}</b></div>{% endif %}
     {% if sozlama.kvitansiya_izoh %}<div style="margin-top:6px;font-size:12.5px;">{{ sozlama.kvitansiya_izoh }}</div>{% endif %}
+  </div>
+
+  <div class="tasdiq">
+    <div class="qr" aria-label="Kvitansiyani tekshirish QR-kodi">{{ qr_svg|safe }}</div>
+    <div class="izoh"><b>Haqiqiyligini tekshirish:</b> QR-kodni telefon kamerasi bilan skanerlang — kvitansiyaning
+      {{ kompaniya.nomi }} saytidagi asl nusxasi ochiladi (raqam, summa, sana va holat).<br>
+      <span style="word-break:break-all;color:#555">{{ tekshir_url }}</span><br>
+      <i>Eslatma: bu kvitansiya korxonaning ichki to'lov hujjati; fiskal chek emas.</i></div>
   </div>
 </div>
 <div class="amallar"><button type="button" id="chop">Chop etish / PDF</button></div>

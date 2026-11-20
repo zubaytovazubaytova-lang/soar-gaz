@@ -298,15 +298,21 @@ def kvitansiya_sahifa(request, token):
     kompaniya = {      # yo'nalish korxonasi (rekvizitdan), bo'lmasa umumiy sozlama
         'nomi': r.get('korxona') or sozlama.kompaniya_nomi, 'stir': r.get('stir') or sozlama.stir,
         'bank': r.get('bank') or sozlama.bank_nomi, 'hisob_raqam': r.get('hisob_raqam') or sozlama.hisob_raqam,
-        'mfo': r.get('mfo') or sozlama.mfo, 'manzil': sozlama.manzil,
+        'mfo': r.get('mfo') or sozlama.mfo, 'manzil': r.get('manzil') or sozlama.manzil,
+        'ruxsatnoma': r.get('ruxsatnoma', ''),
     }
     bank_qism = ', '.join(q for q in (
         f"h/r {kompaniya['hisob_raqam']}" if kompaniya['hisob_raqam'] else '', kompaniya['bank'] if kompaniya['hisob_raqam'] else '',
         f"MFO {kompaniya['mfo']}" if kompaniya['hisob_raqam'] and kompaniya['mfo'] else '') if q)
     kompaniya['rekvizit_qator'] = ' · '.join(q for q in (
         kompaniya['manzil'], f"STIR {kompaniya['stir']}" if kompaniya['stir'] else '', bank_qism) if q)
+    # Tekshirish QR-kodi: skanerlansa shu kvitansiyaning saytdagi asl nusxasi ochiladi (qalbakisini aniqlash uchun)
+    import segno
+    tekshir_url = x.sayt_havolasi('/kvitansiya/' + k.token + '/')
+    qr_svg = segno.make(tekshir_url, error='m').svg_inline(scale=3, border=1)
     return _yopiq(render(request, 'hujjatlar/kvitansiya.html', {
         'k': k, 'sozlama': sozlama, 'kompaniya': kompaniya, 'summa_matn': x.pul(k.summa),
+        'qr_svg': qr_svg, 'tekshir_url': tekshir_url,
         'summa_sozlar': sozlar.summa_sozlar(k.summa),
         'kun': f'{mahalliy.day:02d}', 'oy': f'{mahalliy.month:02d}', 'yil': mahalliy.year,
         'vaqt': mahalliy.strftime('%H:%M'),

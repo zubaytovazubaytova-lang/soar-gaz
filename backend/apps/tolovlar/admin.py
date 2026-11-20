@@ -40,7 +40,7 @@ from .models import BankTolovi, Rekvizit  # noqa: E402
 
 @admin.register(Rekvizit)
 class RekvizitAdmin(admin.ModelAdmin):
-    list_display = ['yonalish', 'korxona', 'bank', 'hisob_raqam', 'mfo', 'stir', 'faol']
+    list_display = ['yonalish', 'korxona', 'bank', 'hisob_raqam', 'mfo', 'stir', 'ruxsatnoma', 'faol']
     list_editable = ['faol']
 
 

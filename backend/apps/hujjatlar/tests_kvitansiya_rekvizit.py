@@ -19,6 +19,7 @@ class KvitansiyaRekvizitTest(TestCase):
     def setUp(self):
         cache.clear()
         Rekvizit.objects.create(yonalish='servis', korxona='"Servis Korxona" MChJ', bank='BRB',
+                                manzil='Sinov shahar, Sinov kochasi 1', ruxsatnoma='№000001, reestr R-000001, 01.01.2030 gacha',
                                 hisob_raqam='20208000900000000011', mfo='00001', stir='300000011')
         Rekvizit.objects.create(yonalish='montaj', korxona='"Montaj Korxona" MChJ', bank='BRB',
                                 hisob_raqam='20208000900000000022', mfo='00001', stir='300000022')
@@ -48,6 +49,10 @@ class KvitansiyaRekvizitTest(TestCase):
         self.assertIn('Servis Korxona', sahifa)
         self.assertIn('20208000900000000011', sahifa)
         self.assertIn('300000011', sahifa)
+        self.assertIn('№000001, reestr R-000001', sahifa)          # ruxsatnoma (qonuniy asos)
+        self.assertIn('Sinov kochasi 1', sahifa)                          # korxona manzili
+        self.assertIn('<svg', sahifa)                              # tekshirish QR-kodi
+        self.assertIn(f'https://soargaz.uz/kvitansiya/{kv.token}/', sahifa)
 
     def test_montaj_kvitansiyasi_soar_gaz_rekvizitlari(self, sms):
         kv = self._kvitansiya('montaj')

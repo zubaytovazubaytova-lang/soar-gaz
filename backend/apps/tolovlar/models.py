@@ -158,6 +158,10 @@ class Rekvizit(models.Model):
     hisob_raqam = models.CharField(max_length=20, verbose_name='Hisob raqam (20 xonali)')
     mfo = models.CharField(max_length=5, verbose_name='MFO (bank kodi)')
     stir = models.CharField(max_length=9, verbose_name='STIR (INN)')
+    manzil = models.CharField(max_length=250, blank=True, verbose_name='Yuridik manzil')
+    # Kvitansiyada qonuniy asos: faoliyat ruxsatnomasi (litsenziya) — raqami, reestr, amal qilish muddati
+    ruxsatnoma = models.CharField(max_length=250, blank=True, verbose_name='Ruxsatnoma (litsenziya)',
+                                  help_text="Masalan: №1234567, reestr R-12345678, 01.01.2030 gacha")
     faol = models.BooleanField(default=True)
 
     class Meta:

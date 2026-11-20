@@ -145,7 +145,7 @@ def kvitansiya_rekviziti(tushum):
     if not r:
         return {}
     return {'yonalish': r.yonalish, 'korxona': r.korxona, 'bank': r.bank, 'hisob_raqam': r.hisob_raqam,
-            'mfo': r.mfo, 'stir': r.stir}
+            'mfo': r.mfo, 'stir': r.stir, 'manzil': r.manzil, 'ruxsatnoma': r.ruxsatnoma}
 
 
 def kvitansiya_tarqat(kv):
