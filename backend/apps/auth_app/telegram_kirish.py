@@ -20,6 +20,7 @@ Sozlama (`soargaz-telegram-login-kalit` yozadi):  TELEGRAM_LOGIN_CLIENT_ID, TELE
 @BotFather → bot → Login Widget: ruxsat etilgan manzillar (Allowed URLs) ga sayt va callback qo'shiladi.
 """
 import base64
+import gzip
 import hashlib
 import json
 import logging
@@ -115,7 +116,7 @@ def _token_almashtir(code, verifier):
         'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': f'Basic {basic}'})
     try:
         with urllib.request.urlopen(so_rov, timeout=15) as r:
-            return json.loads(r.read())
+            return json.loads(_javob_matni(r))
     except urllib.error.HTTPError as xato:
         logger.warning('Telegram token almashinuvi rad etildi: HTTP %s', xato.code)
         raise TelegramKirishXato('rad')
@@ -124,15 +125,40 @@ def _token_almashtir(code, verifier):
         raise TelegramKirishXato('tarmoq')
 
 
-_jwks_mijoz = None
+def _javob_matni(r):
+    """Javob tanasi. oauth.telegram.org standart Python so'roviga ham gzip bilan javob berishi mumkin
+    (so'ramasak ham) — shunda ochib beramiz. Avval PyJWKClient shu sabab UnicodeDecodeError berib,
+    Telegram orqali kirish vaqti-vaqti bilan «token» xatosi bilan tugardi."""
+    tana = r.read()
+    if r.headers.get('Content-Encoding', '').lower() == 'gzip' or tana[:2] == b'\x1f\x8b':
+        tana = gzip.decompress(tana)
+    return tana
+
+
+JWKS_KESH = 'tglogin:jwks'
+
+
+def _jwks(yangila=False):
+    """Telegram ochiq kalitlari (JWKS) — 1 soat keshda."""
+    if not yangila:
+        saqlangan = cache.get(JWKS_KESH)
+        if saqlangan:
+            return saqlangan
+    so_rov = urllib.request.Request(JWKS_URL, headers={'User-Agent': 'soargaz-oidc/1.0', 'Accept': 'application/json'})
+    with urllib.request.urlopen(so_rov, timeout=10) as r:
+        jwks = json.loads(_javob_matni(r))
+    cache.set(JWKS_KESH, jwks, 3600)
+    return jwks
 
 
 def _imzo_kaliti(id_token):
-    global _jwks_mijoz
-    from jwt import PyJWKClient            # cryptography talab qiladi
-    if _jwks_mijoz is None:
-        _jwks_mijoz = PyJWKClient(JWKS_URL, cache_keys=True, lifespan=3600)
-    return _jwks_mijoz.get_signing_key_from_jwt(id_token).key
+    import jwt                              # cryptography talab qiladi
+    kid = jwt.get_unverified_header(id_token).get('kid')
+    for yangila in (False, True):           # kalit almashgan bo'lsa — bir marta yangidan yuklaymiz
+        for kalit in jwt.PyJWKSet.from_dict(_jwks(yangila)).keys:
+            if kalit.key_id == kid:
+                return kalit.key
+    raise jwt.PyJWKClientError(f'Kalit topilmadi: {kid}')
 
 
 def id_token_tekshir(id_token):

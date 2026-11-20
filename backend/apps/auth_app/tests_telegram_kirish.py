@@ -199,3 +199,39 @@ class IdTokenImzoTest(TestCase):
     def test_boshqa_issuer(self):
         with self.assertRaises(tk.TelegramKirishXato):
             self._tekshir(self._token(iss='https://soxta.example'))
+
+
+class GzipJavobTest(TestCase):
+    """oauth.telegram.org gzip bilan javob bersa ham kalitlar va token o'qiladi."""
+
+    def setUp(self):
+        cache.clear()
+
+    def _javob(self, tana, gz):
+        import gzip as _gzip
+        import io
+        r = mock.MagicMock()
+        r.__enter__.return_value = r
+        r.read.return_value = _gzip.compress(tana) if gz else tana
+        r.headers = {'Content-Encoding': 'gzip'} if gz else {}
+        return r
+
+    @skipUnless(CRYPTO, "cryptography o'rnatilmagan")
+    def test_gzip_jwks_va_kalit_topiladi(self):
+        import json
+        import jwt
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        k = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        jwk = json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(k.public_key()))
+        jwk.update({'kid': 'oidc-1', 'alg': 'RS256', 'use': 'sig'})
+        tana = json.dumps({'keys': [jwk]}).encode()
+        token = jwt.encode(claims(), k, algorithm='RS256', headers={'kid': 'oidc-1'})
+        with mock.patch('urllib.request.urlopen', return_value=self._javob(tana, gz=True)) as u:
+            self.assertIsNotNone(tk._imzo_kaliti(token))
+            tk._imzo_kaliti(token)                       # ikkinchisi keshdan
+        self.assertEqual(u.call_count, 1)
+
+    def test_gzip_token_javobi(self):
+        with override_settings(**SOZ), \
+                mock.patch('urllib.request.urlopen', return_value=self._javob(b'{"id_token": "x"}', gz=True)):
+            self.assertEqual(tk._token_almashtir('KOD', 'v' * 50), {'id_token': 'x'})
