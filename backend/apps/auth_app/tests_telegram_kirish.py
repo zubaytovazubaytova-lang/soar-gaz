@@ -235,3 +235,45 @@ class GzipJavobTest(TestCase):
         with override_settings(**SOZ), \
                 mock.patch('urllib.request.urlopen', return_value=self._javob(b'{"id_token": "x"}', gz=True)):
             self.assertEqual(tk._token_almashtir('KOD', 'v' * 50), {'id_token': 'x'})
+class AloqaRaqamiTest(TestCase):
+    """Telegram eski raqamga ochilgan mijoz: birinchi profil to'ldirishda hozirgi raqamni kiritadi."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        self.u = Foydalanuvchi.objects.create(telefon=TEL, rol='mijoz', ism='Ali')
+        self.c = APIClient()
+        self.c.force_authenticate(self.u)
+
+    def test_yangi_mijoz_kodsiz_kiritadi_va_normallashadi(self):
+        r = self.c.patch('/api/auth/profil/', {'qoshimcha_telefon': '93 123 45 67'}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.u.refresh_from_db()
+        self.assertEqual(self.u.qoshimcha_telefon, '+998931234567')
+
+    def test_notogri_raqam(self):
+        r = self.c.patch('/api/auth/profil/', {'qoshimcha_telefon': '12345'}, format='json')
+        self.assertEqual(r.status_code, 400)
+
+    def test_keyin_ozgartirish_kod_talab_qiladi(self):
+        self.u.qoshimcha_telefon = '+998931234567'
+        self.u.save(update_fields=['qoshimcha_telefon'])
+        r = self.c.patch('/api/auth/profil/', {'qoshimcha_telefon': '+998941112233'}, format='json')
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(r.json().get('kod_kerak'))
+
+    def test_eski_hisob_kod_talab_qiladi(self):
+        from django.utils import timezone
+        Foydalanuvchi.objects.filter(pk=self.u.pk).update(yaratilgan=timezone.now() - timezone.timedelta(days=3))
+        self.u.refresh_from_db()
+        r = self.c.patch('/api/auth/profil/', {'qoshimcha_telefon': '+998941112233'}, format='json')
+        self.assertEqual(r.status_code, 403)
+
+    def test_arizada_aloqa_raqami_ishlatiladi(self):
+        from apps.buyurtmalar.models import Buyurtma
+        self.u.qoshimcha_telefon = '+998931234567'
+        self.u.save(update_fields=['qoshimcha_telefon'])
+        b = Buyurtma.objects.create(mijoz=self.u, xizmat='servis')
+        self.assertEqual(b.mijoz_telefon, '+998931234567')
+        self.u.qoshimcha_telefon = ''
+        self.u.save(update_fields=['qoshimcha_telefon'])
+        self.assertEqual(Buyurtma.objects.create(mijoz=self.u, xizmat='servis').mijoz_telefon, TEL)

@@ -339,20 +339,43 @@ async function kodTasdiqla(e) {
   btn.disabled = false;
 }
 
+/* Telegram orqali yangi ro'yxatdan o'tganda: Telegram'dagi raqam hozirgimi? */
+function telTasdiqKorsat(telefon) {
+  el('pTgTel').textContent = telefon || '';
+  el('pTelBlok').classList.add('korinadi');
+}
+document.querySelectorAll('input[name="pTelTanlov"]').forEach(r => r.addEventListener('change', () => {
+  const boshqa = document.querySelector('input[name="pTelTanlov"]:checked').value === 'yoq';
+  el('pYangiTelWrap').classList.toggle('korinadi', boshqa);
+  el('pYangiTel').required = boshqa;
+  if (boshqa) el('pYangiTel').focus();
+}));
+
 async function profilSaqla(e) {
   e.preventDefault();
   const btn = el('profilBtn');
+  const tana = {
+    ism: el('pIsm').value.trim(),
+    viloyat: el('pViloyat').value,
+    tuman: el('pTuman').value,
+    mahalla: el('pMahalla').value.trim(),
+    manzil: el('pManzil').value.trim(),
+    moljal: el('pMoljal').value.trim(),
+    mulk_turi: el('pMulk').value,
+  };
+  if (el('pTelBlok').classList.contains('korinadi') &&
+      document.querySelector('input[name="pTelTanlov"]:checked').value === 'yoq') {
+    const raqam = el('pYangiTel').value.replace(/\D/g, '');
+    if (raqam.length !== 9 && !(raqam.length === 12 && raqam.startsWith('998'))) {
+      authXato("Hozirgi telefon raqamingizni to'liq kiriting: +998 90 123 45 67");
+      el('pYangiTel').focus();
+      return;
+    }
+    tana.qoshimcha_telefon = el('pYangiTel').value.trim();
+  }
   btn.disabled = true;
   try {
-    profil = await so('/auth/profil/', { method:'PATCH', body:{
-      ism: el('pIsm').value.trim(),
-      viloyat: el('pViloyat').value,
-      tuman: el('pTuman').value,
-      mahalla: el('pMahalla').value.trim(),
-      manzil: el('pManzil').value.trim(),
-      moljal: el('pMoljal').value.trim(),
-      mulk_turi: el('pMulk').value,
-    }});
+    profil = await so('/auth/profil/', { method:'PATCH', body: tana });
     saqlash.setItem('sg_user', JSON.stringify(profil));
     kabinetOch();
   } catch (err) { authXato(err.message); }
@@ -1475,6 +1498,7 @@ document.addEventListener('keydown', e => {
       el('pMahalla').value = profil.mahalla || '';
       el('pTuman').viloyatniMoslash && el('pTuman').viloyatniMoslash();
       el('pManzil').value = profil.manzil || '';
+      if (tgOk && !profil.qoshimcha_telefon) telTasdiqKorsat(profil.telefon);
       qadamgaOt(3);
       return;
     }

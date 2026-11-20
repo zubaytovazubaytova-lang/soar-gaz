@@ -99,7 +99,8 @@ class Buyurtma(models.Model):
             self.manzil = self.mijoz.manzil
         if self.mijoz:
             self.mijoz_ism = self.mijoz_ism or self.mijoz.ism
-            self.mijoz_telefon = self.mijoz_telefon or self.mijoz.telefon
+            # Aloqa raqami (Telegram eski raqamga ochilgan mijozning hozirgi raqami) birinchi o'rinda
+            self.mijoz_telefon = self.mijoz_telefon or self.mijoz.qoshimcha_telefon or self.mijoz.telefon
         super().save(*args, **kwargs)
 
     def __str__(self):

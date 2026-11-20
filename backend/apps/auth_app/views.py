@@ -645,6 +645,12 @@ def profil(request):
         if f in request.data
         and str(request.data.get(f) or '').strip() != str(getattr(user, f) or '').strip()
     ]
+    # Telegram orqali yangi ro'yxatdan o'tgan mijozning Telegram'i ESKI raqamga ochilgan bo'lishi mumkin.
+    # Birinchi profil to'ldirishda u HOZIRGI raqamini aloqa raqami sifatida kodsiz kiritadi:
+    # faqat maydon bo'sh bo'lsa va hisob 1 kundan yosh bo'lsa (keyingi o'zgartirish — avvalgidek kod bilan).
+    if ('qoshimcha_telefon' in ozgardi and not user.qoshimcha_telefon and user.rol == 'mijoz'
+            and timezone.now() - user.yaratilgan < timezone.timedelta(days=1)):
+        ozgardi.remove('qoshimcha_telefon')
     if ozgardi:
         rad = tasdiq_kodini_sarfla(user, request.data.get('tasdiq_kodi'))
         if rad:
