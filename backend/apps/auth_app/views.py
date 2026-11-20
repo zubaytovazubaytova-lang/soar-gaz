@@ -695,6 +695,9 @@ def _xodim_data(user):
         'holat': user.holat,
         # Lavozimga qarab kabinet menyusi (kirish hamma uchun bir xil)
         'kabinet': kabinet_malumoti(user.lavozim),
+        # Yangi vazifa / ariza xabarlari Telegram bot orqali (tekin) — ulanmagan bo'lsa kabinetda eslatma
+        'telegram_ulangan': telegram_bot.ulangan(user.telefon),
+        'telegram_bot': telegram_bot.bot_nomi(),
     }
 
 

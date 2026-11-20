@@ -108,3 +108,36 @@ class MijozgaTelegramTest(TestCase):
         api.reset_mock()
         call_command('tekshiruv_eslatma', stdout=StringIO())
         api.assert_not_called()
+
+
+@override_settings(TELEGRAM_BOT_TOKEN='123:TEST', TELEGRAM_BOT_USERNAME='soargaz_bot')
+class XodimTayinlashXabariTest(TestCase):
+    """Operator xodim tayinlaganda xabarda xizmat nomi bor; xodim kabineti bot holatini biladi."""
+
+    def setUp(self):
+        cache.clear()
+        self.rux = Foydalanuvchi.objects.create(telefon='+998900000003', rol='xodim',
+                                                lavozim="Kadrlar bo'yicha mutaxassis")
+        self.usta = Foydalanuvchi.objects.create(telefon='+998900000005', rol='xodim', lavozim='Montaj ustasi')
+        self.mijoz = Foydalanuvchi.objects.create(telefon='+998901234567', rol='mijoz', ism='Vali')
+
+    @mock.patch('apps.buyurtmalar.views.sms_yubor', return_value=True)
+    def test_tayinlash_xabarida_xizmat_nomi(self, sms):
+        from apps.buyurtmalar.models import Buyurtma
+        from rest_framework.test import APIClient
+        b = Buyurtma.objects.create(mijoz=self.mijoz, xizmat='servis', manzil='Buxoro')
+        c = APIClient()
+        c.force_authenticate(self.rux)
+        r = c.post(f'/api/buyurtmalar/operator/arizalar/{b.id}/tayinlash/', {'xodim_id': self.usta.id}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        xodimga = [m for t, m in (x.args[:2] for x in sms.call_args_list) if t == self.usta.telefon][0]
+        self.assertIn(f'#{b.id} — Servis', xodimga)
+
+    def test_xodim_profilida_bot_holati(self):
+        from rest_framework.test import APIClient
+        c = APIClient()
+        c.force_authenticate(self.usta)
+        d = c.get('/api/auth/xodim/profil/').json()
+        self.assertEqual((d['telegram_ulangan'], d['telegram_bot']), (False, 'soargaz_bot'))
+        TelegramUlanish.objects.create(telefon=self.usta.telefon, chat_id=9)
+        self.assertTrue(c.get('/api/auth/xodim/profil/').json()['telegram_ulangan'])

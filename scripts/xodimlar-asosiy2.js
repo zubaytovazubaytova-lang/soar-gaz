@@ -1685,6 +1685,7 @@ function bolimNomiTopish(lavozim, tur){
 function menyuQur(){
   const k = profil && profil.kabinet;
   kabinetTuri = (k && k.tur) || 'oddiy';
+  tgBotEslatma(profil);
   ruxsatliBolimlar = (k && Array.isArray(k.bolimlar) && k.bolimlar.length) ? k.bolimlar : BARCHA_BOLIMLAR;
   document.body.classList.remove('kabinet-oddiy', 'kabinet-qongiroq', 'kabinet-hujjat', 'kabinet-kadrlar');
   document.body.classList.add('kabinet-' + kabinetTuri);
@@ -1698,6 +1699,29 @@ function menyuQur(){
   showPage('overview');
   // Bank to'lovlari: kutilayotgan cheklar soni menyuda (skript keyinroq yuklanadi)
   if (bolimBormi('bank-chek')) setTimeout(() => window.BankCheklar && BankCheklar.yukla(), 0);
+}
+
+// ═══════ Telegram bot: yangi vazifa xabarlari (tekin) ═══════
+// Xodim botga ulanmagan bo'lsa unga tayinlangan vazifa haqida HECH QANDAY xabar bormaydi (SMS hali yo'q) —
+// shuning uchun bosh sahifa tepasida ko'zga tashlanadigan eslatma va botni ochadigan tugma.
+function tgBotEslatma(p) {
+  const eski = document.getElementById('tgBotEslatma');
+  if (eski) eski.remove();
+  if (!p || p.telegram_ulangan || !p.telegram_bot || KORISH) return;
+  const blok = document.createElement('div');
+  blok.id = 'tgBotEslatma';
+  blok.style.cssText = 'display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 16px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#e0f2fe,#eff6ff);border:1px solid #7dd3fc;';
+  blok.innerHTML = `
+    <div style="font-size:26px;line-height:1">📲</div>
+    <div style="flex:1;min-width:220px;font-size:13.5px;color:#0c4a6e;line-height:1.5">
+      <b>Yangi vazifalar haqida Telegram'da xabar oling</b><br>
+      Botni oching → <b>Start</b> → <b>«Raqamni ulashish»</b>. Raqamingiz shu kabinetdagi raqam bilan bir xil bo'lishi kerak. Tekin.
+    </div>
+    <a href="https://t.me/${encodeURIComponent(p.telegram_bot)}?start=xodim" target="_blank" rel="noopener"
+       style="padding:10px 16px;border-radius:10px;background:#229ED9;color:#fff;font-weight:700;text-decoration:none;white-space:nowrap">
+      Botga ulanish</a>`;
+  const sahifa = document.getElementById('page-overview');
+  if (sahifa) sahifa.prepend(blok);
 }
 
 // ═══════ Kadrlar: davomat va kunlik hisobotlar ═══════

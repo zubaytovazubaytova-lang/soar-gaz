@@ -17,6 +17,13 @@ from .models import Buyurtma, BuyurtmaFoto
 from .serializers import BuyurtmaSerializer
 
 
+def _xizmat(b):
+    """Xizmat nomi xabarlar uchun — doim o'zbekcha (`xizmat_nomi` maydoni bazada bo'sh bo'lishi mumkin)."""
+    from django.utils import translation
+    with translation.override('uz'):
+        return str(b.get_xizmat_display())
+
+
 def _sms_yuborish(mijoz, matn):
     if mijoz:
         SmsXabar.objects.create(mijoz=mijoz, matn=matn)
@@ -75,8 +82,8 @@ def buyurtmalar_list(request):
         # Administrator keyin o'zgartira oladi.
         tarmoq = 'ulgurji' if getattr(user, 'mulk_turi', '') == 'korxona' else 'aholi'
         b = ser.save(mijoz=user, tarmoq=tarmoq)
-        _sms_yuborish(user, f"Buyurtmangiz qabul qilindi! #{b.id} — {b.xizmat_nomi}. Tez orada bog'lanamiz.")
-        xodim_xabar.yangi_ariza(b.xizmat, f"Yangi buyurtma #{b.id} — {b.xizmat_nomi}",
+        _sms_yuborish(user, f"Buyurtmangiz qabul qilindi! #{b.id} — {_xizmat(b)}. Tez orada bog'lanamiz.")
+        xodim_xabar.yangi_ariza(b.xizmat, f"Yangi buyurtma #{b.id} — {_xizmat(b)}",
                                 user.ism, user.telefon, b.manzil or b.tuman, b.tavsif)
         return Response(BuyurtmaSerializer(b).data, status=201)
     return Response(ser.errors, status=400)
@@ -199,7 +206,7 @@ def xodim_tayinla(request, b, xodim, izoh=""):
     b.save()
     audit_yoz(request, "buyurtma_tayinlandi", f"#{b.id} -> {xodim.ism or xodim.telefon}{izoh}")
 
-    _sms_yuborish(xodim, f"Sizga yangi buyurtma tayinlandi! #{b.id} — {b.xizmat_nomi}. Manzil: {b.manzil or b.tuman}")
+    _sms_yuborish(xodim, f"Sizga yangi buyurtma tayinlandi! #{b.id} — {_xizmat(b)}. Manzil: {b.manzil or b.tuman}")
     _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangizga xodim tayinlandi: {xodim.ism}. Tez orada siz bilan bog'lanadi.")
 
 
