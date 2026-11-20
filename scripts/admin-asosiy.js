@@ -458,7 +458,7 @@ function kanbanChiz(){
   const ustunlar = [
     ['yangi',        'kanbanYangi'],
     [['qabul', 'yolda'], 'kanbanQabul'],          // «yo'lda» ham shu ustunda
-    ['bajarilmoqda', 'kanbanJarayon'],
+    [['bajarilmoqda', 'tolov_kutilmoqda'], 'kanbanJarayon'],   // to'lov kutilayotgani ham jarayonda
     ['bajarildi',    'kanbanBajarildi'],
   ];
 

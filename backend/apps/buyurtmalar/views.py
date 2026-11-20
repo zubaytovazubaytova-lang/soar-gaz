@@ -297,14 +297,25 @@ def natija(request, pk):
     b.natija_soat = request.data.get('natija_soat') or None
     b.material = request.data.get('material', '')
     holat = request.data.get('holat', 'bajarildi')
+    # Xodim ishni o'zi YAKUNLAMAYDI: «Ishni tugatdim» → to'lov kutiladi. Buyurtma to'lov to'liq
+    # qabul qilingach (Click / tasdiqlangan chek / Ruxsora qabul qilgan tushum) yakunlanadi (yakun.py).
+    if holat == 'bajarildi':
+        holat = 'tolov_kutilmoqda'
     b.holat = holat
     b.natija_sana = timezone.now()
     b.save()
 
-    if holat == 'bajarildi':
-        _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangiz bajarildi! ✓ Natija: {b.natija[:80] if b.natija else '—'}")
-        xodim_xabar.ish_holati(b, _ish_matni(b, "🏁 ishni yakunladi")
-                               + (f"\n📝 {b.natija[:200]}" if b.natija else ''))
+    if holat == 'tolov_kutilmoqda':
+        natija_matni = f"\n📝 {b.natija[:200]}" if b.natija else ''
+        if b.tolandi:                                  # oldindan to'langan — darhol yakunlanadi
+            xodim_xabar.ish_holati(b, _ish_matni(b, "🏁 ishni tugatdi") + natija_matni)
+            from .yakun import tolov_yakuni
+            tolov_yakuni(b.id)
+            b.refresh_from_db()
+        else:
+            _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangiz bo'yicha ish bajarildi ✓ "
+                                   f"Natija: {b.natija[:80] if b.natija else '—'}. To'lovdan so'ng buyurtma yakunlanadi.")
+            xodim_xabar.ish_holati(b, _ish_matni(b, "🏁 ishni tugatdi — to'lov kutilmoqda") + natija_matni)
 
     return Response(BuyurtmaSerializer(b).data)
 

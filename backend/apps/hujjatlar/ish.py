@@ -40,9 +40,9 @@ ARIZA_HOLAT = {'yangi': 'Yangi', 'korildi': 'Qabul qilingan', 'boglandi': "Mijoz
                'yakunlandi': 'Yakunlangan', 'bekor': 'Bekor qilingan'}
 ARIZA_QABUL = ('korildi', 'boglandi', 'yakunlandi')
 ARIZA_YAKUN = ('yakunlandi', 'bekor')
-BUYURTMA_HOLAT = {'yangi': 'Yangi', 'qabul': 'Xodim qabul qildi', 'yolda': "Xodim yo'lda", 'bajarilmoqda': 'Jarayonda',
+BUYURTMA_HOLAT = {'yangi': 'Yangi', 'qabul': 'Xodim qabul qildi', 'yolda': "Xodim yo'lda", 'bajarilmoqda': 'Jarayonda', 'tolov_kutilmoqda': "To'lov kutilmoqda",
                   'bajarildi': 'Bajarildi', 'bekor': 'Bekor qilingan'}
-BUYURTMA_QABUL = ('qabul', 'yolda', 'bajarilmoqda', 'bajarildi')
+BUYURTMA_QABUL = ('qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda', 'bajarildi')
 BUYURTMA_YAKUN = ('bajarildi', 'bekor')
 BUYURTMA_XIZMAT = {'loyiha': 'Loyihalashtirish', 'metrologiya': 'Metrologiya'}
 KALIT = re.compile(r'^([ab])(\d+)$')

@@ -21,6 +21,10 @@ def tolov_buyurtmaga(sender, instance, **kwargs):
         return
     from apps.buyurtmalar.models import Buyurtma
     yangilandi = Buyurtma.objects.filter(pk=instance.buyurtma_id, tolandi=False).update(tolandi=True)
+    if yangilandi:
+        # Ish tugagan («to'lov kutilmoqda») bo'lsa — buyurtma to'liq yakunlanadi
+        from apps.buyurtmalar.yakun import tolov_yakuni
+        transaction.on_commit(lambda: tolov_yakuni(instance.buyurtma_id))
     if not yangilandi or instance.tolov_tizimi != 'click':
         return          # bank o'tkazmasida xabarni chek tasdig'i (bank.tekshir) o'zi yuboradi
 

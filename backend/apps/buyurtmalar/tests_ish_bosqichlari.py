@@ -44,11 +44,11 @@ class IshBosqichlariTest(TestCase):
         self.assertEqual(self._bosqich('bajarilmoqda').json()['holat'], 'bajarilmoqda')
         with self.captureOnCommitCallbacks(execute=True):
             r = self._c(self.usta).post(f'/api/buyurtmalar/{self.b.id}/natija/', {'natija': 'Qozon tozalandi'}, format='json')
-        self.assertEqual(r.json()['holat'], 'bajarildi')
+        self.assertEqual(r.json()['holat'], 'tolov_kutilmoqda')        # xodim o'zi yakunlamaydi
 
         rux_xabarlari = list(Xabar.objects.filter(xodim=self.rux).order_by('id').values_list('matn', flat=True))
         self.assertEqual(len(rux_xabarlari), 4)
-        for kalit in ('qabul qildi', "yo'lga chiqdi", 'ishni boshladi', 'ishni yakunladi'):
+        for kalit in ('qabul qildi', "yo'lga chiqdi", 'ishni boshladi', "ishni tugatdi — to'lov kutilmoqda"):
             self.assertTrue(any(kalit in m for m in rux_xabarlari), kalit)
         self.assertIn('Servis', rux_xabarlari[0])
         self.assertIn('Qozon tozalandi', rux_xabarlari[-1])
@@ -84,3 +84,60 @@ class IshBosqichlariTest(TestCase):
         r = self._c(self.rux).get('/api/tolovlar/bank/click-tolovlar/')
         self.assertEqual([x['summa'] for x in r.json()['royxat']], [50000])
         self.assertEqual(self._c(self.usta).get('/api/tolovlar/bank/click-tolovlar/').status_code, 403)
+
+
+@override_settings(TELEGRAM_BOT_TOKEN='')
+@mock.patch('apps.buyurtmalar.views.sms_yubor', return_value=True)
+class TolovBilanYakunlashTest(TestCase):
+    """Buyurtma faqat to'lov to'liq qabul qilingach «bajarildi» bo'ladi."""
+
+    def setUp(self):
+        cache.clear()
+        self.rux = Foydalanuvchi.objects.create(telefon='+998900000003', rol='xodim', ism='Ruxsora',
+                                                lavozim="Kadrlar bo'yicha mutaxassis")
+        self.usta = Foydalanuvchi.objects.create(telefon='+998900000005', rol='xodim', ism='Akbar', lavozim='Montaj ustasi')
+        self.mijoz = Foydalanuvchi.objects.create(telefon='+998901234567', rol='mijoz', ism='Vali')
+        self.b = Buyurtma.objects.create(mijoz=self.mijoz, xizmat='servis', manzil='Buxoro', xodim=self.usta,
+                                         holat='bajarilmoqda', tasdiq_summa=100000)
+
+    def _c(self, u):
+        c = APIClient()
+        c.force_authenticate(u)
+        return c
+
+    def _tugatdi(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            return self._c(self.usta).post(f'/api/buyurtmalar/{self.b.id}/natija/', {'natija': 'OK'}, format='json').json()
+
+    def test_naqd_ruxsora_qabul_qilgach_yakunlanadi(self, sms):
+        self.assertEqual(self._tugatdi()['holat'], 'tolov_kutilmoqda')
+        t = self._c(self.usta).post('/api/tushum/', {'summa': 100000, 'usul': 'naqd', 'buyurtma': self.b.id}, format='json')
+        self.b.refresh_from_db()
+        self.assertEqual(self.b.holat, 'tolov_kutilmoqda')                     # pul xodimda — hali yakun emas
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self._c(self.rux).post(f"/api/tushum/{t.json()['id']}/qabul/").status_code, 200)
+        self.b.refresh_from_db()
+        self.assertEqual((self.b.holat, self.b.tolandi), ('bajarildi', True))
+        self.assertTrue(any("to'liq yakunlandi" in c.args[1] for c in sms.call_args_list))
+        self.assertTrue(Xabar.objects.filter(xodim=self.rux, matn__contains="to'liq yakunlandi").exists())
+
+    def test_qisman_tolov_yakunlamaydi(self, sms):
+        self._tugatdi()
+        t = self._c(self.usta).post('/api/tushum/', {'summa': 40000, 'usul': 'naqd', 'buyurtma': self.b.id}, format='json')
+        self._c(self.rux).post(f"/api/tushum/{t.json()['id']}/qabul/")
+        self.b.refresh_from_db()
+        self.assertEqual((self.b.holat, self.b.tolandi), ('tolov_kutilmoqda', False))
+
+    def test_click_tolovi_yakunlaydi(self, sms):
+        self._tugatdi()
+        s = TolovSorovi.objects.create(ism='Vali', telefon=self.mijoz.telefon, tolov_turi='online', tolov_tizimi='click',
+                                       summa=100000, holat='kutilmoqda', buyurtma=self.b)
+        with self.captureOnCommitCallbacks(execute=True):
+            s.holat = 'tolandi'
+            s.save()
+        self.b.refresh_from_db()
+        self.assertEqual(self.b.holat, 'bajarildi')
+
+    def test_oldindan_tolangan_darhol_yakunlanadi(self, sms):
+        Buyurtma.objects.filter(pk=self.b.pk).update(tolandi=True)
+        self.assertEqual(self._tugatdi()['holat'], 'bajarildi')

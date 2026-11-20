@@ -11,6 +11,7 @@ HOLAT_MATNI = {
     'yangi': 'Buyurtmangiz qabul qilindi',
     'qabul': 'Buyurtmangizga xodim tayinlandi',
     'yolda': "Usta yo'lga chiqdi",
+    'tolov_kutilmoqda': "Ish bajarildi — to'lov kutilmoqda",
     'bajarilmoqda': 'Buyurtmangiz bajarilmoqda',
     'bajarildi': 'Buyurtmangiz yakunlandi',
     'bekor': 'Buyurtmangiz bekor qilindi',

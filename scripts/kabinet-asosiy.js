@@ -547,7 +547,7 @@ async function boshYukla() {
 
 function holatTegi(holat) {
   const xarita = {
-    yangi:['plan','Yangi'], qabul:['progress','Xodim tayinlandi'], yolda:['progress',"Usta yo'lda"],
+    yangi:['plan','Yangi'], qabul:['progress','Xodim tayinlandi'], yolda:['progress',"Usta yo'lda"], tolov_kutilmoqda:['wait',"Ish bajarildi — to'lov kutilmoqda"],
     bajarilmoqda:['progress','Bajarilmoqda'], bajarildi:['done','Yakunlandi'],
     bekor:['bad','Bekor qilindi'],
   };

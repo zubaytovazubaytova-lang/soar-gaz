@@ -28,7 +28,7 @@ from apps.narxnoma.models import TARMOQ_CHOICES, TARMOQ_NOMI
 from .models import QONGIROQ_NATIJALARI, SHAXS_CHOICES, Buyurtma, Qongiroq
 from .views import _sms_yuborish, xodim_tayinla
 
-FAOL_HOLATLAR = ('yangi', 'qabul', 'yolda', 'bajarilmoqda')
+FAOL_HOLATLAR = ('yangi', 'qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda')
 TAYINLASH_MUMKIN = ('yangi', 'qabul')        # bajarilayotgan/yakunlangan ishni operator boshqaga o'tkaza olmaydi
 ROYXAT_LIMIT = 200
 # Xodimga biriktirilgan, lekin shuncha soat o'tsa ham qabul qilinmagan/boshlanmagan ariza nazoratda «kechikkan»

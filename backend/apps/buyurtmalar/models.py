@@ -17,6 +17,7 @@ HOLAT_CHOICES = [
     ('qabul', _('Qabul qilindi')),
     ('yolda', _("Xodim yo'lda")),
     ('bajarilmoqda', _('Bajarilmoqda')),
+    ('tolov_kutilmoqda', _("Ish bajarildi — to'lov kutilmoqda")),
     ('bajarildi', _('Bajarildi')),
     ('bekor', _('Bekor qilindi')),
 ]

@@ -19,7 +19,7 @@ from .models import AuditYozuv, Foydalanuvchi
 # Topshirilmagan pul shuncha kundan oshsa — "diqqat" ro'yxatiga tushadi
 ESKI_TUSHUM_KUN = 3
 TARMOQLAR = ('aholi', 'ulgurji')
-FAOL_HOLATLAR = ('yangi', 'qabul', 'yolda', 'bajarilmoqda')
+FAOL_HOLATLAR = ('yangi', 'qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda')
 # Jurnaldagi shovqinli yozuvlar (xarita har 15 soniyada yangilanadi) "so'nggi faoliyat"ga kirmaydi
 JURNAL_SHOVQIN = ('joylashuv_korildi', 'chiqish')
 

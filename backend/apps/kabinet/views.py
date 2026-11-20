@@ -129,7 +129,7 @@ def _bosqich(b):
         return 'bekor'
     if b.holat == 'bajarildi':
         return 'yakunlandi'
-    if b.holat == 'bajarilmoqda':
+    if b.holat in ('bajarilmoqda', 'tolov_kutilmoqda'):
         return 'bajarilmoqda'
     if b.holat in ('qabul', 'yolda'):
         return 'tayinlandi'

@@ -225,13 +225,13 @@ async function jamoaYukla(){
 // ═══════ Vazifalar (buyurtmalar) ═══════
 // GET /api/buyurtmalar/ — backend rol='xodim' bo'lsa faqat shu xodimga
 // tayinlangan buyurtmalarni qaytaradi, shuning uchun qo'shimcha filtr shart emas.
-const FAOL_HOLATLAR = ['yangi', 'qabul', 'yolda', 'bajarilmoqda'];
+const FAOL_HOLATLAR = ['yangi', 'qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda'];
 const HOLAT_MATN = {
-  yangi: 'Kutilmoqda', qabul: 'Qabul qilindi', yolda: "Yo'lda",
+  yangi: 'Kutilmoqda', qabul: 'Qabul qilindi', yolda: "Yo'lda", tolov_kutilmoqda: "To'lov kutilmoqda",
   bajarilmoqda: 'Jarayonda', bajarildi: 'Bajarildi', bekor: 'Bekor qilindi'
 };
 const HOLAT_TAG = {
-  yangi: 'wait', qabul: 'progress', yolda: 'progress',
+  yangi: 'wait', qabul: 'progress', yolda: 'progress', tolov_kutilmoqda: 'wait',
   bajarilmoqda: 'progress', bajarildi: 'done', bekor: 'plan'
 };
 
@@ -411,8 +411,17 @@ function vazifaQator(b, amallar){
   if (amallar && b.holat === 'bajarilmoqda') {
     const tugma = document.createElement('button');
     tugma.className = 'mini-btn yashil';
-    tugma.textContent = '🏁 Ishni yakunlash';
+    tugma.textContent = '🏁 Ishni tugatdim';
     tugma.addEventListener('click', ()=> vazifaYakunla(b.id, tugma, b));
+    amal.appendChild(tugma);
+  }
+  // Ish tugagan, to'lov hali to'liq emas: xodim olgan pulni yozib, kvitansiya chiqaradi.
+  // Buyurtma Ruxsora pulni qabul qilgach (yoki Click / chek tasdig'idan keyin) o'zi yakunlanadi.
+  if (amallar && b.holat === 'tolov_kutilmoqda' && !b.tolandi) {
+    const tugma = document.createElement('button');
+    tugma.className = 'mini-btn asosiy';
+    tugma.textContent = "🧾 To'lovni yozish / kvitansiya";
+    tugma.addEventListener('click', ()=> yakunlashKvitansiyasi(b));
     amal.appendChild(tugma);
   }
 
@@ -534,7 +543,7 @@ async function vazifaYakunla(id, tugma, b){
       && !confirm('Bu buyurtmaning summasi hali tasdiqlanmagan (narxnomadan xizmat tanlab, "Summani tasdiqlash"ni bosing).\nBaribir yakunlaysizmi?')) {
     return;
   }
-  const natija = prompt('Bajarilgan ish natijasi (mijozga SMS orqali yuboriladi):');
+  const natija = prompt("Bajarilgan ish natijasi (mijozga yuboriladi). Buyurtma to'lov to'liq qabul qilingach yakunlanadi:");
   if (natija === null) return;
   const soat = prompt('Ishga ketgan vaqt (soat), masalan 2.5:', '');
   if (soat === null) return;
@@ -564,15 +573,15 @@ async function vazifaYakunla(id, tugma, b){
 async function yakunlashKvitansiyasi(b){
   if (!b || KORISH) return;
   if (b.tolandi) {
-    alert("Ish yakunlandi ✓\nBu buyurtma oldindan to'langan (Click yoki hisob raqamga o'tkazma) — kvitansiya shart emas.");
+    alert("Ish tugadi ✓\nBu buyurtma oldindan to'langan (Click yoki hisob raqamga o'tkazma) — buyurtma yakunlandi, kvitansiya shart emas.");
     return;
   }
   const tasdiq = b.xizmatlar && b.xizmatlar.tasdiq_summa;
   if (tasdiq == null) {
-    alert("Ish yakunlandi ✓\nKvitansiya uchun avval buyurtma summasini tasdiqlang, so'ng «Pul tushumi» bo'limida kvitansiya chiqaring.");
+    alert("Ish tugadi ✓ (to'lov kutilmoqda)\nKvitansiya uchun avval buyurtma summasini tasdiqlang, so'ng «Pul tushumi» bo'limida kvitansiya chiqaring.");
     return;
   }
-  const kiritilgan = prompt(`Ish yakunlandi ✓\n\nMijozdan qancha oldingiz (so'm)? Kvitansiya chiqariladi.\nPul olinmagan bo'lsa «Bekor»ni bosing — keyin «Pul tushumi» bo'limidan kiritasiz.`, String(tasdiq));
+  const kiritilgan = prompt(`Mijozdan qancha oldingiz (so'm)? Kvitansiya chiqariladi.\nBuyurtma Ruxsora pulni qabul qilgach yakunlanadi.\nPul olinmagan bo'lsa «Bekor»ni bosing (mijoz Click yoki hisob raqam orqali to'lashi mumkin).`, String(tasdiq));
   if (kiritilgan === null) return;
   const summa = parseInt(String(kiritilgan).replace(/\D/g, ''), 10);
   if (!summa) { alert("Summa noto'g'ri. «Pul tushumi» bo'limidan kiriting."); return; }
@@ -2348,6 +2357,7 @@ function arizalarChiz(){
     h.appendChild(a.holat === 'bajarildi' ? belgi('Bajarildi', 'done')
       : a.holat === 'bekor' ? belgi('Bekor qilindi', 'plan')
       : a.holat === 'bajarilmoqda' ? belgi('Jarayonda', 'progress')
+      : a.holat === 'tolov_kutilmoqda' ? belgi("Ish bajarildi — to'lov kutilmoqda", 'kech')
       : a.holat === 'yolda' ? belgi("Xodim yo'lda", 'progress')
       : a.holat === 'qabul' ? belgi('Xodim qabul qildi', 'progress')
       : a.xodim_id ? belgi('Xodimga berilgan', 'wait') : belgi("Xodimi yo'q", 'red'));
