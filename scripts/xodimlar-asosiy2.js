@@ -461,33 +461,8 @@ function vazifalarChiz(){
     faol.forEach(b => vazifaRoyxat.appendChild(vazifaQator(b, true)));
   }
 
-  // — Ish tarixi
-  const tana = document.getElementById('tarixTana');
-  const tarixHolat = document.getElementById('tarixHolat');
-  document.getElementById('tarixSoni').textContent = tarix.length ? `(${tarix.length} ta)` : '';
-  tana.innerHTML = '';
-  if (!tarix.length) {
-    tarixHolat.textContent = 'Yakunlangan ish hozircha yo\'q.';
-    tarixHolat.style.display = 'block';
-  } else {
-    tarixHolat.style.display = 'none';
-    tarix.forEach(b => {
-      const tr = document.createElement('tr');
-      [
-        sanaVaqt(b.natija_sana || b.yangilangan || b.yaratilgan),
-        b.xizmat_nomi || b.xizmat,
-        [b.manzil, b.tuman].filter(Boolean).join(', ') || '—',
-        b.natija_soat ? b.natija_soat + ' soat' : '—',
-        b.material || '—',
-        HOLAT_MATN[b.holat] || b.holat
-      ].forEach(matn => {
-        const td = document.createElement('td');
-        td.textContent = matn;
-        tr.appendChild(td);
-      });
-      tana.appendChild(tr);
-    });
-  }
+  // — Ish tarixi: bosqichlar bo'yicha ustun-tugmalar (bosilsa alohida oynada ochiladi)
+  ishTarixiChiz(tarix);
 
   // — Bosh sahifa statistikasi
   const bajarildi = vazifalar.filter(b => b.holat === 'bajarildi');
@@ -498,6 +473,82 @@ function vazifalarChiz(){
   document.getElementById('statOySoat').textContent = oySoat ? oySoat.toFixed(1) : '0';
   document.getElementById('statFaol').textContent = faol.length;
 }
+
+// Ish tarixi bosqichlari: [holat, nomi, belgi, rang]
+const ISH_BOSQICHLARI = [
+  ['yangi', 'Yangi (qabul kutilmoqda)', '📥', '#64748b'],
+  ['qabul', 'Qabul qilingan', '✅', '#2563eb'],
+  ['yolda', "Yo'lda", '🚗', '#0891b2'],
+  ['bajarilmoqda', 'Jarayonda', '🔧', '#d97706'],
+  ['tolov_kutilmoqda', "To'lov kutilmoqda", '💳', '#c2410c'],
+  ['bajarildi', 'Bajarildi', '🏁', '#16a34a'],
+  ['bekor', 'Bekor qilingan', '✖️', '#dc2626'],
+];
+let bqOchiq = null;                 // ochiq oynadagi bosqich (yangilanganda qayta chiziladi)
+
+function ishTarixiChiz(tarix){
+  const quti = document.getElementById('bosqichUstunlar');
+  const holat = document.getElementById('tarixHolat');
+  document.getElementById('tarixSoni').textContent = vazifalar.length ? `(${vazifalar.length} ta ish)` : '';
+  holat.style.display = vazifalar.length ? 'none' : 'block';
+  if (!vazifalar.length) holat.textContent = "Hozircha ish yo'q. Sizga buyurtma tayinlanganda shu yerda bosqichlar bo'yicha ko'rinadi.";
+  quti.innerHTML = '';
+  ISH_BOSQICHLARI.forEach(([kod, nomi, belgi, rang]) => {
+    const soni = vazifalar.filter(b => b.holat === kod).length;
+    const t = document.createElement('button');
+    t.type = 'button';
+    t.className = 'bq-ustun' + (soni ? '' : ' bosh');
+    t.style.setProperty('--rang', rang);
+    t.innerHTML = `<span class="bq-belgi">${belgi}</span><span class="bq-son">${soni}</span>
+      <span class="bq-nomi">${matnEsc(nomi)}</span><span class="bq-ochish">${soni ? 'Ochish ›' : "Bo'sh"}</span>`;
+    t.addEventListener('click', () => bosqichOynaOch(kod));
+    quti.appendChild(t);
+  });
+  if (bqOchiq) bosqichOynaOch(bqOchiq);        // ochiq oyna ham yangilansin (tugma bosilgandan keyin)
+}
+
+function bosqichOynaOch(kod){
+  const [_, nomi, belgi, rang] = ISH_BOSQICHLARI.find(x => x[0] === kod);
+  const ishlar = vazifalar.filter(b => b.holat === kod)
+    .sort((a, b) => new Date(b.natija_sana || b.yangilangan || b.yaratilgan) - new Date(a.natija_sana || a.yangilangan || a.yaratilgan));
+  bqOchiq = kod;
+  const fon = document.getElementById('bqOynaFon');
+  fon.querySelector('.bq-oyna').style.setProperty('--rang', rang);
+  document.getElementById('bqOynaSarlavha').textContent = `${belgi} ${nomi} — ${ishlar.length} ta`;
+  const tana = document.getElementById('bqOynaTana');
+  tana.innerHTML = '';
+  if (!ishlar.length) {
+    tana.innerHTML = '<p class="bosh-holat" style="display:block">Bu bosqichda ish yo\'q.</p>';
+  } else {
+    const faolBosqich = FAOL_HOLATLAR.includes(kod);
+    ishlar.forEach(b => {
+      tana.appendChild(vazifaQator(b, faolBosqich));     // faol bosqichda keyingi qadam tugmalari ham shu oynada
+      const qism = [];
+      if (b.natija_sana) qism.push('Yakun: ' + sanaVaqt(b.natija_sana));
+      if (b.natija) qism.push('Natija: ' + b.natija);
+      if (b.natija_soat) qism.push(b.natija_soat + ' soat');
+      if (b.material) qism.push('Material: ' + b.material);
+      if (['tolov_kutilmoqda', 'bajarildi'].includes(kod)) qism.push(b.tolandi ? "To'langan ✓" : "To'lanmagan");
+      if (qism.length) {
+        const p = document.createElement('div');
+        p.className = 'bq-tafsilot';
+        p.textContent = qism.join(' · ');
+        tana.appendChild(p);
+      }
+    });
+  }
+  fon.classList.add('ochiq');
+  document.body.style.overflow = 'hidden';
+}
+
+function bosqichOynaYop(){
+  bqOchiq = null;
+  document.getElementById('bqOynaFon').classList.remove('ochiq');
+  document.body.style.overflow = '';
+}
+document.getElementById('bqOynaYop').addEventListener('click', bosqichOynaYop);
+document.getElementById('bqOynaFon').addEventListener('click', e => { if (e.target.id === 'bqOynaFon') bosqichOynaYop(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && bqOchiq) bosqichOynaYop(); });
 
 async function vazifalarYukla(){
   try {
