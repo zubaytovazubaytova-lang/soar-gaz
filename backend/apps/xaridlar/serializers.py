@@ -147,7 +147,7 @@ class XaridKirishSerializer(serializers.Serializer):
         region = serializers.CharField(max_length=60, required=False, allow_blank=True)
 
     class _Payment(serializers.Serializer):
-        method = serializers.ChoiceField(choices=sorted(FAOL_TOLOV_USULLARI), default='naqd')
+        method = serializers.ChoiceField(choices=sorted(FAOL_TOLOV_USULLARI), default='click')
         # Bo'lib to'lash uchun oylar soni (faqat method='bolib' bo'lganda)
         months = serializers.IntegerField(required=False, min_value=0, max_value=36, default=0)
 

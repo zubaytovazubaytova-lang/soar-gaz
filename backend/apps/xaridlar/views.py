@@ -151,7 +151,7 @@ def xaridlar_list(request):
     tolov_d = d.get('payment') or {}
     ornatish = d.get('installService', False)
     yetkazish = yetkazish_d.get('method', 'kuryer')
-    tolov_usuli = tolov_d.get('method', 'naqd')
+    tolov_usuli = tolov_d.get('method', 'click')
     bolib_oy = int(tolov_d.get('months') or 0)
 
     # Narx, nom va rasm mijozdan olinmaydi — faqat productId va qty. Qolganini

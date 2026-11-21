@@ -435,7 +435,7 @@
   const XARID_NARX = { ornatish: 250000, yetkazish: 30000, bepul_chegara: 1000000 };
 
   let xaridYetk  = 'kuryer';
-  let xaridTlv   = 'naqd';
+  let xaridTlv   = 'click';      // naqd xaridlar uchun o'chirilgan: faqat Click yoki o'tkazma
   let xaridPromo = null;   // { kod, tavsif, chegirma }
   let xaridQadam = 1;      // joriy bosqich (1–4)
   let xaridBolibOy = 0;    // bo'lib to'lash muddati (oy), 0 — tanlanmagan
@@ -1886,7 +1886,7 @@
     const bolibBor = (XARID_NARX.bolib || []).length &&
                      (!XARID_NARX.bolib_eng_kam || (t && t.amount >= XARID_NARX.bolib_eng_kam));
 
-    const FAOL_USULLAR = ['naqd', 'click', 'bolib', 'bank'];
+    const FAOL_USULLAR = ['click', 'bolib', 'bank'];
     box.innerHTML = Object.keys(TOLOV_NOMI)
       .filter(u => FAOL_USULLAR.includes(u) && u !== joriy && (u !== 'bolib' || bolibBor))
       .map(u => `
