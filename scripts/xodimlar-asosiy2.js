@@ -281,7 +281,8 @@ function xizmatBloki(b, amallar){
     const nom = document.createElement('span');
     nom.className = 'nom';
     const narx = x.narx_gacha != null ? `${pulMatni(x.narx_dan)} – ${pulMatni(x.narx_gacha)}` : pulMatni(x.narx_dan);
-    nom.textContent = `${x.nomi}${x.ustun_nomi ? ` (${x.ustun_nomi})` : ''} × ${x.soni} — ${narx} so'm`;
+    nom.textContent = `${x.nomi}${x.ustun_nomi ? ` (${x.ustun_nomi})` : ''} × ${x.soni} — ${narx} so'm`
+      + (x.chegirma_foiz ? ` · seshanba −${x.chegirma_foiz}% qo'llangan` : '');
     q.append(nom);
     if (faol && !tasdiqlangan) {
       const olib = document.createElement('button');
@@ -2408,6 +2409,8 @@ function arizalarChiz(){
     { const s = document.createElement('small'); s.textContent = a.tarmoq === 'ulgurji' ? 'Tashkilot (ulgurji)' : 'Aholi'; x.appendChild(s); }
     if (a.tanlangan) { const s = document.createElement('small'); s.style.color = '#0f766e';
       s.textContent = a.tanlangan.royxat.map(t => t.nomi + (t.soni > 1 ? ' ×' + t.soni : '')).join('; ') + ' — ' + narxOraliq(a.tanlangan.jami_dan, a.tanlangan.jami_gacha); x.appendChild(s); }
+    if (a.promokod) { const s = document.createElement('small'); s.style.cssText = 'color:#92400e;font-weight:700';
+      s.textContent = `🎟 Promokod ${a.promokod} (−${a.chegirma_foiz}%)`; x.appendChild(s); }
     if (a.tolov_usuli) { const s = document.createElement('small'); s.style.fontWeight = '700';
       s.textContent = a.tolov_usuli === 'naqd' ? '💵 Naqd (usta kelganda)' : "🏦 Hisob raqamga o'tkazma"; x.appendChild(s); }
     const man = katak(tr, a.manzil || '—', 'matn-keng');

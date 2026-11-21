@@ -86,8 +86,19 @@ def buyurtmalar_list(request):
         if tolov_usuli not in ('', 'naqd', 'otkazma'):
             return Response({'detail': _("To'lov usuli noto'g'ri")}, status=400)
         tanlangan = request.data.get('xizmatlar')
+        aksiya_maydonlari = {}
+        promokod = str(request.data.get('promokod') or '').strip().upper()
+        if promokod:
+            # Seshanba aksiyasi: faqat seshanba kuni, faqat shu haftaning 2 ta xizmatiga
+            from apps.narxnoma.models import seshanba_aksiyasi
+            aksiya = seshanba_aksiyasi(timezone.localdate())
+            if not aksiya or promokod != settings.SESHANBA_PROMOKOD:
+                return Response({'detail': _("Promokod noto'g'ri yoki bugun amal qilmaydi (faqat seshanba kunlari)"),
+                                 'maydon': 'promokod'}, status=400)
+            aksiya_maydonlari = {'promokod': promokod, 'chegirma_foiz': settings.SESHANBA_FOIZ,
+                                 'aksiya_qatorlar': aksiya.qator_idlari()}
         with transaction.atomic():
-            b = ser.save(mijoz=user, tarmoq=tarmoq, tolov_usuli=tolov_usuli)
+            b = ser.save(mijoz=user, tarmoq=tarmoq, tolov_usuli=tolov_usuli, **aksiya_maydonlari)
             # Mijoz narxnomadan xizmat tanlagan bo'lsa — buyurtmaga biriktiriladi (usta tayyor holda ko'radi,
             # yakuniy summani u tasdiqlaydi)
             if tanlangan:

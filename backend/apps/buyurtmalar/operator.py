@@ -79,6 +79,7 @@ def _ariza_json(b):
         'xodim_ism': (b.xodim.ism or b.xodim.telefon) if b.xodim_id else '',
         # Narxnomadan tanlangan xizmatlar (mijoz yoki usta) va taxminiy summa
         'tanlangan': BuyurtmaSerializer().get_tanlangan(b),
+        'promokod': b.promokod, 'chegirma_foiz': b.chegirma_foiz,
     }
 
 

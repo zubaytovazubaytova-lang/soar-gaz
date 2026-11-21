@@ -503,3 +503,8 @@ LOGGING = {
         'apps': {'handlers': ['konsol'], 'level': 'INFO', 'propagate': False},
     },
 }
+
+# Seshanba aksiyasi (faqat xizmatlar): navbatdagi 2 ta xizmatga chegirma, promokod bilan.
+# Navbat Django admin → «Seshanba aksiyasi — navbat» da kiritiladi.
+SESHANBA_PROMOKOD = os.environ.get('SESHANBA_PROMOKOD', 'SESHANBA').strip().upper()
+SESHANBA_FOIZ = int(os.environ.get('SESHANBA_FOIZ', '5'))

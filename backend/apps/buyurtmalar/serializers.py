@@ -32,7 +32,7 @@ def xizmatlar_malumoti(b):
         'royxat': [{
             'id': x.id, 'nomi': x.nomi, 'ustun': x.ustun,
             'ustun_nomi': x.ustun_nomi, 'soni': x.soni,
-            'narx_dan': x.narx_dan, 'narx_gacha': x.narx_gacha,
+            'narx_dan': x.narx_dan, 'narx_gacha': x.narx_gacha, 'chegirma_foiz': x.chegirma_foiz,
         } for x in qatorlar],
         'jami_dan': sum(x.narx_dan * x.soni for x in qatorlar),
         'jami_gacha': sum((x.narx_gacha if x.narx_gacha is not None else x.narx_dan) * x.soni
@@ -62,7 +62,8 @@ class BuyurtmaSerializer(serializers.ModelSerializer):
         if not qatorlar:
             return None
         return {
-            'royxat': [{'nomi': x.nomi, 'soni': x.soni, 'narx_dan': x.narx_dan, 'narx_gacha': x.narx_gacha}
+            'royxat': [{'nomi': x.nomi, 'soni': x.soni, 'narx_dan': x.narx_dan, 'narx_gacha': x.narx_gacha,
+                        'chegirma_foiz': x.chegirma_foiz}
                        for x in qatorlar],
             'jami_dan': sum(x.narx_dan * x.soni for x in qatorlar),
             'jami_gacha': sum((x.narx_gacha if x.narx_gacha is not None else x.narx_dan) * x.soni for x in qatorlar),
@@ -76,12 +77,12 @@ class BuyurtmaSerializer(serializers.ModelSerializer):
             'vaqt_istagi', 'holat', 'holat_nomi', 'natija', 'natija_soat', 'natija_sana',
             'material', 'tolandi', 'yaratilgan', 'yangilangan',
             'mijoz_malumot', 'xodim_malumot', 'xizmatlar', 'shartnoma',
-            'tolov_usuli', 'tanlangan',
+            'tolov_usuli', 'tanlangan', 'promokod', 'chegirma_foiz',
         ]
         # `tarmoq`ni mijoz belgilay olmaydi: uni faqat server (korxona -> ulgurji) yoki administrator qo'yadi
         # `tolandi`ni mijoz o'zi qo'ya olmaydi: uni faqat to'lov (Click / tasdiqlangan chek) yoki tushum belgilaydi
         read_only_fields = ['id', 'xizmat_nomi', 'holat_nomi', 'yaratilgan',
-                            'yangilangan', 'tarmoq', 'tarmoq_nomi', 'tolandi']
+                            'yangilangan', 'tarmoq', 'tarmoq_nomi', 'tolandi', 'promokod', 'chegirma_foiz']
         extra_kwargs = {
             'mijoz_ism': {'required': False},
             'mijoz_telefon': {'required': False},

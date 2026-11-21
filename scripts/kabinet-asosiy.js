@@ -586,6 +586,7 @@ async function buyurtmalarYukla() {
         ${b.vaqt_istagi ? `<div class="kv"><span>Taxminiy vaqt</span><span>${xavfsiz(b.vaqt_istagi)}</span></div>` : ''}
         ${b.tanlangan ? `<div class="kv"><span>Xizmatlar</span><span>${b.tanlangan.royxat.map(x => xavfsiz(x.nomi) + (x.soni > 1 ? ' ×' + x.soni : '')).join('<br>')}</span></div>
           <div class="kv"><span>Taxminiy narx</span><span><b>${narxMatn(b.tanlangan.jami_dan, b.tanlangan.jami_gacha)}</b></span></div>` : ''}
+        ${b.promokod ? `<div class="kv"><span>Promokod</span><span><b>${xavfsiz(b.promokod)}</b> · −${b.chegirma_foiz}% (seshanba aksiyasi)</span></div>` : ''}
         ${b.tolov_usuli ? `<div class="kv"><span>To'lov usuli</span><span>${b.tolov_usuli === 'naqd' ? '💵 Naqd (usta kelganda)' : "🏦 Hisob raqamga o'tkazma"}</span></div>` : ''}
         ${b.tavsif ? `<div class="kv"><span>Tavsif</span><span>${xavfsiz(b.tavsif)}</span></div>` : ''}
         ${b.natija ? `<div class="kv"><span>Natija</span><span>${xavfsiz(b.natija)}</span></div>` : ''}
@@ -613,6 +614,7 @@ function arizaModalOch() {
   obyektlarKeshYukla().then(() => {
     modalOch('Yangi ariza qoldirish', `
       <form data-h-submit="h44">
+        <div id="aSeshanba" style="display:none;margin:0 0 14px"></div>
         <label class="f-label" for="aXizmat">Xizmat turi *</label>
         <select class="f-select" id="aXizmat" required>
           <option value="">Tanlang...</option>
@@ -647,9 +649,42 @@ function arizaModalOch() {
         <button class="btn asosiy" type="submit" style="width:100%;justify-content:center"><i class="ti ti-send"></i> Arizani yuborish</button>
       </form>`);
     el('aXizmat').addEventListener('change', arizaNarxlariYukla);
+    seshanbaBanneri();
     el('aNarxlar').addEventListener('change', arizaJamiHisobla);
     el('aNarxlar').addEventListener('input', arizaJamiHisobla);
   }).catch(e => xabar(e.message, true));
+}
+
+/* ---------- Seshanba aksiyasi: har seshanba navbatdagi 2 ta xizmatga chegirma (promokod bilan) ---------- */
+let seshanba = null;
+async function seshanbaBanneri() {
+  seshanba = null;
+  try { seshanba = await so('/narxnoma/seshanba/'); } catch (e) { return; }
+  const quti = el('aSeshanba');
+  if (!quti || !seshanba || !seshanba.bor) return;
+  const nomlar = seshanba.xizmatlar.map(x => '«' + xavfsiz(x.nomi) + '»').join(' va ');
+  quti.style.display = 'block';
+  if (!seshanba.bugun) {
+    const [y, m, d] = String(seshanba.sana).split('-');
+    quti.innerHTML = `<div style="padding:10px 14px;border-radius:12px;background:#fffbeb;border:1px dashed #f59e0b;font-size:12.5px;color:#92400e;line-height:1.45">
+      🗓 <b>Seshanba aksiyasi (${d}.${m}):</b> ${nomlar} xizmatlariga <b>−${seshanba.foiz}%</b>. Promokod shu kuni beriladi.</div>`;
+    return;
+  }
+  quti.innerHTML = `
+    <div style="padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;box-shadow:0 2px 8px rgba(245,158,11,.25)">
+      <div style="font-size:13.5px;font-weight:800;color:#78350f">🎉 Bugun seshanba — ${nomlar} xizmatlariga −${seshanba.foiz}% chegirma!</div>
+      <div style="font-size:12.5px;color:#92400e;margin:4px 0 8px">Promokod: <b style="letter-spacing:.06em">${xavfsiz(seshanba.promokod)}</b> — pastga yozing va xizmatni narxnomadan belgilang.</div>
+      <input class="f-input" id="aPromo" placeholder="Promokod" autocomplete="off" style="margin:0;text-transform:uppercase;letter-spacing:.06em;background:#fff">
+    </div>`;
+  el('aPromo').addEventListener('input', arizaJamiHisobla);
+}
+
+function promoQollanadimi() {
+  const k = el('aPromo');
+  return !!(seshanba && seshanba.bugun && k && k.value.trim().toUpperCase() === String(seshanba.promokod).toUpperCase());
+}
+function aksiyaQatorimi(id) {
+  return !!(seshanba && seshanba.bor && (seshanba.idlar || []).includes(id));
 }
 
 /* Tanlangan xizmat turi bo'yicha narxnoma (mijozning o'z tarmog'i: aholi yoki korxona) */
@@ -688,7 +723,8 @@ async function arizaNarxlariYukla() {
               return `<div class="nx-qator" data-qator="${q.id}" style="display:flex;gap:10px;align-items:flex-start;padding:8px 14px;border-top:1px solid #f1f5f9">
                 <input type="checkbox" class="nx-bel" style="margin-top:3px;width:18px;height:18px;flex:none" aria-label="${xavfsiz(q.nomi)}">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13.5px;line-height:1.35">${xavfsiz(q.nomi)}</div>
+                  <div style="font-size:13.5px;line-height:1.35">${xavfsiz(q.nomi)}${aksiyaQatorimi(q.id)
+                    ? ` <span style="display:inline-block;padding:1px 7px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:10.5px;font-weight:800">SESHANBA −${seshanba.foiz}%</span>` : ''}</div>
                   ${variant.length > 1
                     ? `<select class="f-select nx-ustun" style="margin:6px 0 0;padding:6px 8px;font-size:12.5px">
                          ${variant.map(([u, nom, dan, gacha]) => `<option value="${u}" data-dan="${dan}" data-gacha="${gacha ?? dan}">${xavfsiz(nom || '')}: ${narxMatn(dan, gacha)}</option>`).join('')}
@@ -714,8 +750,11 @@ function arizaTanlangan() {
     const u = q.querySelector('.nx-ustun');
     const opt = u.tagName === 'SELECT' ? u.selectedOptions[0] : u;
     const soni = Math.min(999, Math.max(1, parseInt(q.querySelector('.nx-soni').value, 10) || 1));
-    return { qator: Number(q.dataset.qator), ustun: u.value, soni,
-             dan: Number(opt.dataset.dan) * soni, gacha: Number(opt.dataset.gacha) * soni };
+    const id = Number(q.dataset.qator);
+    // Seshanba promokodi to'g'ri yozilsa — aksiya xizmatiga chegirma (server ham xuddi shunday hisoblaydi)
+    const k = promoQollanadimi() && aksiyaQatorimi(id) ? (100 - seshanba.foiz) / 100 : 1;
+    return { qator: id, ustun: u.value, soni,
+             dan: Math.round(Number(opt.dataset.dan) * k) * soni, gacha: Math.round(Number(opt.dataset.gacha) * k) * soni };
   });
 }
 
@@ -741,6 +780,8 @@ async function arizaYubor(e) {
   if (aloqaTel) tana.mijoz_telefon = aloqaTel;
   const usul = document.querySelector('input[name="aTolov"]:checked');
   tana.tolov_usuli = usul ? usul.value : '';
+  const promo = el('aPromo') ? el('aPromo').value.trim() : '';
+  if (promo) tana.promokod = promo;
   const tanlangan = arizaTanlangan();
   if (tanlangan.length) tana.xizmatlar = tanlangan.map(({ qator, ustun, soni }) => ({ qator, ustun, soni }));
   try {

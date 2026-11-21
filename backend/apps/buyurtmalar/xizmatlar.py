@@ -67,6 +67,16 @@ def xizmat_biriktirish(request, pk):
     return Response(xizmatlar_malumoti(b), status=201)
 
 
+def _chegirmali(b, q, dan, gacha):
+    """Buyurtmada seshanba aksiyasi bo'lsa va qator aksiya xizmati bo'lsa — narx chegirma bilan."""
+    foiz = b.chegirma_foiz if (b.chegirma_foiz and q.id in (b.aksiya_qatorlar or [])) else 0
+    if not foiz:
+        return {'narx_dan': dan, 'narx_gacha': gacha, 'chegirma_foiz': 0}
+    # Butun sonda, yarmidan yuqoriga yaxlitlash (saytdagi hisob bilan bir xil)
+    kamayt = lambda n: None if n is None else (n * (100 - foiz) + 50) // 100
+    return {'narx_dan': kamayt(dan), 'narx_gacha': kamayt(gacha), 'chegirma_foiz': foiz}
+
+
 def xizmatlarni_yoz(b, royxat, user):
     """Narxnomadan tanlangan xizmatlarni buyurtmaga yozadi. Xato bo'lsa matn qaytaradi, aks holda None.
     Tanlov: [{"qator": id, "ustun": "p"|"r", "soni": 1..999}]. Nom va narx shu paytdagi qiymatda saqlanadi."""
@@ -105,8 +115,8 @@ def xizmatlarni_yoz(b, royxat, user):
         for q, ustun, soni, dan, gacha in yozuvlar:
             BuyurtmaXizmat.objects.update_or_create(
                 buyurtma=b, qator=q, ustun=ustun,
-                defaults={'soni': soni, 'nomi': q.nomi, 'narx_dan': dan, 'narx_gacha': gacha,
-                          'ustun_nomi': q.narxnoma.ustun_qisqa(ustun), 'qoshgan': user})
+                defaults={'soni': soni, 'nomi': q.nomi, 'ustun_nomi': q.narxnoma.ustun_qisqa(ustun),
+                          'qoshgan': user, **_chegirmali(b, q, dan, gacha)})
     return None
 
 

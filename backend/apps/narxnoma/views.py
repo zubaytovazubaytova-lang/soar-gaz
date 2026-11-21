@@ -309,6 +309,29 @@ def mijoz_narxlari(request):
     return Response({'tarmoq': tarmoq, 'narxnomalar': javob})
 
 
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([OchiqNarxnomaThrottle])
+def seshanba(request):
+    """Seshanba aksiyasi: bugun seshanba bo'lsa — bugungi 2 xizmat va promokod;
+    aks holda keyingi seshanba sanasi va xizmatlari (promokod faqat seshanba kuni beriladi)."""
+    from django.conf import settings
+    from django.utils import timezone
+    from .models import keyingi_seshanba, seshanba_aksiyasi
+    bugun = timezone.localdate()
+    sana = keyingi_seshanba(bugun)
+    a = seshanba_aksiyasi(sana)
+    if not a:
+        return Response({'bor': False})
+    return Response({
+        'bor': True, 'bugun': sana == bugun, 'sana': sana, 'foiz': settings.SESHANBA_FOIZ,
+        'promokod': settings.SESHANBA_PROMOKOD if sana == bugun else None,
+        'xizmatlar': [{'id': q.id, 'nomi': q.nomi} for q in a.qatorlar()],
+        'idlar': a.qator_idlari(),                  # shu nomdagi barcha narxnoma qatorlari
+    })
+
+
 # Mijoz tanlaydigan xizmat turi → narxnoma bo'limlari
 XIZMAT_BOLIMLARI = {
     'servis': ['profilaktika', 'buyurtma'],
