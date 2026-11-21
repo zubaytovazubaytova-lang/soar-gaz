@@ -1,0 +1,9 @@
+[Unit]
+Description=SOAR GAZ hisoblagich tekshiruvi eslatmalari (kabinet + Telegram, tekin)
+After=postgresql.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/soargaz-manage tekshiruv_eslatma
+Nice=10

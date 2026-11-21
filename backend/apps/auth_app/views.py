@@ -16,6 +16,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
+from apps.sms_app import telegram as telegram_bot, tg_gateway
 from apps.sms_app.gateway import sms_yubor, sozlanganmi as sms_sozlanganmi
 from .hududlar import HUDUDLAR_XARITASI
 from .kabinet_turlari import kabinet_malumoti
@@ -308,7 +309,11 @@ def _admin_2fa_boshla(request, user):
     if settings.DEBUG and not sms_sozlanganmi():
         javob['dev_kod'] = kod
     if not yuborildi:
-        javob['ogohlantirish'] = "SMS yuborilmadi — kodni administratordan so'rang."
+        if telegram_bot.sozlangan() and not telegram_bot.ulangan(user.telefon):
+            javob['ogohlantirish'] = (f"Kod Telegram orqali yuboriladi: @{telegram_bot.bot_nomi()} botini oching, "
+                                      "«Start» va «Raqamni ulashish» ni bosing, so'ng qayta kiring.")
+        else:
+            javob['ogohlantirish'] = "SMS yuborilmadi — kodni administratordan so'rang."
     return Response(javob)
 
 
@@ -394,9 +399,52 @@ def royxatdan_otish(request):
                           status.HTTP_201_CREATED)
 
 
+# Mijoz kirish kodi (`otp/yuborish`, `otp/tasdiqlash`) FAQAT mijozlar uchun. Xodim `/xodimlar` da telefon +
+# admin bergan kod bilan, administrator `/boshqaruv/` da parol + 2-bosqich bilan kiradi. Bu yo'lni ular uchun
+# yopish ikki narsani beradi: administrator parolsiz (faqat kod bilan) kirib ketmaydi — jumladan o'z
+# 2-bosqich kodi bilan ham — va xodim kodlariga SMS/Telegram puli sarflanmaydi.
+OTP_YOPIQ_ROLLAR = ('admin', 'xodim')
+
+
+def _otp_yopiq_javobi():
+    return Response({
+        'detail': _("Bu yerdan faqat mijozlar kiradi. Xodimlar: /xodimlar sahifasi (telefon va admin bergan kod), "
+                    "administrator: /boshqaruv/."),
+        'yopiq_rol': True,
+    }, status=403)
+
+
+def _gateway_mumkinmi(telefon):
+    """Telegram Gateway pullik: faqat mijozlar va yangi (hali ro'yxatda yo'q) raqamlar uchun.
+    Xodim va admin kodlari Gateway'ga ketmaydi."""
+    if not settings.TELEGRAM_GATEWAY_FAQAT_MIJOZ:
+        return True
+    return not Foydalanuvchi.objects.filter(telefon=telefon, rol__in=('admin', 'xodim')).exists()
+
+
 def _send_otp_sms(telefon, kod):
-    """OTP kodni SMS orqali yuboradi (provayder sozlanmagan bo'lsa — log)."""
-    return sms_yubor(telefon, f"SOAR GAZ tasdiqlash kodi: {kod}. Hech kimga aytmang.")
+    """OTP kodni yuboradi. Navbat: 1) Telegram Gateway (raqam bo'yicha, botsiz), 2) Telegram bot
+    (faqat raqam allaqachon ulangan bo'lsa: ichki zaxira), 3) SMS (Eskiz). Hech biri sozlanmagan bo'lsa — log."""
+    if tg_gateway.sozlangan() and _gateway_mumkinmi(telefon) and tg_gateway.kod_yubor(telefon, kod):
+        return True
+    return sms_yubor(telefon, f"SOAR GAZ tasdiqlash kodi: {kod}. Hech kimga aytmang.", telegram_bot=True)
+
+
+def _kod_yuborilmadi_javobi(telefon):
+    """Kod ketmadi. Telegram yoqilgan va raqam botga ulanmagan bo'lsa — ulash yo'riqnomasi."""
+    if (settings.TELEGRAM_BOT_MIJOZLARGA and telegram_bot.sozlangan()
+            and not telegram_bot.ulangan(telefon)):
+        bot = telegram_bot.bot_nomi()
+        return Response({
+            'detail': _("Kod Telegram orqali yuboriladi. Telegramda @%(bot)s botini oching, "
+                        "«Start» va «Raqamni ulashish» tugmalarini bosing, so'ng kodni qayta so'rang.")
+                      % {'bot': bot},
+            'telegram_kerak': True, 'bot': bot, 'havola': f'https://t.me/{bot}',
+        }, status=409)
+    return Response(
+        {'detail': _("SMS yuborilmadi. Birozdan keyin urinib ko'ring yoki operatorga murojaat qiling.")},
+        status=502,
+    )
 
 
 def _kesh_kaliti(nom, telefon):
@@ -438,6 +486,8 @@ def otp_yuborish(request):
         mavjud = Foydalanuvchi.objects.get(telefon=telefon)
         if mavjud.holat == 'nofaol':
             return Response({'detail': _('Hisobingiz bloklangan. Admin bilan bog\'laning.')}, status=403)
+        if mavjud.rol in OTP_YOPIQ_ROLLAR:
+            return _otp_yopiq_javobi()
         yangi_mijoz = False
         rol = mavjud.rol
     except Foydalanuvchi.DoesNotExist:
@@ -450,10 +500,7 @@ def otp_yuborish(request):
     OtpKod.objects.create(telefon=telefon, kod=kod)
 
     if not sinov_kod and not _send_otp_sms(telefon, kod):
-        return Response(
-            {'detail': _("SMS yuborilmadi. Birozdan keyin urinib ko'ring yoki operatorga murojaat qiling.")},
-            status=502,
-        )
+        return _kod_yuborilmadi_javobi(telefon)
 
     # Cheklov hisoblagichlari
     cache.set(_kesh_kaliti('oxirgi', telefon), 1, settings.OTP_QAYTA_SONIYA)
@@ -472,6 +519,10 @@ def otp_tasdiqlash(request):
 
     if not telefon or not kod:
         return Response({'detail': _('Telefon va kod kiritilishi shart')}, status=400)
+
+    # Xodim/admin bu yo'ldan token ololmaydi (kod sarflanmaydi: admin 2-bosqich kodi o'z yo'lida qoladi)
+    if Foydalanuvchi.objects.filter(telefon=telefon, rol__in=OTP_YOPIQ_ROLLAR).exists():
+        return _otp_yopiq_javobi()
 
     if cache.get(_kesh_kaliti('blok', telefon)):
         return Response(
@@ -594,6 +645,12 @@ def profil(request):
         if f in request.data
         and str(request.data.get(f) or '').strip() != str(getattr(user, f) or '').strip()
     ]
+    # Telegram orqali yangi ro'yxatdan o'tgan mijozning Telegram'i ESKI raqamga ochilgan bo'lishi mumkin.
+    # Birinchi profil to'ldirishda u HOZIRGI raqamini aloqa raqami sifatida kodsiz kiritadi:
+    # faqat maydon bo'sh bo'lsa va hisob 1 kundan yosh bo'lsa (keyingi o'zgartirish — avvalgidek kod bilan).
+    if ('qoshimcha_telefon' in ozgardi and not user.qoshimcha_telefon and user.rol == 'mijoz'
+            and timezone.now() - user.yaratilgan < timezone.timedelta(days=1)):
+        ozgardi.remove('qoshimcha_telefon')
     if ozgardi:
         rad = tasdiq_kodini_sarfla(user, request.data.get('tasdiq_kodi'))
         if rad:
@@ -638,6 +695,9 @@ def _xodim_data(user):
         'holat': user.holat,
         # Lavozimga qarab kabinet menyusi (kirish hamma uchun bir xil)
         'kabinet': kabinet_malumoti(user.lavozim),
+        # Yangi vazifa / ariza xabarlari Telegram bot orqali (tekin) — ulanmagan bo'lsa kabinetda eslatma
+        'telegram_ulangan': telegram_bot.ulangan(user.telefon),
+        'telegram_bot': telegram_bot.bot_nomi(),
     }
 
 

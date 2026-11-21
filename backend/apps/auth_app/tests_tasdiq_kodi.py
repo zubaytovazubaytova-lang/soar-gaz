@@ -46,7 +46,16 @@ class TasdiqKodiTest(TestCase):
         self.assertEqual(self.user.email, 'eski@mail.uz')
 
     def test_qoshimcha_telefon_kodsiz_rad_etiladi(self):
+        # Eski hisob: aloqa raqamini kodsiz o'zgartirib bo'lmaydi (token o'g'irlansa ham)
+        from django.utils import timezone
+        Foydalanuvchi.objects.filter(pk=self.user.pk).update(yaratilgan=timezone.now() - timezone.timedelta(days=3))
         self.assertEqual(self.patch(qoshimcha_telefon='+998900000000').status_code, 403)
+
+    def test_yangi_hisob_birinchi_aloqa_raqami_kodsiz(self):
+        # Telegram eski raqamga ochilgan yangi mijoz: birinchi marta hozirgi raqamini kodsiz kiritadi
+        self.assertEqual(self.patch(qoshimcha_telefon='+998900000000').status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.qoshimcha_telefon, '+998900000000')
 
     def test_notogri_kod_rad_etiladi(self):
         self.kod('654321')

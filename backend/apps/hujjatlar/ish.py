@@ -40,9 +40,9 @@ ARIZA_HOLAT = {'yangi': 'Yangi', 'korildi': 'Qabul qilingan', 'boglandi': "Mijoz
                'yakunlandi': 'Yakunlangan', 'bekor': 'Bekor qilingan'}
 ARIZA_QABUL = ('korildi', 'boglandi', 'yakunlandi')
 ARIZA_YAKUN = ('yakunlandi', 'bekor')
-BUYURTMA_HOLAT = {'yangi': 'Yangi', 'qabul': 'Xodim qabul qildi', 'bajarilmoqda': 'Jarayonda',
+BUYURTMA_HOLAT = {'yangi': 'Yangi', 'qabul': 'Xodim qabul qildi', 'yolda': "Xodim yo'lda", 'bajarilmoqda': 'Jarayonda', 'tolov_kutilmoqda': "To'lov kutilmoqda",
                   'bajarildi': 'Bajarildi', 'bekor': 'Bekor qilingan'}
-BUYURTMA_QABUL = ('qabul', 'bajarilmoqda', 'bajarildi')
+BUYURTMA_QABUL = ('qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda', 'bajarildi')
 BUYURTMA_YAKUN = ('bajarildi', 'bekor')
 BUYURTMA_XIZMAT = {'loyiha': 'Loyihalashtirish', 'metrologiya': 'Metrologiya'}
 KALIT = re.compile(r'^([ab])(\d+)$')
@@ -142,7 +142,7 @@ def _xulosa():
         'yangi': MetrologiyaArizasi.objects.filter(holat='yangi').count()
                  + Buyurtma.objects.filter(xizmat__in=list(BUYURTMA_XIZMAT), holat='yangi').count(),
         'qabul': MetrologiyaArizasi.objects.filter(holat__in=('korildi', 'boglandi')).count()
-                 + Buyurtma.objects.filter(xizmat__in=list(BUYURTMA_XIZMAT), holat__in=('qabul', 'bajarilmoqda')).count(),
+                 + Buyurtma.objects.filter(xizmat__in=list(BUYURTMA_XIZMAT), holat__in=('qabul', 'yolda', 'bajarilmoqda')).count(),
         'tayyor': HujjatLoyiha.objects.filter(yuborilgan__isnull=True).count(),
         'bugun_yuborilgan': HujjatLoyiha.objects.filter(yuborilgan__gte=bugun).count(),
     }
@@ -286,7 +286,9 @@ def hujjat_yuborish(request, pk):
         return _ruxsat_yoq()
     try:
         with transaction.atomic():
-            h = HujjatLoyiha.objects.select_for_update().select_related('ariza', 'buyurtma__mijoz').filter(pk=pk).first()
+            # of=('self',): faqat hujjat qatori bloklanadi. PostgreSQL bo'sh bo'lishi mumkin bo'lgan (LEFT JOIN)
+            # bog'liq jadvallarni FOR UPDATE bilan bloklashni rad etadi (SQLite'da bu xato ko'rinmaydi).
+            h = HujjatLoyiha.objects.select_for_update(of=('self',)).select_related('ariza', 'buyurtma__mijoz').filter(pk=pk).first()
             if h is None:
                 return Response({'detail': _('Topilmadi')}, status=404)
             if h.yuborilgan:

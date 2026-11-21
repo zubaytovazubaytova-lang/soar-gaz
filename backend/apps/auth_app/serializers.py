@@ -157,6 +157,17 @@ class ProfilSerializer(JoylashuvMixin, serializers.ModelSerializer):
         fields = ['ism', 'manzil', 'viloyat', 'tuman', 'mahalla',
                   'qoshimcha_telefon', 'email', 'mulk_turi', 'moljal']
 
+    def validate_qoshimcha_telefon(self, qiymat):
+        """Aloqa raqami: bo'sh yoki to'liq O'zbekiston raqami (+998XXXXXXXXX ko'rinishida saqlanadi)."""
+        raqamlar = ''.join(ch for ch in str(qiymat or '') if ch.isdigit())
+        if not raqamlar:
+            return ''
+        if len(raqamlar) == 9:
+            raqamlar = '998' + raqamlar
+        if len(raqamlar) != 12 or not raqamlar.startswith('998'):
+            raise serializers.ValidationError(_("Telefon raqamni to'liq kiriting: +998 90 123 45 67"))
+        return '+' + raqamlar
+
 
 class XodimProfilSerializer(serializers.ModelSerializer):
     """Xodim o'z kabinetida faqat aloqa ma'lumotlarini o'zgartira oladi.

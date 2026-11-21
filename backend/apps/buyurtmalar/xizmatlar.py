@@ -60,19 +60,39 @@ def xizmat_biriktirish(request, pk):
         return rad
 
     royxat = request.data.get('xizmatlar')
+    xato = xizmatlarni_yoz(b, royxat, request.user)
+    if xato:
+        return Response({'detail': xato}, status=400)
+    audit_yoz(request, 'buyurtma_xizmat', f'#{b.id}: {len(royxat)} ta xizmat biriktirildi')
+    return Response(xizmatlar_malumoti(b), status=201)
+
+
+def _chegirmali(b, q, dan, gacha):
+    """Buyurtmada seshanba aksiyasi bo'lsa va qator aksiya xizmati bo'lsa — narx chegirma bilan."""
+    foiz = b.chegirma_foiz if (b.chegirma_foiz and q.id in (b.aksiya_qatorlar or [])) else 0
+    if not foiz:
+        return {'narx_dan': dan, 'narx_gacha': gacha, 'chegirma_foiz': 0}
+    # Butun sonda, yarmidan yuqoriga yaxlitlash (saytdagi hisob bilan bir xil)
+    kamayt = lambda n: None if n is None else (n * (100 - foiz) + 50) // 100
+    return {'narx_dan': kamayt(dan), 'narx_gacha': kamayt(gacha), 'chegirma_foiz': foiz}
+
+
+def xizmatlarni_yoz(b, royxat, user):
+    """Narxnomadan tanlangan xizmatlarni buyurtmaga yozadi. Xato bo'lsa matn qaytaradi, aks holda None.
+    Tanlov: [{"qator": id, "ustun": "p"|"r", "soni": 1..999}]. Nom va narx shu paytdagi qiymatda saqlanadi."""
     if not isinstance(royxat, list) or not royxat:
-        return Response({'detail': _('Xizmatlarni tanlang')}, status=400)
+        return _('Xizmatlarni tanlang')
     if len(royxat) > MAX_XIZMAT:
-        return Response({'detail': _("Bir martada eng ko'pi %(n)s ta xizmat") % {'n': MAX_XIZMAT}}, status=400)
+        return _("Bir martada eng ko'pi %(n)s ta xizmat") % {'n': MAX_XIZMAT}
 
     tanlov = {}                     # (qator_id, ustun) -> soni; takror bo'lsa oxirgisi
     for el in royxat:
         if not isinstance(el, dict):
-            return Response({'detail': _("Tanlov noto'g'ri")}, status=400)
+            return _("Tanlov noto'g'ri")
         qid, ustun, soni = el.get('qator'), el.get('ustun'), el.get('soni', 1)
         if (isinstance(qid, bool) or not isinstance(qid, int) or ustun not in ('p', 'r')
                 or isinstance(soni, bool) or not isinstance(soni, int) or not (1 <= soni <= 999)):
-            return Response({'detail': _("Tanlov noto'g'ri")}, status=400)
+            return _("Tanlov noto'g'ri")
         tanlov[(qid, ustun)] = soni
 
     qatorlar = {q.id: q for q in NarxnomaQator.objects.select_related('narxnoma').filter(
@@ -81,25 +101,23 @@ def xizmat_biriktirish(request, pk):
     for (qid, ustun), soni in tanlov.items():
         q = qatorlar.get(qid)
         if q is None:
-            return Response({'detail': _('Tanlangan xizmat narxnomada topilmadi')}, status=400)
+            return _('Tanlangan xizmat narxnomada topilmadi')
         # Narxlar tarmoqqa qarab farq qiladi: ulgurji buyurtmaga aholi narxi (yoki aksincha) qo'yilmaydi
         if q.narxnoma.tarmoq != b.tarmoq:
-            return Response({'detail': _("«%(nomi)s» xizmati bu buyurtma tarmog'iga (%(tarmoq)s) mos emas")
-                             % {'nomi': q.nomi[:60], 'tarmoq': b.get_tarmoq_display()}}, status=400)
+            return (_("«%(nomi)s» xizmati bu buyurtma tarmog'iga (%(tarmoq)s) mos emas")
+                    % {'nomi': q.nomi[:60], 'tarmoq': b.get_tarmoq_display()})
         dan, gacha = (q.p_dan, q.p_gacha) if ustun == 'p' else (q.r_dan, q.r_gacha)
         if dan is None:
-            return Response({'detail': _('«%(nomi)s» uchun bu ustunda narx belgilanmagan')
-                             % {'nomi': q.nomi[:60]}}, status=400)
+            return _('«%(nomi)s» uchun bu ustunda narx belgilanmagan') % {'nomi': q.nomi[:60]}
         yozuvlar.append((q, ustun, soni, dan, gacha))
 
     with transaction.atomic():
         for q, ustun, soni, dan, gacha in yozuvlar:
             BuyurtmaXizmat.objects.update_or_create(
                 buyurtma=b, qator=q, ustun=ustun,
-                defaults={'soni': soni, 'nomi': q.nomi, 'narx_dan': dan, 'narx_gacha': gacha,
-                          'ustun_nomi': q.narxnoma.ustun_qisqa(ustun), 'qoshgan': request.user})
-    audit_yoz(request, 'buyurtma_xizmat', f'#{b.id}: {len(yozuvlar)} ta xizmat biriktirildi')
-    return Response(xizmatlar_malumoti(b), status=201)
+                defaults={'soni': soni, 'nomi': q.nomi, 'ustun_nomi': q.narxnoma.ustun_qisqa(ustun),
+                          'qoshgan': user, **_chegirmali(b, q, dan, gacha)})
+    return None
 
 
 @api_view(['DELETE'])

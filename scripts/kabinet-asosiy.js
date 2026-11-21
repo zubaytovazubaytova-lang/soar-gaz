@@ -246,6 +246,9 @@ async function so(yol, sozlama, qaytaUrinma) {
 let kirishTelefon = '';
 
 function authXato(matn) {
+  // Telefon oynasi ochiq bo'lsa xato oynaning ichida ham ko'rinsin (orqadagisi parda ostida qoladi)
+  const t = el('telXato');
+  if (t) { t.textContent = matn || ''; t.className = matn ? 'auth-error show' : 'auth-error'; }
   const p = el('authXato');
   if (!matn) { p.className = 'auth-error'; return; }
   p.textContent = matn;
@@ -336,20 +339,43 @@ async function kodTasdiqla(e) {
   btn.disabled = false;
 }
 
+/* Telegram orqali yangi ro'yxatdan o'tganda: Telegram'dagi raqam hozirgimi? */
+function telTasdiqKorsat(telefon) {
+  el('pTgTel').textContent = telefon || '';
+  el('pTelBlok').classList.add('korinadi');
+}
+document.querySelectorAll('input[name="pTelTanlov"]').forEach(r => r.addEventListener('change', () => {
+  const boshqa = document.querySelector('input[name="pTelTanlov"]:checked').value === 'yoq';
+  el('pYangiTelWrap').classList.toggle('korinadi', boshqa);
+  el('pYangiTel').required = boshqa;
+  if (boshqa) el('pYangiTel').focus();
+}));
+
 async function profilSaqla(e) {
   e.preventDefault();
   const btn = el('profilBtn');
+  const tana = {
+    ism: el('pIsm').value.trim(),
+    viloyat: el('pViloyat').value,
+    tuman: el('pTuman').value,
+    mahalla: el('pMahalla').value.trim(),
+    manzil: el('pManzil').value.trim(),
+    moljal: el('pMoljal').value.trim(),
+    mulk_turi: el('pMulk').value,
+  };
+  if (el('pTelBlok').classList.contains('korinadi') &&
+      document.querySelector('input[name="pTelTanlov"]:checked').value === 'yoq') {
+    const raqam = el('pYangiTel').value.replace(/\D/g, '');
+    if (raqam.length !== 9 && !(raqam.length === 12 && raqam.startsWith('998'))) {
+      authXato("Hozirgi telefon raqamingizni to'liq kiriting: +998 90 123 45 67");
+      el('pYangiTel').focus();
+      return;
+    }
+    tana.qoshimcha_telefon = el('pYangiTel').value.trim();
+  }
   btn.disabled = true;
   try {
-    profil = await so('/auth/profil/', { method:'PATCH', body:{
-      ism: el('pIsm').value.trim(),
-      viloyat: el('pViloyat').value,
-      tuman: el('pTuman').value,
-      mahalla: el('pMahalla').value.trim(),
-      manzil: el('pManzil').value.trim(),
-      moljal: el('pMoljal').value.trim(),
-      mulk_turi: el('pMulk').value,
-    }});
+    profil = await so('/auth/profil/', { method:'PATCH', body: tana });
     saqlash.setItem('sg_user', JSON.stringify(profil));
     kabinetOch();
   } catch (err) { authXato(err.message); }
@@ -521,7 +547,7 @@ async function boshYukla() {
 
 function holatTegi(holat) {
   const xarita = {
-    yangi:['plan','Yangi'], qabul:['progress','Xodim tayinlandi'],
+    yangi:['plan','Yangi'], qabul:['progress','Xodim tayinlandi'], yolda:['progress',"Usta yo'lda"], tolov_kutilmoqda:['wait',"Ish bajarildi — to'lov kutilmoqda"],
     bajarilmoqda:['progress','Bajarilmoqda'], bajarildi:['done','Yakunlandi'],
     bekor:['bad','Bekor qilindi'],
   };
@@ -558,9 +584,18 @@ async function buyurtmalarYukla() {
         <div class="kv"><span>Manzil</span><span>${xavfsiz(b.obyekt_nomi || b.manzil || b.tuman || '—')}</span></div>
         ${b.xodim_malumot ? `<div class="kv"><span>Keladigan xodim</span><span>${xavfsiz(b.xodim_malumot.ism || '—')} · ${xavfsiz(b.xodim_malumot.telefon)}</span></div>` : ''}
         ${b.vaqt_istagi ? `<div class="kv"><span>Taxminiy vaqt</span><span>${xavfsiz(b.vaqt_istagi)}</span></div>` : ''}
+        ${b.tanlangan ? `<div class="kv"><span>Xizmatlar</span><span>${b.tanlangan.royxat.map(x => xavfsiz(x.nomi) + (x.soni > 1 ? ' ×' + x.soni : '')).join('<br>')}</span></div>
+          <div class="kv"><span>Taxminiy narx</span><span><b>${narxMatn(b.tanlangan.jami_dan, b.tanlangan.jami_gacha)}</b></span></div>` : ''}
+        ${b.promokod ? `<div class="kv"><span>Promokod</span><span><b>${xavfsiz(b.promokod)}</b> · −${b.chegirma_foiz}% (seshanba aksiyasi)</span></div>` : ''}
+        ${b.tolov_usuli ? `<div class="kv"><span>To'lov usuli</span><span>${b.tolov_usuli === 'naqd' ? '💵 Naqd (usta kelganda)' : "🏦 Hisob raqamga o'tkazma"}</span></div>` : ''}
         ${b.tavsif ? `<div class="kv"><span>Tavsif</span><span>${xavfsiz(b.tavsif)}</span></div>` : ''}
         ${b.natija ? `<div class="kv"><span>Natija</span><span>${xavfsiz(b.natija)}</span></div>` : ''}
       </div>
+      ${b.tolandi
+        ? `<span style="display:inline-block;margin-top:12px;margin-right:6px;padding:6px 12px;border-radius:999px;background:#dcfce7;color:#166534;font-weight:700;font-size:13px"><i class="ti ti-circle-check"></i> To'langan</span>`
+        : (b.holat !== 'bekor'
+          ? `<button class="btn asosiy kichik" style="margin-top:12px;margin-right:6px;background:#0d6efd" data-h-click="c:clickTolovOch" data-a-click="${SG_A([b.id])}"><i class="ti ti-credit-card"></i> Click orqali to'lash</button>
+             <button class="btn sokin kichik" style="margin-top:12px;margin-right:6px" data-h-click="c:bankTolovOch" data-a-click="${SG_A([b.id])}"><i class="ti ti-building-bank"></i> Hisob raqamga to'lash</button>` : '')}
       ${b.holat === 'bajarildi' && !b.baholangan
         ? `<button class="btn sokin kichik" style="margin-top:12px" data-h-click="c:sharhModalOch" data-a-click="${SG_A([b.id, String(b.xizmat_nomi)])}"><i class="ti ti-star"></i> Baho qoldirish</button>` : ''}
     </div>`).join('') : '<p class="bosh-holat">Bu bo\'limda buyurtma topilmadi.</p>';
@@ -579,11 +614,13 @@ function arizaModalOch() {
   obyektlarKeshYukla().then(() => {
     modalOch('Yangi ariza qoldirish', `
       <form data-h-submit="h44">
+        <div id="aSeshanba" style="display:none;margin:0 0 14px"></div>
         <label class="f-label" for="aXizmat">Xizmat turi *</label>
         <select class="f-select" id="aXizmat" required>
           <option value="">Tanlang...</option>
           ${XIZMATLAR.map(([k,n]) => `<option value="${k}">${n}</option>`).join('')}
         </select>
+        <div id="aNarxlar" style="display:none;margin:-4px 0 16px"></div>
         <label class="f-label" for="aObyekt">Obyekt</label>
         <select class="f-select" id="aObyekt">
           <option value="">Profildagi asosiy manzil</option>
@@ -602,9 +639,139 @@ function arizaModalOch() {
         <p class="f-hint" style="margin:-8px 0 14px;font-size:12px;opacity:.7">Bo'sh qoldirsangiz profilingizdagi raqamga qo'ng'iroq qilinadi.</p>
         <label class="f-label" for="aTavsif">Muammo tavsifi</label>
         <textarea class="f-area" id="aTavsif" placeholder="Qisqacha yozing..."></textarea>
+        <span class="f-label">To'lov usuli *</span>
+        <div class="tolov-usul" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px">
+          <label class="tu-tanlov"><input type="radio" name="aTolov" value="naqd" checked>
+            <span><b>💵 Naqd</b><small>Usta kelganda to'laysiz</small></span></label>
+          <label class="tu-tanlov"><input type="radio" name="aTolov" value="otkazma">
+            <span><b>🏦 O'tkazma</b><small>Hisob raqamga yoki Click</small></span></label>
+        </div>
         <button class="btn asosiy" type="submit" style="width:100%;justify-content:center"><i class="ti ti-send"></i> Arizani yuborish</button>
       </form>`);
+    el('aXizmat').addEventListener('change', arizaNarxlariYukla);
+    seshanbaBanneri();
+    el('aNarxlar').addEventListener('change', arizaJamiHisobla);
+    el('aNarxlar').addEventListener('input', arizaJamiHisobla);
   }).catch(e => xabar(e.message, true));
+}
+
+/* ---------- Seshanba aksiyasi: har seshanba navbatdagi 2 ta xizmatga chegirma (promokod bilan) ---------- */
+let seshanba = null;
+async function seshanbaBanneri() {
+  seshanba = null;
+  try { seshanba = await so('/narxnoma/seshanba/'); } catch (e) { return; }
+  const quti = el('aSeshanba');
+  if (!quti || !seshanba || !seshanba.bor) return;
+  const nomlar = seshanba.xizmatlar.map(x => '«' + xavfsiz(x.nomi) + '»').join(' va ');
+  quti.style.display = 'block';
+  if (!seshanba.bugun) {
+    const [y, m, d] = String(seshanba.sana).split('-');
+    quti.innerHTML = `<div style="padding:10px 14px;border-radius:12px;background:#fffbeb;border:1px dashed #f59e0b;font-size:12.5px;color:#92400e;line-height:1.45">
+      🗓 <b>Seshanba aksiyasi (${d}.${m}):</b> ${nomlar} xizmatlariga <b>−${seshanba.foiz}%</b>. Promokod seshanba kuni beriladi (50 soat amal qiladi).</div>`;
+    return;
+  }
+  quti.innerHTML = `
+    <div style="padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;box-shadow:0 2px 8px rgba(245,158,11,.25)">
+      <div style="font-size:13.5px;font-weight:800;color:#78350f">🎉 Seshanba aksiyasi — ${nomlar} xizmatlariga −${seshanba.foiz}% chegirma!</div>
+      <div style="font-size:12.5px;color:#92400e;margin:4px 0 8px">Promokod: <b style="letter-spacing:.06em">${xavfsiz(seshanba.promokod)}</b> — pastga yozing va xizmatni narxnomadan belgilang.
+        ${seshanba.tugash ? `<br>⏳ Amal qiladi: <b>${tugashMatni(seshanba.tugash)}</b> gacha` : ''}</div>
+      <input class="f-input" id="aPromo" placeholder="Promokod" autocomplete="off" style="margin:0;text-transform:uppercase;letter-spacing:.06em;background:#fff">
+    </div>`;
+  el('aPromo').addEventListener('input', arizaJamiHisobla);
+}
+
+function tugashMatni(iso) {
+  // Server Toshkent vaqtida beradi: «2026-11-26T02:00:00+05:00» → «26.11, 02:00»
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return m ? `${m[3]}.${m[2]}, ${m[4]}:${m[5]}` : '';
+}
+
+function promoQollanadimi() {
+  const k = el('aPromo');
+  return !!(seshanba && seshanba.bugun && k && k.value.trim().toUpperCase() === String(seshanba.promokod).toUpperCase());
+}
+function aksiyaQatorimi(id) {
+  return !!(seshanba && seshanba.bor && (seshanba.idlar || []).includes(id));
+}
+
+/* Tanlangan xizmat turi bo'yicha narxnoma (mijozning o'z tarmog'i: aholi yoki korxona) */
+let arizaNarxSorov = 0;
+function narxMatn(dan, gacha) {
+  if (dan == null) return '';
+  return gacha != null && gacha !== dan ? `${pul(dan).replace(" so'm", '')} – ${pul(gacha)}` : pul(dan);
+}
+
+async function arizaNarxlariYukla() {
+  const quti = el('aNarxlar');
+  const xizmat = el('aXizmat').value;
+  const raqam = ++arizaNarxSorov;
+  if (!xizmat) { quti.style.display = 'none'; quti.innerHTML = ''; return; }
+  quti.style.display = 'block';
+  quti.innerHTML = `<p class="f-hint" style="margin:0">Narxlar yuklanmoqda...</p>`;
+  try {
+    const d = await so('/narxnoma/mijoz/?xizmat=' + encodeURIComponent(xizmat));
+    if (raqam !== arizaNarxSorov) return;          // foydalanuvchi boshqa xizmatni tanlab ulgurdi
+    if (!d.narxnomalar.length) {
+      quti.innerHTML = `<p class="f-hint" style="margin:0;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0">Bu xizmat narxi ko'rikdan so'ng usta tomonidan aytiladi.</p>`;
+      return;
+    }
+    quti.innerHTML = `
+      <div style="border:1px solid #cbd5e1;border-radius:14px;overflow:hidden;background:#fff">
+        <div style="padding:10px 14px;background:linear-gradient(180deg,#f8fafc,#eef2f7);border-bottom:1px solid #e2e8f0;font-weight:700;font-size:13.5px">
+          <i class="ti ti-receipt"></i> Narxnoma — kerakli ishlarni belgilang (ixtiyoriy)</div>
+        <div style="max-height:300px;overflow:auto;padding:4px 0">
+          ${d.narxnomalar.map(n => `
+            <div style="padding:8px 14px 2px;font-size:11.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.03em">${xavfsiz(n.sarlavha || n.bolim_nomi)}</div>
+            ${n.qatorlar.map(q => {
+              // ustun: p — ustun1 narxi, r — ustun2 narxi; ikkalasi bo'lsa mijoz tanlaydi
+              const variant = [];
+              if (q.p_dan != null) variant.push(['p', n.ustun1, q.p_dan, q.p_gacha]);
+              if (q.r_dan != null) variant.push(['r', n.ustun2, q.r_dan, q.r_gacha]);
+              return `<div class="nx-qator" data-qator="${q.id}" style="display:flex;gap:10px;align-items:flex-start;padding:8px 14px;border-top:1px solid #f1f5f9">
+                <input type="checkbox" class="nx-bel" style="margin-top:3px;width:18px;height:18px;flex:none" aria-label="${xavfsiz(q.nomi)}">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13.5px;line-height:1.35">${xavfsiz(q.nomi)}${aksiyaQatorimi(q.id)
+                    ? ` <span style="display:inline-block;padding:1px 7px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:10.5px;font-weight:800">SESHANBA −${seshanba.foiz}%</span>` : ''}</div>
+                  ${variant.length > 1
+                    ? `<select class="f-select nx-ustun" style="margin:6px 0 0;padding:6px 8px;font-size:12.5px">
+                         ${variant.map(([u, nom, dan, gacha]) => `<option value="${u}" data-dan="${dan}" data-gacha="${gacha ?? dan}">${xavfsiz(nom || '')}: ${narxMatn(dan, gacha)}</option>`).join('')}
+                       </select>`
+                    : `<input type="hidden" class="nx-ustun" value="${variant[0][0]}" data-dan="${variant[0][2]}" data-gacha="${variant[0][3] ?? variant[0][2]}">
+                       <div style="font-size:13px;font-weight:700;color:#0f766e;margin-top:2px">${narxMatn(variant[0][2], variant[0][3])}${variant[0][1] ? ` <span style="font-weight:400;color:#64748b">· ${xavfsiz(variant[0][1])}</span>` : ''}</div>`}
+                  ${q.izoh ? `<div style="font-size:11.5px;color:#64748b;margin-top:2px">${xavfsiz(q.izoh)}</div>` : ''}
+                </div>
+                <input type="number" class="f-input nx-soni" min="1" max="999" value="1" title="Soni" style="width:58px;margin:0;padding:6px;text-align:center" aria-label="Soni">
+              </div>`;
+            }).join('')}`).join('')}
+        </div>
+        <div id="aJami" style="padding:10px 14px;border-top:1px solid #e2e8f0;background:#f0fdfa;font-size:13.5px">Xizmat belgilanmagan</div>
+      </div>
+      <p class="f-hint" style="margin:6px 0 0;font-size:11.5px;opacity:.75">Narxlar taxminiy: yakuniy summani usta joyida ko'rib tasdiqlaydi.</p>`;
+  } catch (e) {
+    if (raqam === arizaNarxSorov) quti.innerHTML = `<p class="f-hint" style="margin:0;color:#b91c1c">Narxlarni yuklab bo'lmadi: ${xavfsiz(e.message)}</p>`;
+  }
+}
+
+function arizaTanlangan() {
+  return [...document.querySelectorAll('#aNarxlar .nx-qator')].filter(q => q.querySelector('.nx-bel').checked).map(q => {
+    const u = q.querySelector('.nx-ustun');
+    const opt = u.tagName === 'SELECT' ? u.selectedOptions[0] : u;
+    const soni = Math.min(999, Math.max(1, parseInt(q.querySelector('.nx-soni').value, 10) || 1));
+    const id = Number(q.dataset.qator);
+    // Seshanba promokodi to'g'ri yozilsa — aksiya xizmatiga chegirma (server ham xuddi shunday hisoblaydi)
+    const k = promoQollanadimi() && aksiyaQatorimi(id) ? (100 - seshanba.foiz) / 100 : 1;
+    return { qator: id, ustun: u.value, soni,
+             dan: Math.round(Number(opt.dataset.dan) * k) * soni, gacha: Math.round(Number(opt.dataset.gacha) * k) * soni };
+  });
+}
+
+function arizaJamiHisobla() {
+  const jami = el('aJami');
+  if (!jami) return;
+  const t = arizaTanlangan();
+  if (!t.length) { jami.textContent = 'Xizmat belgilanmagan'; return; }
+  const dan = t.reduce((s, x) => s + x.dan, 0), gacha = t.reduce((s, x) => s + x.gacha, 0);
+  jami.innerHTML = `<b>${t.length} ta xizmat</b> · Taxminiy narx: <b style="color:#0f766e">${narxMatn(dan, gacha)}</b>`;
 }
 
 async function arizaYubor(e) {
@@ -618,6 +785,12 @@ async function arizaYubor(e) {
   if (obyekt) tana.obyekt = Number(obyekt);
   const aloqaTel = el('aTel').value.trim();
   if (aloqaTel) tana.mijoz_telefon = aloqaTel;
+  const usul = document.querySelector('input[name="aTolov"]:checked');
+  tana.tolov_usuli = usul ? usul.value : '';
+  const promo = el('aPromo') ? el('aPromo').value.trim() : '';
+  if (promo) tana.promokod = promo;
+  const tanlangan = arizaTanlangan();
+  if (tanlangan.length) tana.xizmatlar = tanlangan.map(({ qator, ustun, soni }) => ({ qator, ustun, soni }));
   try {
     const b = await so('/buyurtmalar/', { method:'POST', body: tana });
     modalYop();
@@ -625,6 +798,138 @@ async function arizaYubor(e) {
     pageOch('buyurtmalar');
   } catch (err) { xabar(err.message, true); }
 }
+
+/* ---------- 2b. HISOB RAQAMGA TO'LOV (chek yuklash) ---------- */
+const BANK_HOLAT_RANG = { tekshirilmoqda: '#92400e;background:#fef3c7', tasdiqlandi: '#166534;background:#dcfce7', rad: '#991b1b;background:#fee2e2' };
+
+function nusxaQator(nom, qiymat) {
+  return `<div class="kv" style="align-items:center"><span>${nom}</span>
+    <span style="display:flex;gap:6px;align-items:center;justify-content:flex-end"><b style="word-break:break-all">${xavfsiz(qiymat)}</b>
+    <button type="button" class="btn sokin kichik" data-nusxa="${xavfsiz(qiymat)}" title="Nusxalash" style="padding:4px 10px;font-size:12px">Nusxa</button></span></div>`;
+}
+
+async function bankTolovOch(id) {
+  try {
+    const d = await so(`/tolovlar/bank/buyurtma/${id}/`);
+    const oldingi = d.tolovlar.map(t => `
+      <div class="kv"><span>${sana(t.yaratilgan, true)} · ${pul(t.summa)}</span>
+        <span style="padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;color:${BANK_HOLAT_RANG[t.holat] || '#334155'}">${xavfsiz(t.holat_nomi)}</span></div>
+      ${t.holat === 'rad' && t.rad_sabab ? `<p class="f-hint" style="color:#b91c1c;margin:-4px 0 8px">Sabab: ${xavfsiz(t.rad_sabab)}</p>` : ''}`).join('');
+    const kutilmoqda = d.tolovlar.some(t => t.holat === 'tekshirilmoqda');
+    const r = d.rekvizit;
+    modalOch("Hisob raqamga to'lash", !r
+      ? `<p class="bosh-holat">Hisob raqam hali kiritilmagan. Iltimos, keyinroq urinib ko'ring yoki operatorga qo'ng'iroq qiling.</p>`
+      : `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+          <p style="margin:0 0 8px;font-weight:800;color:#1e3a8a">1. Pulni shu hisob raqamga o'tkazing</p>
+          ${nusxaQator('Qabul qiluvchi', r.korxona)}
+          ${nusxaQator('Hisob raqam', r.hisob_raqam)}
+          ${nusxaQator('Bank', r.bank)}
+          ${nusxaQator('MFO', r.mfo)}
+          ${nusxaQator('STIR (INN)', r.stir)}
+          ${nusxaQator("To'lov maqsadi", d.maqsad)}
+          <p class="f-hint" style="margin:8px 0 0">Click ilovasida: <b>To'lovlar → Rekvizitlar bo'yicha o'tkazma</b> (yoki bankingiz ilovasida "Yuridik shaxsga o'tkazma"). Har bir qatorni «Nusxa» tugmasi bilan nusxalab qo'ying.</p>
+        </div>
+        ${oldingi ? `<p style="font-weight:700;margin:0 0 6px">Yuborilgan cheklar</p>${oldingi}` : ''}
+        ${kutilmoqda
+          ? `<p class="f-hint" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;color:#78350f">⏳ Chekingiz tekshirilmoqda. Pul hisobimizga tushgani tasdiqlangach Telegram yoki SMS orqali xabar olasiz.</p>`
+          : `<form id="bankTolovForma">
+              <p style="margin:6px 0 8px;font-weight:800;color:#1e3a8a">2. To'lov chekini yuklang</p>
+              <label class="f-label" for="btSumma">O'tkazilgan summa (so'm) *</label>
+              <input class="f-input" id="btSumma" inputmode="numeric" placeholder="Masalan: 350 000" required>
+              <label class="f-label" for="btChek">Chek skrinshoti yoki PDF *</label>
+              <input class="f-input" id="btChek" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+              <label class="f-label" for="btIzoh">Izoh (ixtiyoriy)</label>
+              <input class="f-input" id="btIzoh" maxlength="300" placeholder="Masalan: to'lovchi — Valiyev A.">
+              <button class="btn asosiy" type="submit" id="btYubor" style="width:100%;justify-content:center"><i class="ti ti-send"></i> Chekni yuborish</button>
+              <p class="f-hint" style="margin-top:8px">Chek tekshiriladi: pul hisobimizga tushgani tasdiqlangach to'lov "to'landi" bo'ladi.</p>
+            </form>`}`);
+    const forma = el('bankTolovForma');
+    if (forma) forma.addEventListener('submit', e => bankChekYubor(e, id));
+    el('btSumma') && el('btSumma').addEventListener('input', e => {
+      const raqam = e.target.value.replace(/\D/g, '').slice(0, 11);
+      e.target.value = raqam.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    });
+  } catch (err) { xabar(err.message, true); }
+}
+
+async function bankChekYubor(e, id) {
+  e.preventDefault();
+  const fayl = el('btChek').files[0];
+  if (!fayl) return xabar('Chek faylini tanlang', true);
+  if (fayl.size > 5 * 1024 * 1024) return xabar("Fayl 5 MB dan katta bo'lmasin", true);
+  const fd = new FormData();
+  fd.append('summa', el('btSumma').value.replace(/\s/g, ''));
+  fd.append('chek', fayl);
+  fd.append('izoh', el('btIzoh').value.trim());
+  el('btYubor').disabled = true;
+  try {
+    await so(`/tolovlar/bank/buyurtma/${id}/`, { method: 'POST', body: fd });
+    modalYop();
+    xabar("Chek yuborildi. Tekshirilgach xabar olasiz.");
+  } catch (err) {
+    xabar(err.message, true);
+    el('btYubor') && (el('btYubor').disabled = false);
+  }
+}
+
+// Rekvizitni nusxalash tugmalari (modal ichida)
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-nusxa]');
+  if (!t) return;
+  const matn = t.getAttribute('data-nusxa');
+  (navigator.clipboard ? navigator.clipboard.writeText(matn) : Promise.reject())
+    .then(() => xabar('Nusxalandi: ' + matn))
+    .catch(() => xabar("Nusxalab bo'lmadi — qo'lda belgilab oling", true));
+});
+if (window.SG_H) SG_H['c:bankTolovOch'] = function (e) { bankTolovOch.apply(null, SG_ARGS(this, e)); };
+
+/* ---------- 2c. CLICK ORQALI TO'LASH ---------- */
+async function clickTolovOch(id) {
+  try {
+    const d = await so(`/tolovlar/click/buyurtma/${id}/`);
+    if (!d.mumkin) {
+      modalOch("Click orqali to'lash", `
+        <p class="bosh-holat" style="text-align:left">${xavfsiz(d.sabab)}</p>
+        ${d.tolandi ? '' : `<button class="btn asosiy" style="width:100%;justify-content:center" data-h-click="c:bankTolovOch" data-a-click="${SG_A([id])}"><i class="ti ti-building-bank"></i> Hisob raqamga to'lash</button>`}`);
+      return;
+    }
+    modalOch("Click orqali to'lash", `
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px;margin-bottom:14px">
+        <div class="kv"><span>Buyurtma</span><span><b>#${id} — ${xavfsiz(d.xizmat)}</b></span></div>
+        ${d.summa ? `<div class="kv"><span>To'lanadigan summa</span><span><b style="font-size:18px">${pul(d.summa)}</b></span></div>` : ''}
+      </div>
+      <form id="clickTolovForma">
+        ${d.summa ? '' : `
+          <label class="f-label" for="ctSumma">To'lov summasi (so'm) *</label>
+          <input class="f-input" id="ctSumma" inputmode="numeric" placeholder="Masalan: 350 000" required>
+          <p class="f-hint" style="margin:-6px 0 12px">Summa hali tasdiqlanmagan: usta yoki operator aytgan summani kiriting.</p>`}
+        <button class="btn asosiy" type="submit" id="ctYubor" style="width:100%;justify-content:center;background:#0d6efd">
+          <i class="ti ti-credit-card"></i> Click orqali to'lash</button>
+        <p class="f-hint" style="margin-top:10px">Click'ning himoyalangan sahifasi ochiladi: Uzcard / Humo karta yoki Click ilovasi orqali to'laysiz, bank SMS kodini o'sha yerda kiritasiz. Click xizmat haqi to'lov sahifasida ko'rsatiladi. To'lovdan keyin buyurtma avtomatik «To'langan» bo'ladi.</p>
+      </form>`);
+    el('clickTolovForma').addEventListener('submit', e => clickTolovYubor(e, id, !d.summa));
+    if (el('ctSumma')) el('ctSumma').addEventListener('input', e => {
+      const raqam = e.target.value.replace(/\D/g, '').slice(0, 11);
+      e.target.value = raqam.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    });
+  } catch (err) { xabar(err.message, true); }
+}
+
+async function clickTolovYubor(e, id, summaKerak) {
+  e.preventDefault();
+  const tana = {};
+  if (summaKerak) tana.summa = el('ctSumma').value.replace(/\s/g, '');
+  el('ctYubor').disabled = true;
+  try {
+    const r = await so(`/tolovlar/click/buyurtma/${id}/`, { method: 'POST', body: tana });
+    xabar("Click to'lov sahifasiga o'tilmoqda...");
+    window.location.href = r.url;
+  } catch (err) {
+    xabar(err.message, true);
+    if (el('ctYubor')) el('ctYubor').disabled = false;
+  }
+}
+if (window.SG_H) SG_H['c:clickTolovOch'] = function (e) { clickTolovOch.apply(null, SG_ARGS(this, e)); };
 
 /* ---------- 3. OBYEKTLAR ---------- */
 async function obyektlarKeshYukla() {
@@ -900,6 +1205,18 @@ async function tolovlarYukla() {
         </tr>`).join('')}</tbody>
     </table></div>` : '<p class="bosh-holat">To\'lov tarixi bo\'sh.</p>';
 
+  const kvlar = d.kvitansiyalar || [];
+  el('kvitansiyaRoyxat').innerHTML = kvlar.length ? kvlar.map(k => `
+    <div class="row-item">
+      <div class="row-ikon"><i class="ti ti-receipt"></i></div>
+      <div class="r-info">
+        <h5>${xavfsiz(k.raqam)} — ${pul(k.summa)}${k.holat === 'bekor' ? ' <span class="tag bad">Bekor qilingan</span>' : ''}</h5>
+        <p>${xavfsiz(k.usul)} · ${sana(k.sana)}${k.buyurtma ? ' · buyurtma #' + k.buyurtma : ''}</p>
+      </div>
+      <a class="btn sokin kichik" href="${xavfsiz(k.url)}" target="_blank" rel="noopener"><i class="ti ti-eye"></i> Ochish</a>
+    </div>`).join('')
+    : '<p class="bosh-holat">Kvitansiya hali yo\'q. Usta ishni yakunlab to\'lovni qabul qilganda shu yerda chiqadi.</p>';
+
   el('fakturaRoyxat').innerHTML = d.fakturalar.length
     ? d.fakturalar.map(f => hujjatQatori(f)).join('')
     : '<p class="bosh-holat">Hisob-faktura hali yaratilmagan. Yaratilgach shu yerda yuklab olish mumkin bo\'ladi.</p>';
@@ -907,9 +1224,8 @@ async function tolovlarYukla() {
 
 function tolovUsul(usul) {
   const matn = {
-    click: "Click orqali to'lash uchun kutilayotgan to'lov ro'yxatidan buyurtmani tanlang — Click checkout sahifasi ochiladi.",
-    payme: "Payme orqali to'lash uchun kutilayotgan to'lov ro'yxatidan buyurtmani tanlang — Payme checkout sahifasi ochiladi.",
-    bank: "Bank o'tkazmasi uchun operator siz bilan bog'lanadi va hisob-faktura yuboradi.",
+    click: "Buyurtmalarim bo'limida buyurtma ostidagi «Click orqali to'lash» tugmasini bosing — Click'ning himoyalangan to'lov sahifasi ochiladi.",
+    bank: "Buyurtmalarim bo'limida buyurtma ostidagi «Hisob raqamga to'lash» tugmasini bosing: rekvizitlarni ko'rasiz va to'lov chekini yuklaysiz.",
   };
   xabar(matn[usul]);
 }
@@ -1253,11 +1569,125 @@ function modalYop() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') modalYop(); });
 
+/* ---------- Telegram orqali ro'yxatdan o'tish ----------
+   Tugma faqat server sozlangan bo'lsa ko'rinadi. Telegram'da tasdiqlangach server sessiya
+   cookie'sini qo'yib /kabinet/?tg=ok ga qaytaradi; biz cookie bilan access token olamiz. */
+const TG_XATOLAR = {
+  sozlanmagan: "Telegram orqali kirish hozircha yoqilmagan. Telefon raqam orqali kiring.",
+  bekor: "Telegram'da ruxsat berilmadi. Qayta urinib ko'ring yoki telefon raqam orqali kiring.",
+  muddat: "Kirish muddati tugadi. «Telegram orqali ro'yxatdan o'tish» tugmasini qaytadan bosing.",
+  telefon: "Telegram telefon raqamingizni ulashmadi. Ruxsat oynasida raqamni ulashishga rozilik bering.",
+  xodim: "Bu raqam xodim yoki administratorga tegishli. Xodimlar /xodimlar sahifasidan kiradi.",
+  bloklangan: "Hisobingiz bloklangan. Administrator bilan bog'laning.",
+  rad: "Telegram bilan bog'lanishda xatolik. Birozdan keyin qayta urinib ko'ring.",
+};
+
+async function tgHolatTekshir(urinish = 0) {
+  if (KORISH || FAYL_REJIM) return;
+  try {
+    const javob = await fetch(API + '/auth/telegram/holat/', { cache: 'no-store' });
+    if (!javob.ok) throw new Error(javob.status);
+    const d = await javob.json();
+    if (d && d.yoqilgan) {
+      el('tgKirishBtn').href = API + '/auth/telegram/boshlash/';
+      if (d.bot) botHavolaTayyorla();            // to'g'ridan-to'g'ri Telegram ilovasiga (tanlov sahifasisiz)
+      el('tgBlok').style.display = 'block';
+      el('qadam1').classList.add('tg-rejim');   // telefon formasi «Telegram yo'qmi?» oynasiga o'tadi
+      if (!d.telefon_kirish) {                  // SMS ulanmaguncha: «Tez orada»
+        el('qadam1').classList.add('tel-tez-orada');
+        el('telefonInput').disabled = true;
+        el('kodBtn').disabled = true;
+      }
+    }
+  } catch (e) {
+    // Tarmoq bir lahza uzilgan bo'lsa bir marta qayta urinadi; baribir bo'lmasa telefon formasi ishlayveradi
+    if (urinish < 1) setTimeout(() => tgHolatTekshir(urinish + 1), 1500);
+  }
+}
+
+/* ---------- Bot orqali kirish: tugma Telegram ilovasini ochadi, sahifa tasdiqni kutadi ---------- */
+let botToken = null, botTaymer = null, botYangilash = null;
+
+async function botHavolaTayyorla() {
+  // Havola oldindan olinadi: bosilganda Telegram darhol ochilsin (brauzer yangi oynani bloklamasin)
+  try {
+    const r = await fetch(API + '/auth/telegram/bot/boshlash/', { cache: 'no-store', credentials: 'same-origin' });
+    if (!r.ok) return;
+    const d = await r.json();
+    botToken = d.token;
+    const btn = el('tgKirishBtn');
+    btn.href = d.url;
+    btn.target = '_blank';
+    btn.rel = 'noopener';
+    clearTimeout(botYangilash);
+    botYangilash = setTimeout(botHavolaTayyorla, (d.muddat - 60) * 1000);   // muddati tugashidan oldin yangilanadi
+  } catch (e) { /* bo'lmasa oddiy Telegram kirish havolasi qoladi */ }
+}
+
+function botKutishKorsat(korinsin) {
+  let p = el('tgKutish');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'tgKutish';
+    p.style.cssText = 'margin:12px 0 0;padding:12px 14px;border-radius:12px;background:#eff6ff;border:1px solid #93c5fd;font-size:13px;color:#1e3a8a;line-height:1.5';
+    p.innerHTML = "⏳ <b>Telegram ochildi.</b> Botda <b>«Start»</b>, so'ng <b>«📱 Raqamni ulashish»</b> (yoki «✅ Saytga kirish») ni bosing va shu sahifaga qayting — kabinetingiz o'zi ochiladi.";
+    el('tgKirishBtn').insertAdjacentElement('afterend', p);
+  }
+  p.style.display = korinsin ? 'block' : 'none';
+}
+
+function botKutishBoshla() {
+  if (!botToken) return;
+  botKutishKorsat(true);
+  clearInterval(botTaymer);
+  const token = botToken;
+  botTaymer = setInterval(async () => {
+    try {
+      const d = await (await fetch(API + '/auth/telegram/bot/holat/?t=' + encodeURIComponent(token),
+                                   { cache: 'no-store', credentials: 'same-origin' })).json();
+      if (d.holat === 'kutilmoqda') return;
+      clearInterval(botTaymer);
+      botKutishKorsat(false);
+      if (d.holat === 'ok') { location.href = '/kabinet/?tg=ok'; return; }
+      authXato(d.holat === 'xato' ? (TG_XATOLAR[d.sabab] || TG_XATOLAR.rad)
+        : d.holat === 'bekor' ? "Telegram'da kirish bekor qilindi." : TG_XATOLAR.muddat);
+      botHavolaTayyorla();                         // keyingi urinish uchun yangi havola
+    } catch (e) { /* tarmoq uzilsa keyingi so'rovda qayta uriniladi */ }
+  }, 2000);
+}
+el('tgKirishBtn').addEventListener('click', () => { if (botToken) botKutishBoshla(); });
+
+/* «Telegram yo'qmi?» — telefon raqam kiritish oynasi */
+function telOyna(ochiq) {
+  el('telBlok').classList.toggle('ochiq', ochiq);
+  if (ochiq) setTimeout(() => el('telefonInput').focus(), 50);
+  else authXato('');
+}
+el('tgYoqBtn').addEventListener('click', () => telOyna(true));
+el('telYopBtn').addEventListener('click', () => telOyna(false));
+el('telBlok').addEventListener('click', e => { if (e.target === el('telBlok')) telOyna(false); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && el('telBlok').classList.contains('ochiq')) telOyna(false);
+});
+
 /* ---------- boshlash ---------- */
 (async function boshlash() {
   el('qaytishHavola').href = ASOSIY_SAYT;
   el('saytHavola').href = ASOSIY_SAYT;
   tumanlarniQoy(el('pTuman'));
+  tgHolatTekshir();
+
+  // Telegram'dan qaytish: ?tg=ok (muvaffaqiyat) yoki ?tg_xato=<sabab>
+  const qs = new URLSearchParams(location.search);
+  const tgOk = qs.get('tg') === 'ok', tgXato = qs.get('tg_xato');
+  const clickQaytdi = qs.get('click') === '1';
+  if (tgOk || tgXato || clickQaytdi) history.replaceState(null, '', location.pathname);
+  if (tgXato) { kirishKorsat(); authXato(TG_XATOLAR[tgXato] || TG_XATOLAR.rad); return; }
+  if (tgOk && !KORISH) {
+    saqlash.removeItem('sg_token');           // eski sessiya o'rniga Telegram'dan kelgani
+    if (!(await tokenYangila())) { kirishKorsat(); authXato(TG_XATOLAR.muddat); return; }
+  }
+
   const token = saqlash.getItem('sg_token');
   if (!token) { kirishKorsat(); return; }
   try {
@@ -1279,6 +1709,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') modalYop(); 
       return;
     }
     kabinetOch();
+    // Click to'lov sahifasidan qaytish: buyurtmalar ro'yxati ochiladi (holat Click tasdig'idan keyin yangilanadi)
+    if (clickQaytdi) {
+      pageOch('buyurtmalar');
+      xabar("Click'dan qaytdingiz. To'lov tasdiqlangach buyurtma «To'langan» bo'ladi va Telegram'ga xabar keladi.");
+    }
   } catch (e) {
     kirishKorsat();
   }

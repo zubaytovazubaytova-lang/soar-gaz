@@ -318,26 +318,123 @@ class XodimAdmin(YozilaOladiganTanlovMixin, UserAdmin):
             request, f'{obj.ism or obj.telefon} — kirish kodi: {obj.kirish_kodi}')
 
 
+class TelegramFiltr(admin.SimpleListFilter):
+    title = 'Telegram'
+    parameter_name = 'telegram'
+
+    def lookups(self, request, model_admin):
+        return [('ha', 'Ulangan'), ('yoq', 'Ulanmagan')]
+
+    def queryset(self, request, qs):
+        if self.value() == 'ha':
+            return qs.filter(_telegram=True)
+        if self.value() == 'yoq':
+            return qs.filter(_telegram=False)
+        return qs
+
+
+class BuyurtmaBorFiltr(admin.SimpleListFilter):
+    title = 'Buyurtma bergan'
+    parameter_name = 'buyurtma'
+
+    def lookups(self, request, model_admin):
+        return [('ha', 'Buyurtma bergan'), ('yoq', 'Hali buyurtma bermagan')]
+
+    def queryset(self, request, qs):
+        if self.value() == 'ha':
+            return qs.filter(_buyurtmalar__gt=0)
+        if self.value() == 'yoq':
+            return qs.filter(_buyurtmalar=0)
+        return qs
+
+
+class MijozBuyurtmalariInline(admin.TabularInline):
+    """Mijoz sahifasida uning buyurtmalari (faqat o'qish)."""
+    from apps.buyurtmalar.models import Buyurtma as model
+    fk_name = 'mijoz'
+    extra = 0
+    can_delete = False
+    show_change_link = True
+    fields = ['yaratilgan', 'xizmat', 'holat', 'xodim', 'tolov_usuli', 'promokod', 'tasdiq_summa', 'tolandi']
+    readonly_fields = fields
+    ordering = ['-yaratilgan']
+    verbose_name = 'Buyurtma'
+    verbose_name_plural = 'Mijozning buyurtmalari'
+
+    def has_add_permission(self, request, obj=None): return False
+    def has_change_permission(self, request, obj=None): return False
+
+
 @admin.register(Mijoz)
 class MijozAdmin(admin.ModelAdmin):
-    """Mijozlar bazasi (CRM) — FAQAT O'QISH. Parol shifri ko'rinmaydi: sahifada faqat
-    quyidagi maydonlar bor."""
-    list_display = ['telefon', 'ism', 'viloyat', 'tuman', 'mulk_turi', 'buyurtmalar_soni', 'yaratilgan']
-    list_filter = ['mulk_turi', ('viloyat', AllValuesFieldListFilter), ('tuman', AllValuesFieldListFilter)]
-    search_fields = ['telefon', 'ism', 'qoshimcha_telefon']
+    """Ro'yxatdan o'tgan mijozlar bazasi (CRM) — FAQAT O'QISH. Parol shifri ko'rinmaydi: sahifada faqat
+    quyidagi maydonlar bor. Django panelida alohida «Mijozlar» bo'limi sifatida chiqadi (admin_site.py)."""
+    list_display = ['telefon', 'ism', 'qoshimcha_telefon', 'hudud', 'mulk_turi', 'telegram_belgi',
+                    'buyurtmalar_soni', 'oxirgi_kirish', 'yaratilgan']
+    list_display_links = ['telefon', 'ism']
+    list_filter = [TelegramFiltr, BuyurtmaBorFiltr, 'mulk_turi', 'holat',
+                   ('viloyat', AllValuesFieldListFilter), ('tuman', AllValuesFieldListFilter), 'yaratilgan']
+    search_fields = ['telefon', 'ism', 'qoshimcha_telefon', 'manzil', 'mahalla']
     ordering = ['-yaratilgan']
     date_hierarchy = 'yaratilgan'
-    fields = ['telefon', 'ism', 'viloyat', 'tuman', 'mahalla', 'manzil', 'moljal', 'qoshimcha_telefon',
-              'email', 'mulk_turi', 'yaratilgan']
-    readonly_fields = fields
+    list_per_page = 50
+    fieldsets = [
+        ('Mijoz', {'fields': ['telefon', 'ism', 'qoshimcha_telefon', 'email', 'mulk_turi', 'holat']}),
+        ('Manzil', {'fields': ['viloyat', 'tuman', 'mahalla', 'manzil', 'moljal']}),
+        ('Faollik', {'fields': ['telegram_belgi', 'buyurtmalar_soni', 'yaratilgan', 'last_login']}),
+    ]
+    readonly_fields = ['telefon', 'ism', 'qoshimcha_telefon', 'email', 'mulk_turi', 'holat', 'viloyat', 'tuman',
+                       'mahalla', 'manzil', 'moljal', 'telegram_belgi', 'buyurtmalar_soni', 'yaratilgan',
+                       'last_login']
+    inlines = [MijozBuyurtmalariInline]
+    actions = ['excelga_yuklash']
 
     def get_queryset(self, request):
-        from django.db.models import Count
-        return super().get_queryset(request).annotate(_buyurtmalar=Count('buyurtmalar'))
+        from django.db.models import Count, Exists, OuterRef
+        from apps.sms_app.models import TelegramUlanish
+        return super().get_queryset(request).annotate(
+            _buyurtmalar=Count('buyurtmalar', distinct=True),
+            _telegram=Exists(TelegramUlanish.objects.filter(telefon=OuterRef('telefon'))),
+        )
 
     @admin.display(description='Buyurtmalar', ordering='_buyurtmalar')
     def buyurtmalar_soni(self, obj):
-        return obj._buyurtmalar
+        return getattr(obj, '_buyurtmalar', None) if hasattr(obj, '_buyurtmalar') else obj.buyurtmalar.count()
+
+    @admin.display(description='Telegram', boolean=True, ordering='_telegram')
+    def telegram_belgi(self, obj):
+        if hasattr(obj, '_telegram'):
+            return obj._telegram
+        from apps.sms_app.models import TelegramUlanish
+        return TelegramUlanish.objects.filter(telefon=obj.telefon).exists()
+
+    @admin.display(description='Hudud', ordering='tuman')
+    def hudud(self, obj):
+        return ', '.join(x for x in [obj.tuman, obj.viloyat] if x) or '—'
+
+    @admin.display(description='Oxirgi kirish', ordering='last_login')
+    def oxirgi_kirish(self, obj):
+        return obj.last_login
+
+    @admin.action(description="Tanlanganlarni Excel'ga yuklab olish (CSV)", permissions=['view'])
+    def excelga_yuklash(self, request, queryset):
+        import csv
+        from django.http import HttpResponse
+        from django.utils import timezone
+        from .models import audit_yoz
+        javob = HttpResponse(content_type='text/csv; charset=utf-8')
+        javob['Content-Disposition'] = f'attachment; filename="mijozlar-{timezone.localdate():%Y-%m-%d}.csv"'
+        javob.write('\ufeff')                       # Excel o'zbek harflarini to'g'ri ochishi uchun (UTF-8 BOM)
+        w = csv.writer(javob, delimiter=';')
+        w.writerow(['Telefon', 'Ism', "Qo'shimcha telefon", 'Viloyat', 'Tuman', 'Mahalla', 'Manzil',
+                    'Mulk turi', 'Telegram', 'Buyurtmalar', "Ro'yxatdan o'tgan", 'Oxirgi kirish'])
+        for m in queryset:
+            w.writerow([m.telefon, m.ism, m.qoshimcha_telefon, m.viloyat, m.tuman, m.mahalla, m.manzil,
+                        m.get_mulk_turi_display(), 'ha' if m._telegram else "yo'q", m._buyurtmalar,
+                        timezone.localtime(m.yaratilgan).strftime('%d.%m.%Y %H:%M'),
+                        timezone.localtime(m.last_login).strftime('%d.%m.%Y %H:%M') if m.last_login else ''])
+        audit_yoz(request, 'mijozlar_eksport', f"{queryset.count()} ta mijoz CSV ga yuklab olindi")
+        return javob
 
     def has_add_permission(self, request): return False
     def has_change_permission(self, request, obj=None): return False

@@ -98,6 +98,7 @@ def kvitansiyalar(request):
         if yangi:
             audit_yoz(request, 'kvitansiya_berildi',
                       f'{k.raqam}: {k.summa} so\'m, {k.mijoz_ism}, {k.mijoz_telefon}')
+            x.kvitansiya_tarqat(k)      # mijoz kabineti + Ruxsora kabineti/Telegram
         sms = None
         if yangi and d.get('sms', True) is not False:
             sms = x.kvitansiya_sms(k)
@@ -292,8 +293,26 @@ def kvitansiya_sahifa(request, token):
         'jami': narx(q['jami_dan'], q['jami_gacha']),
     } for i, q in enumerate(qatorlar, 1)]
     xizmat_turi = k.ish_turi or ', '.join(q['nomi'] for q in qatorlar[:2])
+    sozlama = Sozlama.olish()
+    r = k.rekvizit or {}
+    kompaniya = {      # yo'nalish korxonasi (rekvizitdan), bo'lmasa umumiy sozlama
+        'nomi': r.get('korxona') or sozlama.kompaniya_nomi, 'stir': r.get('stir') or sozlama.stir,
+        'bank': r.get('bank') or sozlama.bank_nomi, 'hisob_raqam': r.get('hisob_raqam') or sozlama.hisob_raqam,
+        'mfo': r.get('mfo') or sozlama.mfo, 'manzil': r.get('manzil') or sozlama.manzil,
+        'ruxsatnoma': r.get('ruxsatnoma', ''),
+    }
+    bank_qism = ', '.join(q for q in (
+        f"h/r {kompaniya['hisob_raqam']}" if kompaniya['hisob_raqam'] else '', kompaniya['bank'] if kompaniya['hisob_raqam'] else '',
+        f"MFO {kompaniya['mfo']}" if kompaniya['hisob_raqam'] and kompaniya['mfo'] else '') if q)
+    kompaniya['rekvizit_qator'] = ' · '.join(q for q in (
+        kompaniya['manzil'], f"STIR {kompaniya['stir']}" if kompaniya['stir'] else '', bank_qism) if q)
+    # Tekshirish QR-kodi: skanerlansa shu kvitansiyaning saytdagi asl nusxasi ochiladi (qalbakisini aniqlash uchun)
+    import segno
+    tekshir_url = x.sayt_havolasi('/kvitansiya/' + k.token + '/')
+    qr_svg = segno.make(tekshir_url, error='m').svg_inline(scale=3, border=1)
     return _yopiq(render(request, 'hujjatlar/kvitansiya.html', {
-        'k': k, 'sozlama': Sozlama.olish(), 'summa_matn': x.pul(k.summa),
+        'k': k, 'sozlama': sozlama, 'kompaniya': kompaniya, 'summa_matn': x.pul(k.summa),
+        'qr_svg': qr_svg, 'tekshir_url': tekshir_url,
         'summa_sozlar': sozlar.summa_sozlar(k.summa),
         'kun': f'{mahalliy.day:02d}', 'oy': f'{mahalliy.month:02d}', 'yil': mahalliy.year,
         'vaqt': mahalliy.strftime('%H:%M'),

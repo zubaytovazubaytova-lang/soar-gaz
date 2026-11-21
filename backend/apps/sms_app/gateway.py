@@ -23,6 +23,8 @@ import urllib.request
 from django.conf import settings
 from django.core.cache import cache
 
+from . import telegram, tg_gateway
+
 logger = logging.getLogger(__name__)
 
 ESKIZ_BAZA = 'https://notify.eskiz.uz/api'
@@ -88,12 +90,18 @@ def _eskiz_yubor(telefon, matn, qayta=True):
         raise SmsXato(f"Eskiz bilan aloqa yo'q: {xato}")
 
 
-def sms_yubor(telefon, matn):
+def sms_yubor(telefon, matn, telegram_bot=True):
     """SMS yuboradi. Muvaffaqiyatli bo'lsa True qaytaradi.
 
     Xatolik yuz bersa log'ga yozadi va False qaytaradi — chaqiruvchi kod
     (masalan OTP) shu asosda mijozga tushunarli xabar ko'rsatadi.
     """
+    # Raqam @soargaz_bot ga ulangan bo'lsa (Telegram orqali kirishda bot xabariga ruxsat bergan yoki
+    # botda raqamini ulashgan) xabar avval Telegram'dan TEKIN ketadi; bo'lmasa SMS.
+    # telegram_bot=False — faqat SMS (majburiy SMS kerak bo'lgan holatlar uchun).
+    if telegram_bot and telegram.sozlangan() and telegram.yubor(telefon, matn):
+        return True
+
     provayder = _sozlama('SMS_PROVAYDER', 'konsol')
 
     if provayder == 'eskiz' and _sozlama('ESKIZ_EMAIL') and _sozlama('ESKIZ_PAROL'):
@@ -133,5 +141,6 @@ def sms_yubor(telefon, matn):
 
 def sozlanganmi():
     """Haqiqiy provayder ulanganmi (dev konsol rejimi emasmi)."""
-    return (_sozlama('SMS_PROVAYDER', 'konsol') == 'eskiz'
-            and bool(_sozlama('ESKIZ_EMAIL')) and bool(_sozlama('ESKIZ_PAROL')))
+    eskiz = (_sozlama('SMS_PROVAYDER', 'konsol') == 'eskiz'
+             and bool(_sozlama('ESKIZ_EMAIL')) and bool(_sozlama('ESKIZ_PAROL')))
+    return eskiz or telegram.sozlangan() or tg_gateway.sozlangan()

@@ -1,0 +1,11 @@
+[Unit]
+Description=SOAR GAZ kunlik zaxira nusxasi (baza, fayllar, sozlama)
+After=postgresql.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/soargaz-zaxira
+# Sayt ishiga xalaqit bermasin: past ustuvorlik
+Nice=10
+IOSchedulingClass=idle

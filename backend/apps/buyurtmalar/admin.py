@@ -40,7 +40,8 @@ class BuyurtmaAdmin(admin.ModelAdmin):
     raw_id_fields = ['mijoz', 'xodim']
     list_select_related = ('mijoz', 'xodim')
     # Tasdiqlash vaqti va kimligi o'zgartirilmaydi (summani xodim yoki admin tasdiqlaganda yoziladi)
-    readonly_fields = ['tasdiq_vaqt', 'tasdiq_kim']
+    # Seshanba aksiyasi ariza berilganda belgilanadi (narxlar shunga ko'ra saqlangan) — qo'lda o'zgartirilmaydi
+    readonly_fields = ['tasdiq_vaqt', 'tasdiq_kim', 'promokod', 'chegirma_foiz', 'aksiya_qatorlar']
     inlines = [XizmatInline, TushumInline]
 
 

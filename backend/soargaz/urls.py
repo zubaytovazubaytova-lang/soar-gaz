@@ -241,6 +241,8 @@ urlpatterns = [
     # turgan katalog va undan pastdagi manzillarni boshqara oladi.
     path('manifest.webmanifest', _sahifa('manifest.webmanifest',
                                          'application/manifest+json')),
+    # Admin panel — kompyuterga alohida ilova (o'z manifesti, scope /boshqaruv/)
+    path('admin.webmanifest', _sahifa('admin.webmanifest', 'application/manifest+json')),
     path('sw.js', _sahifa('sw.js', 'application/javascript; charset=utf-8')),
     path('offline.html', _sahifa('offline.html')),
     path('<str:nomi>.png', loyiha_rasmi),

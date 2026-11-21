@@ -10,6 +10,8 @@ from .models import Bildirishnoma, MurojaatXabar
 HOLAT_MATNI = {
     'yangi': 'Buyurtmangiz qabul qilindi',
     'qabul': 'Buyurtmangizga xodim tayinlandi',
+    'yolda': "Usta yo'lga chiqdi",
+    'tolov_kutilmoqda': "Ish bajarildi — to'lov kutilmoqda",
     'bajarilmoqda': 'Buyurtmangiz bajarilmoqda',
     'bajarildi': 'Buyurtmangiz yakunlandi',
     'bekor': 'Buyurtmangiz bekor qilindi',
@@ -43,7 +45,10 @@ def buyurtma_bildirishnomasi(sender, instance, created, **kwargs):
     else:
         return
 
-    matn = f"#{instance.id} — {instance.xizmat_nomi}"
+    from django.utils import translation
+    with translation.override('uz'):
+        xizmat = str(instance.get_xizmat_display())
+    matn = f"#{instance.id} — {xizmat}"
     if instance.xodim_id and instance.xodim:
         matn += f". Xodim: {instance.xodim.ism or instance.xodim.telefon}"
     if instance.holat == 'bajarildi' and instance.natija:

@@ -32,6 +32,9 @@ def hal_qil(request, pk, yangi_holat, sabab=''):
         if qabul >= t.buyurtma.tasdiq_summa and not t.buyurtma.tolandi:
             t.buyurtma.tolandi = True
             t.buyurtma.save(update_fields=['tolandi', 'yangilangan'])
+            # Ruxsora pulni qabul qildi: ish tugagan bo'lsa buyurtma to'liq yakunlanadi
+            from apps.buyurtmalar.yakun import tolov_yakuni
+            tolov_yakuni(t.buyurtma_id)
     amal = 'tushum_qabul' if yangi_holat == 'qabul' else 'tushum_rad'
     tafsilot = f"{t.xodim.ism or t.xodim.telefon}: {t.summa} so'm, #{t.pk}"
     if sabab:

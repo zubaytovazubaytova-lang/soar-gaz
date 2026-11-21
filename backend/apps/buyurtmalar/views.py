@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django.utils import timezone
 from django.db.models import Count, Q
 from django.utils.translation import gettext as _
@@ -10,10 +11,18 @@ from rest_framework.response import Response
 
 from apps.auth_app.models import Foydalanuvchi, audit_yoz
 from apps.narxnoma.models import TARMOQ_CHOICES
+from apps.sms_app import xodim_xabar
 from apps.sms_app.gateway import sms_yubor
 from apps.sms_app.models import SmsXabar
 from .models import Buyurtma, BuyurtmaFoto
 from .serializers import BuyurtmaSerializer
+
+
+def _xizmat(b):
+    """Xizmat nomi xabarlar uchun — doim o'zbekcha (`xizmat_nomi` maydoni bazada bo'sh bo'lishi mumkin)."""
+    from django.utils import translation
+    with translation.override('uz'):
+        return str(b.get_xizmat_display())
 
 
 def _sms_yuborish(mijoz, matn):
@@ -73,8 +82,35 @@ def buyurtmalar_list(request):
         # Narx tarmog'ini mijoz tanlamaydi: korxona (sanoat, biznes) -> ulgurji, qolgani -> aholi.
         # Administrator keyin o'zgartira oladi.
         tarmoq = 'ulgurji' if getattr(user, 'mulk_turi', '') == 'korxona' else 'aholi'
-        b = ser.save(mijoz=user, tarmoq=tarmoq)
-        _sms_yuborish(user, f"Buyurtmangiz qabul qilindi! #{b.id} — {b.xizmat_nomi}. Tez orada bog'lanamiz.")
+        tolov_usuli = request.data.get('tolov_usuli') or ''
+        if tolov_usuli not in ('', 'naqd', 'otkazma'):
+            return Response({'detail': _("To'lov usuli noto'g'ri")}, status=400)
+        tanlangan = request.data.get('xizmatlar')
+        aksiya_maydonlari = {}
+        promokod = str(request.data.get('promokod') or '').strip().upper()
+        if promokod:
+            # Seshanba aksiyasi: seshanba 00:00 dan 50 soat (payshanba 02:00 gacha), shu haftaning 2 ta xizmatiga
+            from apps.narxnoma.models import amaldagi_aksiya
+            aksiya = amaldagi_aksiya()
+            if not aksiya or promokod != settings.SESHANBA_PROMOKOD:
+                return Response({'detail': _("Promokod noto'g'ri yoki muddati o'tgan "
+                                             "(seshanba 00:00 dan payshanba 02:00 gacha amal qiladi)"),
+                                 'maydon': 'promokod'}, status=400)
+            aksiya_maydonlari = {'promokod': promokod, 'chegirma_foiz': settings.SESHANBA_FOIZ,
+                                 'aksiya_qatorlar': aksiya.qator_idlari()}
+        with transaction.atomic():
+            b = ser.save(mijoz=user, tarmoq=tarmoq, tolov_usuli=tolov_usuli, **aksiya_maydonlari)
+            # Mijoz narxnomadan xizmat tanlagan bo'lsa — buyurtmaga biriktiriladi (usta tayyor holda ko'radi,
+            # yakuniy summani u tasdiqlaydi)
+            if tanlangan:
+                from .xizmatlar import xizmatlarni_yoz
+                xato = xizmatlarni_yoz(b, tanlangan, user)
+                if xato:
+                    transaction.set_rollback(True)
+                    return Response({'detail': xato}, status=400)
+        _sms_yuborish(user, f"Buyurtmangiz qabul qilindi! #{b.id} — {_xizmat(b)}. Tez orada bog'lanamiz.")
+        xodim_xabar.yangi_ariza(b.xizmat, f"Yangi buyurtma #{b.id} — {_xizmat(b)}",
+                                user.ism, user.telefon, b.manzil or b.tuman, b.tavsif)
         return Response(BuyurtmaSerializer(b).data, status=201)
     return Response(ser.errors, status=400)
 
@@ -196,7 +232,7 @@ def xodim_tayinla(request, b, xodim, izoh=""):
     b.save()
     audit_yoz(request, "buyurtma_tayinlandi", f"#{b.id} -> {xodim.ism or xodim.telefon}{izoh}")
 
-    _sms_yuborish(xodim, f"Sizga yangi buyurtma tayinlandi! #{b.id} — {b.xizmat_nomi}. Manzil: {b.manzil or b.tuman}")
+    _sms_yuborish(xodim, f"Sizga yangi buyurtma tayinlandi! #{b.id} — {_xizmat(b)}. Manzil: {b.manzil or b.tuman}")
     _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangizga xodim tayinlandi: {xodim.ism}. Tez orada siz bilan bog'lanadi.")
 
 
@@ -232,6 +268,46 @@ def qabul(request, pk):
     b.holat = 'qabul'
     b.save()
     _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangiz xodim tomonidan qabul qilindi. Tez orada borishadi.")
+    xodim_xabar.ish_holati(b, _ish_matni(b, "✅ qabul qildi"))
+    return Response(BuyurtmaSerializer(b).data)
+
+
+def _ish_matni(b, amal):
+    xodim = (b.xodim.ism or b.xodim.telefon) if b.xodim_id else 'Xodim'
+    mijoz = ' '.join(x for x in (b.mijoz_ism, b.mijoz_telefon) if x)
+    return (f"{xodim} {amal}: #{b.id} — {_xizmat(b)}\n"
+            f"👤 {mijoz or '—'}\n📍 {b.manzil or b.tuman or '—'}")
+
+
+# Xodim bosqichlari: qaysi holatdan qaysi holatga o'tsa bo'ladi
+BOSQICH_OTISH = {
+    'yolda': ('qabul',),
+    'bajarilmoqda': ('qabul', 'yolda'),
+}
+BOSQICH_MATNI = {
+    'yolda': ("🚗 yo'lga chiqdi", "#{id} buyurtmangiz bo'yicha usta yo'lga chiqdi. Tez orada yetib boradi."),
+    'bajarilmoqda': ("🔧 yetib bordi va ishni boshladi", "#{id} buyurtmangiz bo'yicha usta yetib keldi va ishni boshladi."),
+}
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bosqich(request, pk):
+    """Xodim: «Yo'lga chiqdim» (yolda) va «Yetib keldim — ishni boshladim» (bajarilmoqda)."""
+    try:
+        b = Buyurtma.objects.select_related('xodim').get(pk=pk, xodim=request.user)
+    except Buyurtma.DoesNotExist:
+        return Response({'detail': _('Buyurtma topilmadi')}, status=404)
+    holat = request.data.get('holat')
+    if holat not in BOSQICH_OTISH:
+        return Response({'detail': _("Holat noto'g'ri")}, status=400)
+    if b.holat not in BOSQICH_OTISH[holat]:
+        return Response({'detail': _("Avval oldingi bosqichni bajaring")}, status=409)
+    b.holat = holat
+    b.save()
+    operatorga, mijozga = BOSQICH_MATNI[holat]
+    _sms_yuborish(b.mijoz, mijozga.format(id=b.id))
+    xodim_xabar.ish_holati(b, _ish_matni(b, operatorga))
     return Response(BuyurtmaSerializer(b).data)
 
 
@@ -247,12 +323,25 @@ def natija(request, pk):
     b.natija_soat = request.data.get('natija_soat') or None
     b.material = request.data.get('material', '')
     holat = request.data.get('holat', 'bajarildi')
+    # Xodim ishni o'zi YAKUNLAMAYDI: «Ishni tugatdim» → to'lov kutiladi. Buyurtma to'lov to'liq
+    # qabul qilingach (Click / tasdiqlangan chek / Ruxsora qabul qilgan tushum) yakunlanadi (yakun.py).
+    if holat == 'bajarildi':
+        holat = 'tolov_kutilmoqda'
     b.holat = holat
     b.natija_sana = timezone.now()
     b.save()
 
-    if holat == 'bajarildi':
-        _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangiz bajarildi! ✓ Natija: {b.natija[:80] if b.natija else '—'}")
+    if holat == 'tolov_kutilmoqda':
+        natija_matni = f"\n📝 {b.natija[:200]}" if b.natija else ''
+        if b.tolandi:                                  # oldindan to'langan — darhol yakunlanadi
+            xodim_xabar.ish_holati(b, _ish_matni(b, "🏁 ishni tugatdi") + natija_matni)
+            from .yakun import tolov_yakuni
+            tolov_yakuni(b.id)
+            b.refresh_from_db()
+        else:
+            _sms_yuborish(b.mijoz, f"#{b.id} buyurtmangiz bo'yicha ish bajarildi ✓ "
+                                   f"Natija: {b.natija[:80] if b.natija else '—'}. To'lovdan so'ng buyurtma yakunlanadi.")
+            xodim_xabar.ish_holati(b, _ish_matni(b, "🏁 ishni tugatdi — to'lov kutilmoqda") + natija_matni)
 
     return Response(BuyurtmaSerializer(b).data)
 

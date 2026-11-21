@@ -3,7 +3,9 @@ from . import views
 
 urlpatterns = [
     path('metrologiya/', views.metrologiya_narxlar),              # OCHIQ (faqat o'qish): sayt uchun narxlar
-    path('ochiq/', views.ochiq_narxnomalar),                      # OCHIQ (faqat o'qish): sayt "Narxnoma" oynasi
+    path('ochiq/', views.ochiq_narxnomalar),
+    path('seshanba/', views.seshanba),                            # OCHIQ: seshanba aksiyasi (promokod faqat seshanba)
+    path('mijoz/', views.mijoz_narxlari),                         # mijoz: ariza oynasidagi narxlar (o'z tarmog'i)                      # OCHIQ (faqat o'qish): sayt "Narxnoma" oynasi
     path('', views.narxnoma_royxat),                              # xodim va admin: ko'rish
     path('admin/', views.narxnoma_admin),                         # admin: hammasi (nofaol qatorlar bilan)
     path('<int:pk>/', views.narxnoma_yangila),                    # admin: sarlavha, sana, eslatma

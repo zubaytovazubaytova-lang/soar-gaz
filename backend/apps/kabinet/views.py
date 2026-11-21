@@ -110,7 +110,7 @@ def obzor(request):
             } if keyingi else None
         ),
         'oxirgi_buyurtmalar': BuyurtmaSerializer(
-            buyurtmalar.select_related('mijoz', 'xodim').order_by('-yaratilgan')[:3],
+            buyurtmalar.select_related('mijoz', 'xodim').prefetch_related('xizmatlar').order_by('-yaratilgan')[:3],
             many=True,
         ).data,
     })
@@ -129,9 +129,9 @@ def _bosqich(b):
         return 'bekor'
     if b.holat == 'bajarildi':
         return 'yakunlandi'
-    if b.holat == 'bajarilmoqda':
+    if b.holat in ('bajarilmoqda', 'tolov_kutilmoqda'):
         return 'bajarilmoqda'
-    if b.holat == 'qabul':
+    if b.holat in ('qabul', 'yolda'):
         return 'tayinlandi'
     return 'tayinlandi' if b.xodim_id else 'yangi'
 
@@ -145,7 +145,7 @@ def buyurtmalarim(request):
     qs = (
         Buyurtma.objects
         .filter(mijoz=request.user)
-        .select_related('mijoz', 'xodim', 'obyekt')
+        .select_related('mijoz', 'xodim', 'obyekt').prefetch_related('xizmatlar')
         .annotate(baholangan_bayroq=Exists(
             Sharh.objects.filter(buyurtma=OuterRef('pk'))
         ))
@@ -326,6 +326,9 @@ def tekshiruvga_yozilish(request, pk):
         # Modelda max_length=100: uzun matn bazani buzmasligi uchun qirqiladi
         vaqt_istagi=str(request.data.get('vaqt_istagi') or "Operator bog'lansin")[:100],
     )
+    from apps.sms_app import xodim_xabar
+    xodim_xabar.yangi_ariza('metrologiya', f"Yangi metrologiya buyurtmasi #{b.id} (hisoblagich tekshiruvi)",
+                            request.user.ism, request.user.telefon, h.obyekt.nom, b.tavsif)
     _bildirishnoma(
         request.user,
         'Tekshiruvga yozildingiz',
@@ -397,7 +400,20 @@ def tolovlarim(request):
             Hujjat.objects.filter(mijoz=user, turi='faktura'),
             many=True, context={'request': request},
         ).data,
+        'kvitansiyalar': _kvitansiyalarim(user),
     })
+
+
+def _kvitansiyalarim(user):
+    """Mijozga berilgan kvitansiyalar (havola bilan) — xodim chiqargan, to'lov qabul qilingan paytdagi hujjat."""
+    from apps.hujjatlar.models import Kvitansiya
+    from apps.hujjatlar.xizmat import sayt_havolasi
+    qs = Kvitansiya.objects.filter(Q(mijoz=user) | Q(mijoz_telefon__in=_telefon_variantlari(user.telefon)))
+    return [{
+        'raqam': k.raqam, 'summa': k.summa, 'usul': k.usul_nomi, 'sana': k.yaratilgan,
+        'holat': k.holat, 'buyurtma': k.buyurtma_id,
+        'url': sayt_havolasi('/kvitansiya/' + k.token + '/'),
+    } for k in qs.order_by('-yaratilgan')[:50]]
 
 
 # ──────────────────────────────────────────────────────────────

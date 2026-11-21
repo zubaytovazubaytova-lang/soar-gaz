@@ -41,6 +41,16 @@ def tolov_sorovi_yarat(xarid):
             izoh=f"Oylik to'lov: {xarid.oylik_tolov:,} so'm".replace(',', ' '),
             holat='yangi',
         )
+    elif xarid.tolov_usuli == 'bank':
+        # Hisob raqamga o'tkazma: mijoz chek yuklaydi, admin/Kadrlar tasdiqlaydi (apps.tolovlar.bank)
+        sorov = TolovSorovi.objects.create(
+            ism=xarid.ism,
+            telefon=xarid.telefon,
+            tolov_turi='bank',
+            xizmat_turi=f'Xarid {xarid.raqam}',
+            summa=xarid.jami,
+            holat='kutilmoqda',
+        )
     else:
         sorov = TolovSorovi.objects.create(
             ism=xarid.ism,
@@ -86,6 +96,9 @@ def tolov_url(xarid):
 
 def sozlanganmi(tolov_usuli):
     """Provayder kalitlari sozlanganmi — sozlanmagan bo'lsa mijozga aytamiz."""
+    if tolov_usuli == 'bank':
+        from apps.tolovlar.models import Rekvizit
+        return Rekvizit.objects.filter(yonalish='xarid', faol=True).exists()
     tizim = _tizim(tolov_usuli)
     if tizim == 'click':
         return bool(getattr(settings, 'CLICK_SERVICE_ID', '') and
