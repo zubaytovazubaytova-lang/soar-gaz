@@ -53,6 +53,20 @@ class BuyurtmaSerializer(serializers.ModelSerializer):
     xodim_malumot = serializers.SerializerMethodField()
     xizmatlar = serializers.SerializerMethodField()
     shartnoma = serializers.SerializerMethodField()
+    tanlangan = serializers.SerializerMethodField()
+
+    def get_tanlangan(self, obj):
+        """Mijozning O'ZI ariza berishda narxnomadan tanlagan xizmatlari va taxminiy narxi.
+        Usta keyin qo'shgan qatorlar bu yerda chiqmaydi (ular ichki hisob — `xizmatlar` maydonida)."""
+        qatorlar = [x for x in obj.xizmatlar.all() if x.qoshgan_id and x.qoshgan_id == obj.mijoz_id]
+        if not qatorlar:
+            return None
+        return {
+            'royxat': [{'nomi': x.nomi, 'soni': x.soni, 'narx_dan': x.narx_dan, 'narx_gacha': x.narx_gacha}
+                       for x in qatorlar],
+            'jami_dan': sum(x.narx_dan * x.soni for x in qatorlar),
+            'jami_gacha': sum((x.narx_gacha if x.narx_gacha is not None else x.narx_dan) * x.soni for x in qatorlar),
+        }
 
     class Meta:
         model = Buyurtma
@@ -62,6 +76,7 @@ class BuyurtmaSerializer(serializers.ModelSerializer):
             'vaqt_istagi', 'holat', 'holat_nomi', 'natija', 'natija_soat', 'natija_sana',
             'material', 'tolandi', 'yaratilgan', 'yangilangan',
             'mijoz_malumot', 'xodim_malumot', 'xizmatlar', 'shartnoma',
+            'tolov_usuli', 'tanlangan',
         ]
         # `tarmoq`ni mijoz belgilay olmaydi: uni faqat server (korxona -> ulgurji) yoki administrator qo'yadi
         # `tolandi`ni mijoz o'zi qo'ya olmaydi: uni faqat to'lov (Click / tasdiqlangan chek) yoki tushum belgilaydi

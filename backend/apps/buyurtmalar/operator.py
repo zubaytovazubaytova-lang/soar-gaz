@@ -25,6 +25,7 @@ from apps.auth_app.models import Foydalanuvchi, audit_yoz
 from apps.hujjatlar.xizmat import HujjatXato, mijoz_ochish, mijoz_telefoni
 from apps.joylashuv.models import Smena
 from apps.narxnoma.models import TARMOQ_CHOICES, TARMOQ_NOMI
+from .serializers import BuyurtmaSerializer
 from .models import QONGIROQ_NATIJALARI, SHAXS_CHOICES, Buyurtma, Qongiroq
 from .views import _sms_yuborish, xodim_tayinla
 
@@ -74,7 +75,10 @@ def _ariza_json(b):
         'natija': b.natija, 'yangilangan': b.yangilangan, 'kechikkan': _kechikkanmi(b),
         'lat': b.lat, 'lng': b.lng, 'joy_bor': b.lat is not None and b.lng is not None,
         'xodim_id': b.xodim_id,
+        'tolov_usuli': b.tolov_usuli, 'tolov_usuli_nomi': b.get_tolov_usuli_display() if b.tolov_usuli else '',
         'xodim_ism': (b.xodim.ism or b.xodim.telefon) if b.xodim_id else '',
+        # Narxnomadan tanlangan xizmatlar (mijoz yoki usta) va taxminiy summa
+        'tanlangan': BuyurtmaSerializer().get_tanlangan(b),
     }
 
 
@@ -104,7 +108,7 @@ def arizalar(request):
     if request.method == 'POST':
         return _ariza_qabul(request, tur)
 
-    qs = (Buyurtma.objects.filter(_doira(tur)).select_related('xodim'))
+    qs = (Buyurtma.objects.filter(_doira(tur)).select_related('xodim').prefetch_related('xizmatlar'))
     # Xulosa filtrdan mustaqil: operator "nechta ariza tayinlanmagan" ni doim ko'rsin
     bugun_boshi = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
     xulosa = qs.aggregate(

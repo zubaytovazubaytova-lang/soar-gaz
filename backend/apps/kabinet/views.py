@@ -110,7 +110,7 @@ def obzor(request):
             } if keyingi else None
         ),
         'oxirgi_buyurtmalar': BuyurtmaSerializer(
-            buyurtmalar.select_related('mijoz', 'xodim').order_by('-yaratilgan')[:3],
+            buyurtmalar.select_related('mijoz', 'xodim').prefetch_related('xizmatlar').order_by('-yaratilgan')[:3],
             many=True,
         ).data,
     })
@@ -145,7 +145,7 @@ def buyurtmalarim(request):
     qs = (
         Buyurtma.objects
         .filter(mijoz=request.user)
-        .select_related('mijoz', 'xodim', 'obyekt')
+        .select_related('mijoz', 'xodim', 'obyekt').prefetch_related('xizmatlar')
         .annotate(baholangan_bayroq=Exists(
             Sharh.objects.filter(buyurtma=OuterRef('pk'))
         ))

@@ -46,6 +46,13 @@
   .qadam-nuqta{width:30px;height:5px;border-radius:999px;background:var(--card-border);}
   .qadam-nuqta.active{background:var(--blue);}
   .f-label{font-size:12.5px;font-weight:600;color:var(--text-secondary);margin:0 0 6px;display:block;}
+  .tu-tanlov{position:relative;display:block;cursor:pointer;}
+  .tu-tanlov input{position:absolute;opacity:0;pointer-events:none;}
+  .tu-tanlov span{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;border:1.5px solid #cbd5e1;background:linear-gradient(180deg,#fff,#f1f5f9);box-shadow:0 1px 0 #fff inset,0 2px 4px rgba(15,23,42,.08);transition:.15s;}
+  .tu-tanlov span b{font-size:14px;}
+  .tu-tanlov span small{font-size:11.5px;color:#64748b;}
+  .tu-tanlov input:checked+span{border-color:#0f766e;background:linear-gradient(180deg,#f0fdfa,#ccfbf1);box-shadow:0 0 0 3px rgba(15,118,110,.15),0 2px 6px rgba(15,118,110,.2);}
+  .tu-tanlov input:focus-visible+span{outline:2px solid #0f766e;outline-offset:2px;}
   .f-input,.f-select,.f-area{width:100%;padding:11px 14px;border:1.5px solid var(--card-border);border-radius:var(--radius-sm);font-size:14px;margin-bottom:16px;background:#fff;color:var(--text-primary);}
   .f-area{resize:vertical;min-height:80px;}
   .f-input:focus,.f-select:focus,.f-area:focus{outline:none;border-color:var(--blue);}
@@ -784,7 +791,7 @@
 <div id="toast"></div>
 
 <script src="/scripts/hodisa-boshqaruvchi.js?v=1"></script>
-<script src="/scripts/kabinet-asosiy.js?v=11"></script>
+<script src="/scripts/kabinet-asosiy.js?v=12"></script>
 <script src="/scripts/kabinet-hodisalar.js?v=1"></script>
 </body>
 </html>

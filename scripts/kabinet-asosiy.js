@@ -584,6 +584,9 @@ async function buyurtmalarYukla() {
         <div class="kv"><span>Manzil</span><span>${xavfsiz(b.obyekt_nomi || b.manzil || b.tuman || '—')}</span></div>
         ${b.xodim_malumot ? `<div class="kv"><span>Keladigan xodim</span><span>${xavfsiz(b.xodim_malumot.ism || '—')} · ${xavfsiz(b.xodim_malumot.telefon)}</span></div>` : ''}
         ${b.vaqt_istagi ? `<div class="kv"><span>Taxminiy vaqt</span><span>${xavfsiz(b.vaqt_istagi)}</span></div>` : ''}
+        ${b.tanlangan ? `<div class="kv"><span>Xizmatlar</span><span>${b.tanlangan.royxat.map(x => xavfsiz(x.nomi) + (x.soni > 1 ? ' ×' + x.soni : '')).join('<br>')}</span></div>
+          <div class="kv"><span>Taxminiy narx</span><span><b>${narxMatn(b.tanlangan.jami_dan, b.tanlangan.jami_gacha)}</b></span></div>` : ''}
+        ${b.tolov_usuli ? `<div class="kv"><span>To'lov usuli</span><span>${b.tolov_usuli === 'naqd' ? '💵 Naqd (usta kelganda)' : "🏦 Hisob raqamga o'tkazma"}</span></div>` : ''}
         ${b.tavsif ? `<div class="kv"><span>Tavsif</span><span>${xavfsiz(b.tavsif)}</span></div>` : ''}
         ${b.natija ? `<div class="kv"><span>Natija</span><span>${xavfsiz(b.natija)}</span></div>` : ''}
       </div>
@@ -615,6 +618,7 @@ function arizaModalOch() {
           <option value="">Tanlang...</option>
           ${XIZMATLAR.map(([k,n]) => `<option value="${k}">${n}</option>`).join('')}
         </select>
+        <div id="aNarxlar" style="display:none;margin:-4px 0 16px"></div>
         <label class="f-label" for="aObyekt">Obyekt</label>
         <select class="f-select" id="aObyekt">
           <option value="">Profildagi asosiy manzil</option>
@@ -633,9 +637,95 @@ function arizaModalOch() {
         <p class="f-hint" style="margin:-8px 0 14px;font-size:12px;opacity:.7">Bo'sh qoldirsangiz profilingizdagi raqamga qo'ng'iroq qilinadi.</p>
         <label class="f-label" for="aTavsif">Muammo tavsifi</label>
         <textarea class="f-area" id="aTavsif" placeholder="Qisqacha yozing..."></textarea>
+        <span class="f-label">To'lov usuli *</span>
+        <div class="tolov-usul" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px">
+          <label class="tu-tanlov"><input type="radio" name="aTolov" value="naqd" checked>
+            <span><b>💵 Naqd</b><small>Usta kelganda to'laysiz</small></span></label>
+          <label class="tu-tanlov"><input type="radio" name="aTolov" value="otkazma">
+            <span><b>🏦 O'tkazma</b><small>Hisob raqamga yoki Click</small></span></label>
+        </div>
         <button class="btn asosiy" type="submit" style="width:100%;justify-content:center"><i class="ti ti-send"></i> Arizani yuborish</button>
       </form>`);
+    el('aXizmat').addEventListener('change', arizaNarxlariYukla);
+    el('aNarxlar').addEventListener('change', arizaJamiHisobla);
+    el('aNarxlar').addEventListener('input', arizaJamiHisobla);
   }).catch(e => xabar(e.message, true));
+}
+
+/* Tanlangan xizmat turi bo'yicha narxnoma (mijozning o'z tarmog'i: aholi yoki korxona) */
+let arizaNarxSorov = 0;
+function narxMatn(dan, gacha) {
+  if (dan == null) return '';
+  return gacha != null && gacha !== dan ? `${pul(dan).replace(" so'm", '')} – ${pul(gacha)}` : pul(dan);
+}
+
+async function arizaNarxlariYukla() {
+  const quti = el('aNarxlar');
+  const xizmat = el('aXizmat').value;
+  const raqam = ++arizaNarxSorov;
+  if (!xizmat) { quti.style.display = 'none'; quti.innerHTML = ''; return; }
+  quti.style.display = 'block';
+  quti.innerHTML = `<p class="f-hint" style="margin:0">Narxlar yuklanmoqda...</p>`;
+  try {
+    const d = await so('/narxnoma/mijoz/?xizmat=' + encodeURIComponent(xizmat));
+    if (raqam !== arizaNarxSorov) return;          // foydalanuvchi boshqa xizmatni tanlab ulgurdi
+    if (!d.narxnomalar.length) {
+      quti.innerHTML = `<p class="f-hint" style="margin:0;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0">Bu xizmat narxi ko'rikdan so'ng usta tomonidan aytiladi.</p>`;
+      return;
+    }
+    quti.innerHTML = `
+      <div style="border:1px solid #cbd5e1;border-radius:14px;overflow:hidden;background:#fff">
+        <div style="padding:10px 14px;background:linear-gradient(180deg,#f8fafc,#eef2f7);border-bottom:1px solid #e2e8f0;font-weight:700;font-size:13.5px">
+          <i class="ti ti-receipt"></i> Narxnoma — kerakli ishlarni belgilang (ixtiyoriy)</div>
+        <div style="max-height:300px;overflow:auto;padding:4px 0">
+          ${d.narxnomalar.map(n => `
+            <div style="padding:8px 14px 2px;font-size:11.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.03em">${xavfsiz(n.sarlavha || n.bolim_nomi)}</div>
+            ${n.qatorlar.map(q => {
+              // ustun: p — ustun1 narxi, r — ustun2 narxi; ikkalasi bo'lsa mijoz tanlaydi
+              const variant = [];
+              if (q.p_dan != null) variant.push(['p', n.ustun1, q.p_dan, q.p_gacha]);
+              if (q.r_dan != null) variant.push(['r', n.ustun2, q.r_dan, q.r_gacha]);
+              return `<div class="nx-qator" data-qator="${q.id}" style="display:flex;gap:10px;align-items:flex-start;padding:8px 14px;border-top:1px solid #f1f5f9">
+                <input type="checkbox" class="nx-bel" style="margin-top:3px;width:18px;height:18px;flex:none" aria-label="${xavfsiz(q.nomi)}">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13.5px;line-height:1.35">${xavfsiz(q.nomi)}</div>
+                  ${variant.length > 1
+                    ? `<select class="f-select nx-ustun" style="margin:6px 0 0;padding:6px 8px;font-size:12.5px">
+                         ${variant.map(([u, nom, dan, gacha]) => `<option value="${u}" data-dan="${dan}" data-gacha="${gacha ?? dan}">${xavfsiz(nom || '')}: ${narxMatn(dan, gacha)}</option>`).join('')}
+                       </select>`
+                    : `<input type="hidden" class="nx-ustun" value="${variant[0][0]}" data-dan="${variant[0][2]}" data-gacha="${variant[0][3] ?? variant[0][2]}">
+                       <div style="font-size:13px;font-weight:700;color:#0f766e;margin-top:2px">${narxMatn(variant[0][2], variant[0][3])}${variant[0][1] ? ` <span style="font-weight:400;color:#64748b">· ${xavfsiz(variant[0][1])}</span>` : ''}</div>`}
+                  ${q.izoh ? `<div style="font-size:11.5px;color:#64748b;margin-top:2px">${xavfsiz(q.izoh)}</div>` : ''}
+                </div>
+                <input type="number" class="f-input nx-soni" min="1" max="999" value="1" title="Soni" style="width:58px;margin:0;padding:6px;text-align:center" aria-label="Soni">
+              </div>`;
+            }).join('')}`).join('')}
+        </div>
+        <div id="aJami" style="padding:10px 14px;border-top:1px solid #e2e8f0;background:#f0fdfa;font-size:13.5px">Xizmat belgilanmagan</div>
+      </div>
+      <p class="f-hint" style="margin:6px 0 0;font-size:11.5px;opacity:.75">Narxlar taxminiy: yakuniy summani usta joyida ko'rib tasdiqlaydi.</p>`;
+  } catch (e) {
+    if (raqam === arizaNarxSorov) quti.innerHTML = `<p class="f-hint" style="margin:0;color:#b91c1c">Narxlarni yuklab bo'lmadi: ${xavfsiz(e.message)}</p>`;
+  }
+}
+
+function arizaTanlangan() {
+  return [...document.querySelectorAll('#aNarxlar .nx-qator')].filter(q => q.querySelector('.nx-bel').checked).map(q => {
+    const u = q.querySelector('.nx-ustun');
+    const opt = u.tagName === 'SELECT' ? u.selectedOptions[0] : u;
+    const soni = Math.min(999, Math.max(1, parseInt(q.querySelector('.nx-soni').value, 10) || 1));
+    return { qator: Number(q.dataset.qator), ustun: u.value, soni,
+             dan: Number(opt.dataset.dan) * soni, gacha: Number(opt.dataset.gacha) * soni };
+  });
+}
+
+function arizaJamiHisobla() {
+  const jami = el('aJami');
+  if (!jami) return;
+  const t = arizaTanlangan();
+  if (!t.length) { jami.textContent = 'Xizmat belgilanmagan'; return; }
+  const dan = t.reduce((s, x) => s + x.dan, 0), gacha = t.reduce((s, x) => s + x.gacha, 0);
+  jami.innerHTML = `<b>${t.length} ta xizmat</b> · Taxminiy narx: <b style="color:#0f766e">${narxMatn(dan, gacha)}</b>`;
 }
 
 async function arizaYubor(e) {
@@ -649,6 +739,10 @@ async function arizaYubor(e) {
   if (obyekt) tana.obyekt = Number(obyekt);
   const aloqaTel = el('aTel').value.trim();
   if (aloqaTel) tana.mijoz_telefon = aloqaTel;
+  const usul = document.querySelector('input[name="aTolov"]:checked');
+  tana.tolov_usuli = usul ? usul.value : '';
+  const tanlangan = arizaTanlangan();
+  if (tanlangan.length) tana.xizmatlar = tanlangan.map(({ qator, ustun, soni }) => ({ qator, ustun, soni }));
   try {
     const b = await so('/buyurtmalar/', { method:'POST', body: tana });
     modalYop();

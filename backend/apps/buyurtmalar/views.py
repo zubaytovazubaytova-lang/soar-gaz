@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django.utils import timezone
 from django.db.models import Count, Q
 from django.utils.translation import gettext as _
@@ -81,7 +82,20 @@ def buyurtmalar_list(request):
         # Narx tarmog'ini mijoz tanlamaydi: korxona (sanoat, biznes) -> ulgurji, qolgani -> aholi.
         # Administrator keyin o'zgartira oladi.
         tarmoq = 'ulgurji' if getattr(user, 'mulk_turi', '') == 'korxona' else 'aholi'
-        b = ser.save(mijoz=user, tarmoq=tarmoq)
+        tolov_usuli = request.data.get('tolov_usuli') or ''
+        if tolov_usuli not in ('', 'naqd', 'otkazma'):
+            return Response({'detail': _("To'lov usuli noto'g'ri")}, status=400)
+        tanlangan = request.data.get('xizmatlar')
+        with transaction.atomic():
+            b = ser.save(mijoz=user, tarmoq=tarmoq, tolov_usuli=tolov_usuli)
+            # Mijoz narxnomadan xizmat tanlagan bo'lsa — buyurtmaga biriktiriladi (usta tayyor holda ko'radi,
+            # yakuniy summani u tasdiqlaydi)
+            if tanlangan:
+                from .xizmatlar import xizmatlarni_yoz
+                xato = xizmatlarni_yoz(b, tanlangan, user)
+                if xato:
+                    transaction.set_rollback(True)
+                    return Response({'detail': xato}, status=400)
         _sms_yuborish(user, f"Buyurtmangiz qabul qilindi! #{b.id} — {_xizmat(b)}. Tez orada bog'lanamiz.")
         xodim_xabar.yangi_ariza(b.xizmat, f"Yangi buyurtma #{b.id} — {_xizmat(b)}",
                                 user.ism, user.telefon, b.manzil or b.tuman, b.tavsif)

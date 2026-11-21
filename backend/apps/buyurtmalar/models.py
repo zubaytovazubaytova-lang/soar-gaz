@@ -64,6 +64,9 @@ class Buyurtma(models.Model):
     tavsif = models.TextField(blank=True)
     vaqt_istagi = models.CharField(max_length=100, blank=True)
     holat = models.CharField(max_length=20, choices=HOLAT_CHOICES, default='yangi')
+    # Mijoz ariza berishda tanlagan to'lov usuli (usta va operator shunga qarab ishlaydi)
+    tolov_usuli = models.CharField(max_length=10, blank=True, default='', verbose_name="To'lov usuli",
+                                   choices=[('naqd', 'Naqd (usta kelganda)'), ('otkazma', "Hisob raqamga o'tkazma")])
     natija = models.TextField(blank=True)
     natija_soat = models.FloatField(null=True, blank=True)
     natija_sana = models.DateTimeField(null=True, blank=True)

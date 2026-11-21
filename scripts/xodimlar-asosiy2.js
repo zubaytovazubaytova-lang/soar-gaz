@@ -264,6 +264,7 @@ function shuOymi(iso){
 let vazifaBelgilangan = null;   // narxnomadan biriktirilgan vazifa: ro'yxatda ajratib ko'rsatiladi
 
 function pulMatni(n){ return Number(n).toLocaleString('ru-RU'); }
+function narxOraliq(dan, gacha){ return pulMatni(dan) + (gacha != null && gacha !== dan ? ' – ' + pulMatni(gacha) : '') + " so'm"; }
 
 // Vazifadagi tanlangan xizmatlar, hisoblangan narx va tasdiqlangan summa
 function xizmatBloki(b, amallar){
@@ -375,6 +376,12 @@ function vazifaQator(b, amallar){
     tavsif.append(aloqa);
   }
   info.append(sarlavha, tavsif);
+  if (b.tolov_usuli) {                         // mijoz ariza berishda tanlagan to'lov usuli
+    const tu = document.createElement('p');
+    tu.style.cssText = 'margin:4px 0 0;font-size:12.5px;font-weight:700;color:' + (b.tolov_usuli === 'naqd' ? '#166534' : '#1d4ed8');
+    tu.textContent = b.tolov_usuli === 'naqd' ? "💵 Mijoz naqd to'laydi (pulni joyida oling)" : "🏦 Mijoz hisob raqamga o'tkazma qiladi";
+    info.append(tu);
+  }
   const xb = xizmatBloki(b, amallar);
   if (xb) info.append(xb);
   const hb = hujjatBloki(b, amallar);          // shartnoma (summa tasdiqlangan buyurtmalarda)
@@ -2399,6 +2406,10 @@ function arizalarChiz(){
     const tel = document.createElement('small'); tel.textContent = a.mijoz_telefon; m.appendChild(tel);
     const x = katak(tr, a.xizmat_nomi, 'matn-keng');
     { const s = document.createElement('small'); s.textContent = a.tarmoq === 'ulgurji' ? 'Tashkilot (ulgurji)' : 'Aholi'; x.appendChild(s); }
+    if (a.tanlangan) { const s = document.createElement('small'); s.style.color = '#0f766e';
+      s.textContent = a.tanlangan.royxat.map(t => t.nomi + (t.soni > 1 ? ' ×' + t.soni : '')).join('; ') + ' — ' + narxOraliq(a.tanlangan.jami_dan, a.tanlangan.jami_gacha); x.appendChild(s); }
+    if (a.tolov_usuli) { const s = document.createElement('small'); s.style.fontWeight = '700';
+      s.textContent = a.tolov_usuli === 'naqd' ? '💵 Naqd (usta kelganda)' : "🏦 Hisob raqamga o'tkazma"; x.appendChild(s); }
     const man = katak(tr, a.manzil || '—', 'matn-keng');
     if (a.tuman) { const s = document.createElement('small'); s.textContent = a.tuman; man.appendChild(s); }
     if (a.tavsif) { const s = document.createElement('small'); s.textContent = a.tavsif; man.appendChild(s); }
