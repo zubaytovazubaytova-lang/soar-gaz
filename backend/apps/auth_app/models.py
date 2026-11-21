@@ -225,8 +225,8 @@ class Mijoz(Foydalanuvchi):
 
     class Meta:
         proxy = True
-        verbose_name = 'Mijoz'
-        verbose_name_plural = 'Mijozlar'
+        verbose_name = "Ro'yxatdan o'tgan mijoz"
+        verbose_name_plural = "Ro'yxatdan o'tgan mijozlar"
 
 
 AUDIT_AMAL_CHOICES = [
@@ -267,6 +267,7 @@ AUDIT_AMAL_CHOICES = [
     ('shartnoma_tuzildi', 'Mijoz bilan shartnoma tuzildi'),
     ('shartnoma_tasdiq', 'Shartnoma tasdiqlandi'),
     ('shartnoma_bekor', 'Shartnoma bekor qilindi'),
+    ('mijozlar_eksport', "Mijozlar ro'yxati yuklab olindi (Excel/CSV)"),
 ]
 
 
