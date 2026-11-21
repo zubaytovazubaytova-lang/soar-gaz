@@ -1886,7 +1886,7 @@
     const bolibBor = (XARID_NARX.bolib || []).length &&
                      (!XARID_NARX.bolib_eng_kam || (t && t.amount >= XARID_NARX.bolib_eng_kam));
 
-    const FAOL_USULLAR = ['click', 'bolib', 'bank'];
+    const FAOL_USULLAR = ['click', 'bank'];      // bo'lib to'lash — tez orada
     box.innerHTML = Object.keys(TOLOV_NOMI)
       .filter(u => FAOL_USULLAR.includes(u) && u !== joriy && (u !== 'bolib' || bolibBor))
       .map(u => `

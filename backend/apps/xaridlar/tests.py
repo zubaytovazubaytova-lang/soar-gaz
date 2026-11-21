@@ -332,3 +332,11 @@ class NaqdXaridYopiqTesti(TestCase):
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn('payment', r.json())
         self.assertFalse(Xarid.objects.exists())
+
+    def test_bolib_tolash_hozircha_yopiq(self):
+        r = APIClient().post('/api/xaridlar/', {
+            'customer': {'name': 'Ali', 'phone': '+998901234567'},
+            'delivery': {'method': 'filialdan'}, 'payment': {'method': 'bolib', 'months': 6},
+            'items': [{'productId': 'p-1', 'qty': 1}]}, format='json')
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn('payment', r.json())

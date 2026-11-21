@@ -76,8 +76,9 @@ TOLOV_USULI_CHOICES = [
 ONLAYN_USULLAR = {'click', 'payme', 'karta'}
 # Saytda HOZIR tanlash mumkin bo'lgan usullar: onlayn faqat Click (Payme va karta provayderi ulanmagan).
 # Naqd (yetkazishda) xaridlar uchun o'chirilgan (2026-11-21, rahbariyat qarori): faqat Click yoki
-# hisob raqamga o'tkazma. Eski usullar modelda qoladi — ilgari shunday berilgan buyurtmalar buzilmasin.
-FAOL_TOLOV_USULLARI = {'click', 'bolib', 'bank'}
+# hisob raqamga o'tkazma. Bo'lib to'lash — «Tez orada» (saytda ko'rinadi, tanlab bo'lmaydi).
+# Eski usullar modelda qoladi — ilgari shunday berilgan buyurtmalar buzilmasin.
+FAOL_TOLOV_USULLARI = {'click', 'bank'}
 
 TOLOV_HOLAT_CHOICES = [
     ('kutilmoqda', 'To\'lov kutilmoqda'),

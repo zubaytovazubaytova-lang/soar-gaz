@@ -3546,7 +3546,8 @@ body > .cobalt-line{display:none}
         </div>
       </div>
 
-      <div class="card bg-navy-900 rounded-2xl p-6 text-center cursor-pointer" data-h-click="h37">
+      <div class="card bg-navy-900 rounded-2xl p-6 text-center" aria-disabled="true" style="position:relative;opacity:.7">
+        <span style="position:absolute;top:12px;right:12px;padding:3px 10px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:800;letter-spacing:.03em">TEZ ORADA</span>
         <div class="w-14 h-14 bg-gold-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4"><i class="fas fa-handshake text-gold-400 text-xl"></i></div>
         <h3 class="font-bold mb-2">Shartnoma asosida</h3>
         <p class="text-gray-400 text-xs leading-relaxed">Katta loyihalar uchun bo'lib to'lash</p>
@@ -4190,9 +4191,9 @@ body > .cobalt-line{display:none}
               <label class="xarid-radio sm:col-span-2" data-tolov="click" data-h-click="h90">
                 <i class="fas fa-bolt"></i><span><b>Click</b><small>Onlayn to'lov</small></span>
               </label>
-              <label class="xarid-radio sm:col-span-2" data-tolov="bolib" data-h-click="h93">
-                <i class="fas fa-calendar-days"></i><span><b>Bo'lib to'lash</b>
-                <small id="xa-bolib-shart">Shartnoma asosida, operator tasdiqlaydi</small></span>
+              <label class="xarid-radio sm:col-span-2" data-tolov="bolib" aria-disabled="true" title="Tez orada" style="opacity:.55;cursor:not-allowed;filter:grayscale(.4)">
+                <i class="fas fa-calendar-days"></i><span><b>Bo'lib to'lash <em style="font-style:normal;display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:10.5px;font-weight:800;letter-spacing:.03em;vertical-align:middle">TEZ ORADA</em></b>
+                <small id="xa-bolib-shart">Hozircha mavjud emas — tez orada ishga tushadi</small></span>
               </label>
               <label class="xarid-radio sm:col-span-2" data-tolov="bank" data-h-click="hBank">
                 <i class="fas fa-university"></i><span><b>Hisob raqamga o'tkazma</b>
@@ -6119,7 +6120,7 @@ body > .cobalt-line{display:none}
 
 <!-- ====== SCRIPTS ====== -->
 <script src="scripts/hodisa-boshqaruvchi.js?v=1"></script>
-<script src="scripts/index-asosiy.js?v=6"></script>
+<script src="scripts/index-asosiy.js?v=7"></script>
 <script src="scripts/index-hodisalar.js?v=1"></script>
 <script src="scripts/hero-carousel.js?v=3" defer></script>
 <script src="scripts/tadbir-slider.js?v=3" defer></script>
