@@ -169,3 +169,27 @@ def keyingi_seshanba(sana):
     """Bugun seshanba bo'lsa — bugun, aks holda keyingi seshanba."""
     import datetime
     return sana + datetime.timedelta(days=(1 - sana.weekday()) % 7)
+
+
+def promokod_oynasi(hozir=None):
+    """Promokod amal qiladigan oyna: seshanba 00:00 dan SESHANBA_SOAT soat (standart 50 —
+    payshanba 02:00 gacha, Toshkent vaqti). Qaytaradi: (seshanba_sanasi, boshlanish, tugash, amaldami).
+    Oyna yopiq bo'lsa — keyingi seshanbaning oynasi."""
+    import datetime
+    from django.conf import settings
+    from django.utils import timezone
+    hozir = timezone.localtime(hozir)
+    soat = getattr(settings, 'SESHANBA_SOAT', 50)
+    oxirgi = hozir.date() - datetime.timedelta(days=(hozir.weekday() - 1) % 7)   # oxirgi seshanba (yoki bugun)
+    boshi = timezone.make_aware(datetime.datetime.combine(oxirgi, datetime.time.min))
+    if boshi <= hozir < boshi + datetime.timedelta(hours=soat):
+        return oxirgi, boshi, boshi + datetime.timedelta(hours=soat), True
+    keyingi = oxirgi + datetime.timedelta(days=7)
+    kboshi = timezone.make_aware(datetime.datetime.combine(keyingi, datetime.time.min))
+    return keyingi, kboshi, kboshi + datetime.timedelta(hours=soat), False
+
+
+def amaldagi_aksiya(hozir=None):
+    """Hozir promokod amal qilsa — o'sha seshanbaning juftligi, aks holda None."""
+    sana, _b, _t, amalda = promokod_oynasi(hozir)
+    return seshanba_aksiyasi(sana) if amalda else None

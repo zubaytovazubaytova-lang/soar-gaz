@@ -89,11 +89,12 @@ def buyurtmalar_list(request):
         aksiya_maydonlari = {}
         promokod = str(request.data.get('promokod') or '').strip().upper()
         if promokod:
-            # Seshanba aksiyasi: faqat seshanba kuni, faqat shu haftaning 2 ta xizmatiga
-            from apps.narxnoma.models import seshanba_aksiyasi
-            aksiya = seshanba_aksiyasi(timezone.localdate())
+            # Seshanba aksiyasi: seshanba 00:00 dan 50 soat (payshanba 02:00 gacha), shu haftaning 2 ta xizmatiga
+            from apps.narxnoma.models import amaldagi_aksiya
+            aksiya = amaldagi_aksiya()
             if not aksiya or promokod != settings.SESHANBA_PROMOKOD:
-                return Response({'detail': _("Promokod noto'g'ri yoki bugun amal qilmaydi (faqat seshanba kunlari)"),
+                return Response({'detail': _("Promokod noto'g'ri yoki muddati o'tgan "
+                                             "(seshanba 00:00 dan payshanba 02:00 gacha amal qiladi)"),
                                  'maydon': 'promokod'}, status=400)
             aksiya_maydonlari = {'promokod': promokod, 'chegirma_foiz': settings.SESHANBA_FOIZ,
                                  'aksiya_qatorlar': aksiya.qator_idlari()}

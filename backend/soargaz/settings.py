@@ -508,3 +508,5 @@ LOGGING = {
 # Navbat Django admin → «Seshanba aksiyasi — navbat» da kiritiladi.
 SESHANBA_PROMOKOD = os.environ.get('SESHANBA_PROMOKOD', 'SESHANBA').strip().upper()
 SESHANBA_FOIZ = int(os.environ.get('SESHANBA_FOIZ', '5'))
+# Promokod amal qilish muddati: seshanba 00:00 dan shuncha soat (50 — payshanba 02:00 gacha)
+SESHANBA_SOAT = int(os.environ.get('SESHANBA_SOAT', '50'))

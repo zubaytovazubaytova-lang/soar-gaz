@@ -667,16 +667,23 @@ async function seshanbaBanneri() {
   if (!seshanba.bugun) {
     const [y, m, d] = String(seshanba.sana).split('-');
     quti.innerHTML = `<div style="padding:10px 14px;border-radius:12px;background:#fffbeb;border:1px dashed #f59e0b;font-size:12.5px;color:#92400e;line-height:1.45">
-      🗓 <b>Seshanba aksiyasi (${d}.${m}):</b> ${nomlar} xizmatlariga <b>−${seshanba.foiz}%</b>. Promokod shu kuni beriladi.</div>`;
+      🗓 <b>Seshanba aksiyasi (${d}.${m}):</b> ${nomlar} xizmatlariga <b>−${seshanba.foiz}%</b>. Promokod seshanba kuni beriladi (50 soat amal qiladi).</div>`;
     return;
   }
   quti.innerHTML = `
     <div style="padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;box-shadow:0 2px 8px rgba(245,158,11,.25)">
-      <div style="font-size:13.5px;font-weight:800;color:#78350f">🎉 Bugun seshanba — ${nomlar} xizmatlariga −${seshanba.foiz}% chegirma!</div>
-      <div style="font-size:12.5px;color:#92400e;margin:4px 0 8px">Promokod: <b style="letter-spacing:.06em">${xavfsiz(seshanba.promokod)}</b> — pastga yozing va xizmatni narxnomadan belgilang.</div>
+      <div style="font-size:13.5px;font-weight:800;color:#78350f">🎉 Seshanba aksiyasi — ${nomlar} xizmatlariga −${seshanba.foiz}% chegirma!</div>
+      <div style="font-size:12.5px;color:#92400e;margin:4px 0 8px">Promokod: <b style="letter-spacing:.06em">${xavfsiz(seshanba.promokod)}</b> — pastga yozing va xizmatni narxnomadan belgilang.
+        ${seshanba.tugash ? `<br>⏳ Amal qiladi: <b>${tugashMatni(seshanba.tugash)}</b> gacha` : ''}</div>
       <input class="f-input" id="aPromo" placeholder="Promokod" autocomplete="off" style="margin:0;text-transform:uppercase;letter-spacing:.06em;background:#fff">
     </div>`;
   el('aPromo').addEventListener('input', arizaJamiHisobla);
+}
+
+function tugashMatni(iso) {
+  // Server Toshkent vaqtida beradi: «2026-11-26T02:00:00+05:00» → «26.11, 02:00»
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return m ? `${m[3]}.${m[2]}, ${m[4]}:${m[5]}` : '';
 }
 
 function promoQollanadimi() {

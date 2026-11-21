@@ -20,8 +20,14 @@ def klient(user):
     return c
 
 
+def vaqt(sana, soat=12, daqiqa=0):
+    from django.utils import timezone
+    t = timezone.make_aware(datetime.datetime.combine(sana, datetime.time(soat, daqiqa)))
+    return mock.patch('django.utils.timezone.now', return_value=t)
+
+
 def kun(sana):
-    return mock.patch('django.utils.timezone.localdate', return_value=sana)
+    return vaqt(sana)
 
 
 @override_settings(SESHANBA_PROMOKOD='SESHANBA', SESHANBA_FOIZ=5)
@@ -69,8 +75,22 @@ class SeshanbaTestlari(TestCase):
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(r.json()['jami_dan'], (self.q2.p_dan * 95 + 50) // 100 * 2)
 
+    def test_50_soat_payshanba_0200_gacha(self):
+        with vaqt(SESHANBA + datetime.timedelta(days=1), 23, 30):          # chorshanba kechqurun — amalda
+            self.assertEqual(self.ariza('SESHANBA', self.q1).status_code, 201)
+        with vaqt(SESHANBA + datetime.timedelta(days=2), 1, 59):           # payshanba 01:59 — amalda
+            self.assertEqual(self.ariza('SESHANBA', self.q1).status_code, 201)
+        with vaqt(SESHANBA + datetime.timedelta(days=2), 2, 0):            # payshanba 02:00 — tugagan
+            self.assertEqual(self.ariza('SESHANBA', self.q1).status_code, 400)
+        with vaqt(SESHANBA - datetime.timedelta(days=1), 23, 59):          # dushanba — hali boshlanmagan
+            self.assertEqual(self.ariza('SESHANBA', self.q1).status_code, 400)
+        with vaqt(SESHANBA + datetime.timedelta(days=1)):
+            d = APIClient().get('/api/narxnoma/seshanba/').json()
+        self.assertEqual((d['bugun'], d['promokod']), (True, 'SESHANBA'))
+        self.assertTrue(d['tugash'].startswith('2026-11-26T02:00:00'))
+
     def test_boshqa_kunda_yoki_notogri_kod_rad(self):
-        with kun(SESHANBA + datetime.timedelta(days=1)):
+        with kun(SESHANBA + datetime.timedelta(days=3)):                   # juma
             self.assertEqual(self.ariza('SESHANBA', self.q1).status_code, 400)
         with kun(SESHANBA):
             self.assertEqual(self.ariza('BOSHQA', self.q1).status_code, 400)

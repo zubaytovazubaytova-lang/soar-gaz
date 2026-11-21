@@ -314,19 +314,18 @@ def mijoz_narxlari(request):
 @permission_classes([AllowAny])
 @throttle_classes([OchiqNarxnomaThrottle])
 def seshanba(request):
-    """Seshanba aksiyasi: bugun seshanba bo'lsa — bugungi 2 xizmat va promokod;
-    aks holda keyingi seshanba sanasi va xizmatlari (promokod faqat seshanba kuni beriladi)."""
+    """Seshanba aksiyasi: promokod oynasi (seshanba 00:00 + 50 soat) ochiq bo'lsa — 2 xizmat va promokod;
+    aks holda keyingi seshanba sanasi va xizmatlari (promokod faqat oyna ochilganda beriladi)."""
     from django.conf import settings
-    from django.utils import timezone
-    from .models import keyingi_seshanba, seshanba_aksiyasi
-    bugun = timezone.localdate()
-    sana = keyingi_seshanba(bugun)
+    from .models import promokod_oynasi, seshanba_aksiyasi
+    sana, boshi, tugash, amalda = promokod_oynasi()
     a = seshanba_aksiyasi(sana)
     if not a:
         return Response({'bor': False})
     return Response({
-        'bor': True, 'bugun': sana == bugun, 'sana': sana, 'foiz': settings.SESHANBA_FOIZ,
-        'promokod': settings.SESHANBA_PROMOKOD if sana == bugun else None,
+        'bor': True, 'bugun': amalda, 'sana': sana, 'foiz': settings.SESHANBA_FOIZ,
+        'boshlanish': boshi, 'tugash': tugash,
+        'promokod': settings.SESHANBA_PROMOKOD if amalda else None,
         'xizmatlar': [{'id': q.id, 'nomi': q.nomi} for q in a.qatorlar()],
         'idlar': a.qator_idlari(),                  # shu nomdagi barcha narxnoma qatorlari
     })
