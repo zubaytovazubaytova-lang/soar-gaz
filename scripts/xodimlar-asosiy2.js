@@ -115,6 +115,9 @@ async function apiSorov(yol, sozlama = {}){
     headers: {
       ...(sozlama.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+      // Portal interfeysi o'zbekcha: server matnlari (xizmat, holat nomlari) ham o'zbekcha kelsin —
+      // aks holda telefoni rus tilida bo'lgan xodim «Метрология» kabi aralash matn ko'radi
+      'Accept-Language': 'uz',
       ...(sozlama.headers || {})
     }
   });
@@ -565,6 +568,7 @@ async function vazifalarYukla(){
     vazifalarChiz();
     tushumBuyurtmaTanla();
     narxVazifaTanla();
+    hisobotTaklif();
   } catch (xato) {
     ['bugunHolat', 'vazifaHolat', 'tarixHolat'].forEach(id => {
       const el = document.getElementById(id);
@@ -2431,15 +2435,40 @@ function hisobotBelgiChiz(h){
   b.textContent = h ? 'Topshirildi' : 'Topshirilmagan';
   document.getElementById('hisobotBtn').textContent = h ? 'Hisobotni yangilash' : 'Hisobotni saqlash';
 }
+let hisobotBor = null;                 // null — hali yuklanmagan; true/false — bugungi hisobot bormi
+let hisobotAvto = { joy: '', ish: '' }; // oxirgi avtomatik taklif (xodim o'zgartirsa ustidan yozilmaydi)
+
 async function hisobotYukla(){
   try {
     const j = await apiSorov('/kadrlar/hisobot/');
+    hisobotBor = !!j.hisobot;
     if (j.hisobot) {
       document.getElementById('hisobotJoy').value = j.hisobot.joy;
       document.getElementById('hisobotIsh').value = j.hisobot.ish;
     }
     hisobotBelgiChiz(j.hisobot);
+    hisobotTaklif();
   } catch (e) { /* karta bo'sh holda qoladi — saqlash baribir ishlaydi */ }
+}
+
+// Hisobot topshirilmagan bo'lsa — bugun ishlangan buyurtmalardan avtomatik taklif (xodim tekshirib saqlaydi)
+function hisobotTaklif(){
+  if (hisobotBor !== false) return;
+  const joyEl = document.getElementById('hisobotJoy'), ishEl = document.getElementById('hisobotIsh');
+  if (!joyEl || (joyEl.value && joyEl.value !== hisobotAvto.joy) || (ishEl.value && ishEl.value !== hisobotAvto.ish)) return;
+  const bugun = new Date().toDateString();
+  const ishlar = (vazifalar || []).filter(b => b.yangilangan && new Date(b.yangilangan).toDateString() === bugun
+    && ['qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda', 'bajarildi'].includes(b.holat));
+  const izoh = document.getElementById('hisobotAvtoIzoh');
+  if (!ishlar.length) { if (izoh) izoh.style.display = 'none'; return; }
+  const joylar = [...new Set(ishlar.map(b => [b.tuman, b.manzil].filter(Boolean).join(', ')).filter(Boolean))];
+  hisobotAvto = {
+    joy: joylar.join('; ').slice(0, 200),
+    ish: ishlar.map(b => `#${b.id} ${b.xizmat_nomi || b.xizmat} — ${HOLAT_MATN[b.holat] || b.holat}`).join('; ').slice(0, 500),
+  };
+  joyEl.value = hisobotAvto.joy;
+  ishEl.value = hisobotAvto.ish;
+  if (izoh) izoh.style.display = 'block';
 }
 document.getElementById('hisobotBtn').addEventListener('click', async (e) => {
   const btn = e.currentTarget, xato = document.getElementById('hisobotXato');
@@ -2454,6 +2483,9 @@ document.getElementById('hisobotBtn').addEventListener('click', async (e) => {
       })
     });
     hisobotBelgiChiz(j.hisobot);
+    hisobotBor = true;
+    const izoh = document.getElementById('hisobotAvtoIzoh');
+    if (izoh) izoh.style.display = 'none';
   } catch (x) {
     xato.textContent = x.message;
     xato.classList.add('show');
