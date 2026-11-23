@@ -1560,8 +1560,8 @@ async function kvitansiyaChiqar(t){
   const havola = hujjatHavolasi(k.url);
   hujjatOch(havola);                                // chop etish uchun; bloklansa pastdagi "Kvitansiyani ochish" havolasi bor
   if (k.sms_yuborildi === false) {
-    tushXabari(`Kvitansiya ${k.raqam} chiqarildi, lekin mijozga SMS yuborilmadi. Jadvaldagi "SMS yuborish" tugmasi bilan qayta urinib ko'ring.`, havola);
-  } else if (k.yangi_mijoz) tushXabari(`${k.mijoz_ism} mijozlar ro'yxatiga olindi. ${k.mijoz_telefon} raqamiga SMS yuborildi.`, havola);
+    tushXabari(`Kvitansiya ${k.raqam} chiqarildi, lekin mijozga xabar yetmadi (Telegram botga ulanmagan). Havolani mijozga o'zingiz yuboring yoki "Qayta yuborish" tugmasini bosing.`, havola);
+  } else if (k.yangi_mijoz) tushXabari(`${k.mijoz_ism} mijozlar ro'yxatiga olindi. ${k.mijoz_telefon} raqamiga xabar yuborildi.`, havola);
   else tushXabari(`Kvitansiya ${k.raqam} chiqarildi. Havolasi ${k.mijoz_telefon} raqamiga (Telegram yoki SMS) yuborildi.`, havola);
   return k;
 }
@@ -1586,7 +1586,7 @@ async function kvitansiyaSms(id, tugma){
   tugma.disabled = true;
   try {
     const k = await apiSorov(`/hujjatlar/kvitansiya/${id}/sms/`, { method: 'POST' });
-    if (!k.sms_yuborildi) alert('SMS yuborilmadi. Telefon raqamni tekshiring.');
+    if (!k.sms_yuborildi) alert("Xabar yetmadi: mijoz Telegram botga ulanmagan (SMS hali ulanmagan). Havolani mijozga o'zingiz yuboring.");
   } catch (e) { alert(e.message); }
   await tushumYukla();
   hujjatlarYukla();
@@ -1594,8 +1594,8 @@ async function kvitansiyaSms(id, tugma){
 
 function smsBelgisi(k){
   if (k.holat === 'bekor') return '<span class="sms-xato">Bekor qilingan</span>';
-  return k.sms_holat === 'yuborildi' ? '<span class="sms-ok">SMS ✓</span>'
-    : k.sms_holat === 'xato' ? '<span class="sms-xato">SMS yuborilmadi</span>' : '<span>SMS yuborilmagan</span>';
+  return k.sms_holat === 'yuborildi' ? '<span class="sms-ok">Yuborildi ✓</span>'
+    : k.sms_holat === 'xato' ? '<span class="sms-xato">Yetmadi</span>' : '<span>Yuborilmagan</span>';
 }
 
 // Tushum jadvalidagi "Kvitansiya" katagi
@@ -1604,7 +1604,7 @@ function kvitansiyaKatagi(t){
   if (k) {
     return `<a class="havola" href="${matnEsc(hujjatHavolasi(k.url))}" target="_blank" rel="noopener">${matnEsc(k.raqam)}</a><br>${smsBelgisi(k)}` +
       (k.holat === 'amal' && k.sms_holat !== 'yuborildi'
-        ? ` <button class="mini-btn" type="button" data-kv-sms="${Number(k.id)}">SMS yuborish</button>` : '');
+        ? ` <button class="mini-btn" type="button" data-kv-sms="${Number(k.id)}">Qayta yuborish</button>` : '');
   }
   return t.holat === 'rad' ? '—'
     : `<button class="mini-btn asosiy" type="button" data-kv-chiqar="${Number(t.id)}">Kvitansiya</button>`;
@@ -1666,7 +1666,7 @@ function hujjatBloki(b, amallar){
   if (faol && tugallanmagan) {
     const qator = document.createElement('div');
     qator.className = 'qator';
-    qator.append(tugmaYasa(s.holat === 'qoralama' ? 'Mijozga SMS kod yuborish' : 'Kodni qayta yuborish', 'asosiy',
+    qator.append(tugmaYasa(s.holat === 'qoralama' ? 'Mijozga tasdiqlash kodi yuborish' : 'Kodni qayta yuborish', 'asosiy',
       () => shartnomaAmali(`/hujjatlar/shartnoma/${s.id}/kod/`)));
     if (s.holat === 'tasdiq_kutilmoqda') {
       const kod = document.createElement('input');
@@ -1706,7 +1706,7 @@ async function hujjatlarYukla(){
         <td>${matnEsc(k.manzil)}</td>
         <td><b>${somFormat(k.summa)}</b></td>
         <td>${smsBelgisi(k)}</td>
-        <td>${k.holat === 'amal' ? `<button class="mini-btn" type="button" data-kv-sms="${Number(k.id)}">SMS qayta</button>` : ''}</td>
+        <td>${k.holat === 'amal' ? `<button class="mini-btn" type="button" data-kv-sms="${Number(k.id)}">Qayta yuborish</button>` : ''}</td>
       </tr>`).join('');
     const kh = document.getElementById('kvHolat');
     kh.textContent = kvlar.length ? '' : 'Hali kvitansiya chiqarilmagan';
@@ -3281,7 +3281,7 @@ async function ishHolatiniOzgartir(holat){
 }
 
 async function hujjatYubor(h, btn){
-  if (!confirm(`«${h.nom}» hujjati mijozga yuborilsinmi? Mijoz kabinetida ko'rinadi va unga SMS boradi.`)) return;
+  if (!confirm(`«${h.nom}» hujjati mijozga yuborilsinmi? Mijoz kabinetida ko'rinadi va unga Telegram'da xabar boradi.`)) return;
   ishXabar('');
   btn.disabled = true;
   try {
@@ -3392,7 +3392,7 @@ async function hyYukla(){
 }
 
 async function hyYubor(h, btn){
-  if (!confirm(`«${h.nom}» hujjati ${h.mijoz_ism || 'mijoz'}ga (${h.mijoz_telefon || '—'}) yuborilsinmi? Mijoz kabinetida ko'rinadi va unga SMS boradi.`)) return;
+  if (!confirm(`«${h.nom}» hujjati ${h.mijoz_ism || 'mijoz'}ga (${h.mijoz_telefon || '—'}) yuborilsinmi? Mijoz kabinetida ko'rinadi va unga Telegram'da xabar boradi.`)) return;
   hyXabar('');
   btn.disabled = true;
   try {

@@ -462,12 +462,12 @@
     <p class="f-hint" id="aloqaIzoh" style="margin:0 0 14px;">Bu ma'lumot hujjatda chiqadi.</p>
     <label class="f-label" for="aloqaIsm">Mijoz ismi *</label>
     <input class="f-input" id="aloqaIsm" maxlength="120" required>
-    <label class="f-label" for="aloqaTel">Telefon raqami * (SMS shu raqamga boradi)</label>
+    <label class="f-label" for="aloqaTel">Telefon raqami * (xabar shu raqamga Telegram orqali boradi)</label>
     <input class="f-input" id="aloqaTel" type="tel" inputmode="tel" placeholder="+998 90 123 45 67" required>
     <label class="f-label" for="aloqaManzil">Turar joyi (manzil) *</label>
     <input class="f-input" id="aloqaManzil" maxlength="300" required>
     <label class="eslab-qol" id="aloqaSmsQator" style="margin-bottom:6px;">
-      <input type="checkbox" id="aloqaSms" checked><span>Mijozga SMS yuborilsin (kvitansiya raqami va havolasi)</span>
+      <input type="checkbox" id="aloqaSms" checked><span>Mijozga xabar yuborilsin — Telegram (kvitansiya raqami va havolasi)</span>
     </label>
     <p class="smena-xato" id="aloqaXato"></p>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
@@ -834,10 +834,10 @@
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-receipt"></i>Kvitansiyalarim</h3>
               <button class="mini-btn asosiy" id="hujjatYangila" type="button"><i class="ti ti-refresh"></i> Yangilash</button></div>
-            <p class="smena-matn">Mijozdan pul olgach, "Pul tushumi" bo'limida kvitansiya chiqariladi: mijozning telefoni va turar joyi unda yoziladi, mijozga SMS boradi.</p>
+            <p class="smena-matn">Mijozdan pul olgach, "Pul tushumi" bo'limida kvitansiya chiqariladi: mijozning telefoni va turar joyi unda yoziladi, mijozga Telegram'da xabar boradi.</p>
             <div class="table-wrap">
               <table class="data-table keng">
-                <thead><tr><th>Raqam</th><th>Sana</th><th>Mijoz</th><th>Telefon</th><th>Turar joyi</th><th>Summa</th><th>SMS</th><th></th></tr></thead>
+                <thead><tr><th>Raqam</th><th>Sana</th><th>Mijoz</th><th>Telefon</th><th>Turar joyi</th><th>Summa</th><th>Xabar</th><th></th></tr></thead>
                 <tbody id="kvTana"></tbody>
               </table>
             </div>
@@ -1230,7 +1230,7 @@
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-file-plus"></i>Mijozlardan kelgan hujjatlar va ishlar</h3>
               <button class="mini-btn asosiy" type="button" data-ish-yangila><i class="ti ti-refresh"></i> Yangilash</button></div>
-            <p class="smena-matn">Saytdan kelgan <b>metrologiya arizalari</b> va mijozlarning <b>loyihalashtirish / metrologiya buyurtmalari</b>. Ishni qabul qiling, hujjatini tayyorlab yuklang va tayyor hujjatni mijozga yuboring: u mijozning kabinetidagi «Hujjatlar»ga tushadi va SMS boradi.</p>
+            <p class="smena-matn">Saytdan kelgan <b>metrologiya arizalari</b> va mijozlarning <b>loyihalashtirish / metrologiya buyurtmalari</b>. Ishni qabul qiling, hujjatini tayyorlab yuklang va tayyor hujjatni mijozga yuboring: u mijozning kabinetidagi «Hujjatlar»ga tushadi va unga Telegram'da xabar boradi.</p>
             <div class="stat-grid" style="margin-top:0;">
               <div class="stat-box"><p class="n" data-hx="yangi">—</p><p class="l">Yangi (qabul qilinmagan)</p></div>
               <div class="stat-box"><p class="n" data-hx="qabul">—</p><p class="l">Qabul qilingan, hujjat tayyorlanadi</p></div>
@@ -1270,7 +1270,7 @@
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-send"></i>Tayyor hujjatlarni mijozga yuborish</h3>
               <button class="mini-btn asosiy" type="button" data-hy-yangila><i class="ti ti-refresh"></i> Yangilash</button></div>
-            <p class="smena-matn">Tayyorlab yuklangan hujjatlar shu yerda turadi. «Mijozga yuborish» bosilgach hujjat mijozning kabinetidagi «Hujjatlar»ga tushadi va unga SMS boradi. Yuborilgan hujjatni o'chirib bo'lmaydi. Yangi hujjat yuklash uchun «Kelgan hujjatlar» bo'limida ishni oching.</p>
+            <p class="smena-matn">Tayyorlab yuklangan hujjatlar shu yerda turadi. «Mijozga yuborish» bosilgach hujjat mijozning kabinetidagi «Hujjatlar»ga tushadi va unga Telegram'da xabar boradi. Yuborilgan hujjatni o'chirib bo'lmaydi. Yangi hujjat yuklash uchun «Kelgan hujjatlar» bo'limida ishni oching.</p>
             <div class="stat-grid" style="margin-top:0;">
               <div class="stat-box"><p class="n" data-hy="tayyor">—</p><p class="l">Tayyor, mijozga yuborilmagan</p></div>
               <div class="stat-box"><p class="n" data-hy="bugun_yuborilgan">—</p><p class="l">Bugun yuborilgan hujjatlar</p></div>
@@ -1520,7 +1520,7 @@
   </div>
 </div>
 
-<script src="/scripts/xodimlar-asosiy2.js?v=19"></script>
+<script src="/scripts/xodimlar-asosiy2.js?v=20"></script>
 <script src="/scripts/bank-cheklar.js?v=3"></script>
 <script src="/scripts/xodimlar-hodisalar.js?v=1"></script>
 </body>

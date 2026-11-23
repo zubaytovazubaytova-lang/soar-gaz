@@ -219,7 +219,7 @@ def shartnoma_tasdiq(request, pk):
         x.kod_tekshir(s, request.data.get('kod'))
     except x.HujjatXato as e:
         return _xato(e)
-    audit_yoz(request, 'shartnoma_tasdiq', f'{s.raqam}: mijoz SMS kod bilan tasdiqladi')
+    audit_yoz(request, 'shartnoma_tasdiq', f'{s.raqam}: mijoz tasdiqlash kodi bilan tasdiqladi')
     s.refresh_from_db()
     return Response(_sh(s))
 

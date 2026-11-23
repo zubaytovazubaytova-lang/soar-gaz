@@ -297,7 +297,7 @@ def _admin_2fa_boshla(request, user):
               {'telefon': user.telefon, 'urinish': 0},
               settings.ADMIN_2FA_DAQIQA * 60)
 
-    audit_yoz(request, 'kirish', 'Parol tasdiqlandi, SMS kod yuborildi', user=user)
+    audit_yoz(request, 'kirish', 'Parol tasdiqlandi, tasdiqlash kodi yuborildi', user=user)
 
     javob = {
         'otp_kerak': True,
@@ -315,7 +315,7 @@ def _admin_2fa_boshla(request, user):
             javob['ogohlantirish'] = (f"Kod Telegram orqali yuboriladi: @{telegram_bot.bot_nomi()} botini oching, "
                                       "«Start» va «Raqamni ulashish» ni bosing, so'ng qayta kiring.")
         else:
-            javob['ogohlantirish'] = "SMS yuborilmadi — kodni administratordan so'rang."
+            javob['ogohlantirish'] = "Kod yuborilmadi (Telegram bot javob bermadi, SMS hali ulanmagan) — birozdan keyin qayta urinib ko'ring."
     return Response(javob)
 
 
@@ -624,8 +624,7 @@ def tasdiq_kodi_yuborish(request):
     kod = sinov_kod or ''.join(random.choices(string.digits, k=6))
     OtpKod.objects.create(telefon=telefon, kod=kod)
     if not sinov_kod and not _send_otp_sms(telefon, kod):
-        return Response(
-            {'detail': _("SMS yuborilmadi. Birozdan keyin urinib ko'ring.")}, status=502)
+        return _kod_yuborilmadi_javobi(telefon)
 
     cache.set(_kesh_kaliti('oxirgi', telefon), 1, settings.OTP_QAYTA_SONIYA)
     soatlik = cache.get(_kesh_kaliti('soatlik', telefon), 0)

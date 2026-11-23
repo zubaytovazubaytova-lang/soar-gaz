@@ -90,8 +90,12 @@ def _eskiz_yubor(telefon, matn, qayta=True):
         raise SmsXato(f"Eskiz bilan aloqa yo'q: {xato}")
 
 
-def sms_yubor(telefon, matn, telegram_bot=True):
-    """SMS yuboradi. Muvaffaqiyatli bo'lsa True qaytaradi.
+def sms_yubor(telefon, matn, telegram_bot=True, zaxira_telefonlar=()):
+    """Xabar yuboradi: avval Telegram (tekin), bo'lmasa SMS. Muvaffaqiyatli bo'lsa True.
+
+    `zaxira_telefonlar` — asosiy raqam Telegram'ga ulanmagan bo'lsa, xabar shu raqamlarning
+    Telegram'iga yuboriladi (masalan, kvitansiyadagi raqam boshqa, mijozning kabinet raqami esa botga
+    ulangan). SMS ulanmaguncha (Eskiz shartnomasi) xabarlar shu yo'l bilan yetkaziladi.
 
     Xatolik yuz bersa log'ga yozadi va False qaytaradi — chaqiruvchi kod
     (masalan OTP) shu asosda mijozga tushunarli xabar ko'rsatadi.
@@ -99,8 +103,12 @@ def sms_yubor(telefon, matn, telegram_bot=True):
     # Raqam @soargaz_bot ga ulangan bo'lsa (Telegram orqali kirishda bot xabariga ruxsat bergan yoki
     # botda raqamini ulashgan) xabar avval Telegram'dan TEKIN ketadi; bo'lmasa SMS.
     # telegram_bot=False — faqat SMS (majburiy SMS kerak bo'lgan holatlar uchun).
-    if telegram_bot and telegram.sozlangan() and telegram.yubor(telefon, matn):
-        return True
+    if telegram_bot and telegram.sozlangan():
+        if telegram.yubor(telefon, matn):
+            return True
+        for zaxira in zaxira_telefonlar:
+            if zaxira and zaxira != telefon and telegram.yubor(zaxira, matn):
+                return True
 
     provayder = _sozlama('SMS_PROVAYDER', 'konsol')
 

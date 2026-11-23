@@ -205,7 +205,7 @@ def kvitansiya_sms(kv):
     if kv.yangi_mijoz:
         # Yangi ro'yxatga olingan mijozga shaxsiy kabinet haqida ham xabar beriladi
         matn += f" Shaxsiy kabinet: {sayt_havolasi('/kabinet/')}"
-    ok = bool(sms_yubor(kv.mijoz_telefon, matn))
+    ok = bool(sms_yubor(kv.mijoz_telefon, matn, zaxira_telefonlar=_mijoz_raqamlari(kv.mijoz)))
     kv.sms_holat = 'yuborildi' if ok else 'xato'
     kv.sms_vaqti = timezone.now()
     kv.save(update_fields=['sms_holat', 'sms_vaqti'])
@@ -293,9 +293,10 @@ def kod_yubor(sh):
 
     kod = get_random_string(6, '0123456789')
     matn = f"Soar Gaz: shartnoma {sh.raqam} tasdiqlash kodi: {kod}. Kodni faqat xodimga ayting."
-    if not sms_yubor(sh.mijoz_telefon, matn):
+    if not sms_yubor(sh.mijoz_telefon, matn, zaxira_telefonlar=_mijoz_raqamlari(sh.mijoz)):
         cache.delete(f'shartnoma:kod:{sh.pk}')            # xato bo'lsa kutish shart emas
-        raise HujjatXato("SMS yuborib bo'lmadi. Telefon raqamni tekshiring yoki shartnomani qog'ozga "
+        raise HujjatXato("Kodni yuborib bo'lmadi: mijoz Telegram botga (@soargaz_bot) ulanmagan, SMS hali "
+                         "ulanmagan. Mijoz kabinetga Telegram orqali kirsin yoki shartnomani qog'ozga "
                          "imzolating", 502)
     sh.kod_xesh = _kod_xeshi(sh, kod)
     sh.kod_vaqti = timezone.now()
@@ -307,7 +308,7 @@ def kod_yubor(sh):
 def kod_tekshir(sh, kod):
     """Mijoz aytgan kodni tekshiradi. To'g'ri bo'lsa shartnoma tasdiqlanadi."""
     if sh.holat != 'tasdiq_kutilmoqda' or not sh.kod_xesh:
-        raise HujjatXato('Avval mijozga SMS kod yuboring', 409)
+        raise HujjatXato('Avval mijozga tasdiqlash kodini yuboring', 409)
     if timezone.now() > sh.kod_vaqti + timedelta(minutes=KOD_MUDDATI_DAQIQA):
         raise HujjatXato('Kod muddati tugagan. Yangi kod yuboring', 409)
     if sh.kod_urinish >= KOD_MAX_URINISH:
@@ -322,7 +323,15 @@ def kod_tekshir(sh, kod):
     sh.tasdiq_vaqti = timezone.now()
     sh.kod_xesh = ''                                         # ishlatilgan kod qayta yaramasin
     sh.save(update_fields=['holat', 'tasdiq_vaqti', 'kod_xesh'])
-    sms_yubor(sh.mijoz_telefon, f"Soar Gaz: shartnoma {sh.raqam} tasdiqlandi. Rahmat!")
+    sms_yubor(sh.mijoz_telefon, f"Soar Gaz: shartnoma {sh.raqam} tasdiqlandi. Rahmat!",
+              zaxira_telefonlar=_mijoz_raqamlari(sh.mijoz))
+
+
+def _mijoz_raqamlari(mijoz):
+    """Mijozning kabinet raqamlari (Telegram'ga ulangan bo'lishi mumkin) — xabar uchun zaxira."""
+    if mijoz is None:
+        return ()
+    return tuple(t for t in (mijoz.telefon, mijoz.qoshimcha_telefon) if t)
 
 
 def niqoblash(telefon):

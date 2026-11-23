@@ -189,7 +189,7 @@ async function smsTasdiqBilan(yol, sozlama) {
     if (!err.kodKerak) throw err;
   }
   await so('/auth/tasdiq-kodi/', { method: 'POST', body: {} });
-  const kod = prompt("Xavfsizlik uchun telefoningizga SMS kod yuborildi.\nKodni kiriting:");
+  const kod = prompt("Xavfsizlik uchun tasdiqlash kodi Telegram'ingizga (@soargaz_bot) yuborildi.\nKodni kiriting:");
   if (!kod) throw new Error('Tasdiqlash bekor qilindi');
   const tana = Object.assign({}, JSON.parse(sozlama.body), { tasdiq_kodi: kod.trim() });
   return so(yol, Object.assign({}, sozlama, { body: JSON.stringify(tana) }));
@@ -1278,7 +1278,7 @@ async function bildirishnomalarYukla() {
     <div class="row-item">
       <div class="row-ikon"><i class="ti ti-message-2"></i></div>
       <div class="r-info"><h5>${xavfsiz(s.matn)}</h5><p>${sana(s.yaratilgan, true)}</p></div>
-    </div>`).join('') : '<p class="bosh-holat">SMS xabarlar yo\'q.</p>';
+    </div>`).join('') : '<p class="bosh-holat">Xabarlar yo\'q.</p>';
 }
 
 async function hammasiOqildi() {
