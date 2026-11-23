@@ -1253,6 +1253,42 @@ function tushumBuyurtmaTanla(){
 
 document.getElementById('tushTuri').addEventListener('change', tushumTuriChiz);
 
+// Buyurtma tanlanganda: qolgan summa va mijoz tanlagan to'lov usuli avtomatik qo'yiladi.
+// Summa — tasdiqlangan summadan shu buyurtma bo'yicha avval kiritilgan (rad etilmagan) pullar ayirilgan.
+let tushAvtoSumma = '';
+document.getElementById('tushBuyurtma').addEventListener('change', (e) => {
+  const b = (vazifalar || []).find(x => String(x.id) === e.target.value);
+  const izoh = document.getElementById('tushBuyurtmaIzoh');
+  const summaEl = document.getElementById('tushSumma');
+  izoh.style.color = '';
+  if (!b) { if (summaEl.value === tushAvtoSumma) summaEl.value = ''; tushAvtoSumma = ''; izoh.textContent = ''; return; }
+  const tasdiq = b.xizmatlar && b.xizmatlar.tasdiq_summa;
+  const olingan = (tushumRoyxati || []).filter(t => t.buyurtma_id === b.id && t.holat !== 'rad')
+    .reduce((s, t) => s + Number(t.summa || 0), 0);
+  const qoldiq = tasdiq != null ? Math.max(0, Number(tasdiq) - olingan) : null;
+  const qismlar = [];
+  if (qoldiq != null && (!summaEl.value || summaEl.value === tushAvtoSumma)) {
+    summaEl.value = qoldiq ? qoldiq.toLocaleString('ru-RU') : '';
+    tushAvtoSumma = summaEl.value;
+  }
+  if (tasdiq != null) qismlar.push(`Tasdiqlangan summa: ${pulMatni(tasdiq)} so'm` +
+    (olingan ? `, avval kiritilgan: ${pulMatni(olingan)} so'm, qoldiq: ${pulMatni(qoldiq)} so'm` : ''));
+  if (b.promokod) qismlar.push(`seshanba chegirmasi (−${b.chegirma_foiz}%) narxga kiritilgan`);
+  if (b.tolandi) {
+    qismlar.unshift("⚠️ Bu buyurtma to'liq to'langan — mijozdan qayta pul olmang.");
+    izoh.style.color = '#b91c1c';
+  } else if (b.tolov_usuli === 'otkazma') {
+    document.getElementById('tushUsul').value = 'otkazma';
+    qismlar.unshift("⚠️ Mijoz HISOB RAQAMGA O'TKAZMA (Click yoki bank) tanlagan — naqd pul olmang. " +
+      "Mijoz o'tkazma qilsa, pul tushgach buyurtma o'zi yakunlanadi.");
+    izoh.style.color = '#b45309';
+  } else if (b.tolov_usuli === 'naqd') {
+    document.getElementById('tushUsul').value = 'naqd';
+    qismlar.unshift("Mijoz naqd to'lashni tanlagan.");
+  }
+  izoh.textContent = qismlar.join('. ');
+});
+
 // ── Tushum: narxnomadagi ish turini tanlash ──
 // Maydon bosilganda narxnomadagi barcha ish turlari ochiladi (yozib qidirsa ham bo'ladi).
 // Narx tugmasi (profilaktika/reviziya) bosilsa tanlov saqlanadi; aniq narx bo'lsa summa
