@@ -333,3 +333,29 @@ class KabinetSozlama(models.Model):
 
     def __str__(self):
         return f"Sozlamalar — {self.mijoz}"
+
+
+QIYOSLOV_NATIJA_CHOICES = [
+    ('yaroqli', _("Yaroqli (qiyoslovdan o'tdi)")),
+    ('yaroqsiz', _('Yaroqsiz (almashtirish kerak)')),
+]
+
+
+class QiyoslovYozuvi(models.Model):
+    """Metrolog kiritgan qiyoslov (davlat tekshiruvi) natijasi — tarix sifatida saqlanadi."""
+    hisoblagich = models.ForeignKey(Hisoblagich, on_delete=models.CASCADE, related_name='qiyoslovlar')
+    metrolog = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+                                 related_name='+', verbose_name='Metrolog')
+    sana = models.DateField(verbose_name='Qiyoslov sanasi')
+    natija = models.CharField(max_length=10, choices=QIYOSLOV_NATIJA_CHOICES)
+    keyingi_tekshiruv = models.DateField(null=True, blank=True, verbose_name='Keyingi tekshiruv')
+    izoh = models.CharField(max_length=255, blank=True)
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-sana', '-id']
+        verbose_name = 'Qiyoslov yozuvi'
+        verbose_name_plural = 'Qiyoslov yozuvlari'
+
+    def __str__(self):
+        return f'{self.hisoblagich.seriya_raqam} — {self.sana} ({self.get_natija_display()})'

@@ -549,6 +549,7 @@
         <button class="sb-item" data-page="op-qongiroq" hidden><i class="ti ti-headset"></i>Chiquvchi qo'ng'iroqlar</button>
         <button class="sb-item" data-page="kadr-hujjat" hidden><i class="ti ti-file-text"></i>Xodimlar hujjatlari</button>
         <button class="sb-item" data-page="tasks"><i class="ti ti-clipboard-list"></i>Vazifalarim</button>
+        <button class="sb-item" data-page="metr-hisob" hidden><i class="ti ti-gauge"></i>Hisoblagichlar</button>
         <button class="sb-item" data-page="history"><i class="ti ti-history"></i>Ish tarixi</button>
         <button class="sb-item" data-page="certs"><i class="ti ti-certificate"></i>Sertifikatlarim</button>
         <button class="sb-item" data-page="cash"><i class="ti ti-cash"></i>Pul tushumi</button>
@@ -704,6 +705,59 @@
         </div>
 
         <!-- ---------- HISTORY ---------- -->
+        <!-- ---------- METROLOG: hisoblagichlar va qiyoslov ---------- -->
+        <div class="page" id="page-metr-hisob">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-gauge"></i>Mijozlar hisoblagichlari</h3>
+              <button class="mini-btn asosiy" type="button" id="mhYangila"><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Davlat tekshiruvi (qiyoslov) muddati o'tgan va yaqinlashgan hisoblagichlar. Qiyoslov o'tkazgach natijani kiriting — mijozning kabinetiga xabar boradi.</p>
+            <div class="stat-grid" style="margin-top:0;margin-bottom:16px;">
+              <div class="stat-box"><p class="n" data-mh="otgan">—</p><p class="l">Muddati o'tgan</p></div>
+              <div class="stat-box"><p class="n" data-mh="yaqin">—</p><p class="l">30 kun ichida</p></div>
+              <div class="stat-box"><p class="n" data-mh="nomalum">—</p><p class="l">Sanasi kiritilmagan</p></div>
+              <div class="stat-box"><p class="n" data-mh="jami">—</p><p class="l">Jami hisoblagich</p></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+              <select class="f-select" id="mhFiltr" style="margin:0;max-width:260px;" aria-label="Filtr">
+                <option value="muddatli">Muddati o'tgan va yaqin</option>
+                <option value="otgan">Faqat muddati o'tgan</option>
+                <option value="yaqin">30 kun ichida</option>
+                <option value="nomalum">Sanasi kiritilmagan</option>
+                <option value="hammasi">Hammasi</option>
+              </select>
+              <input class="f-input" id="mhQidir" type="search" placeholder="Seriya, mijoz, telefon yoki manzil..." style="margin:0;flex:1;min-width:200px;">
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Mijoz</th><th>Manzil</th><th>Hisoblagich</th><th>Keyingi tekshiruv</th><th></th></tr></thead>
+                <tbody id="mhTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="mhHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+        <dialog class="aloqa-dialog" id="mhDialog">
+          <h3 id="mhdSarlavha">Qiyoslov natijasi</h3>
+          <p class="smena-matn" id="mhdTafsil" style="margin:0 0 10px;"></p>
+          <label class="f-label" for="mhdSana">Qiyoslov sanasi *</label>
+          <input class="f-input" id="mhdSana" type="date">
+          <label class="f-label" for="mhdNatija">Natija *</label>
+          <select class="f-select" id="mhdNatija">
+            <option value="yaroqli">Yaroqli — qiyoslovdan o'tdi</option>
+            <option value="yaroqsiz">Yaroqsiz — almashtirish kerak</option>
+          </select>
+          <div id="mhdKeyingiBlok">
+            <label class="f-label" for="mhdKeyingi">Keyingi tekshiruv sanasi *</label>
+            <input class="f-input" id="mhdKeyingi" type="date">
+          </div>
+          <label class="f-label" for="mhdIzoh">Izoh (ixtiyoriy)</label>
+          <input class="f-input" id="mhdIzoh" type="text" maxlength="255" placeholder="Masalan: plomba yangilandi">
+          <p class="smena-xato" id="mhdXato"></p>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button class="mini-btn" type="button" id="mhdYopish" style="background:var(--bg-bottom);">Bekor</button>
+            <button class="mini-btn yashil" type="button" id="mhdSaqlash">Saqlash</button>
+          </div>
+        </dialog>
         <div class="page" id="page-history">
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-history"></i>Ish tarixi <span id="tarixSoni" style="color:var(--text-muted);font-weight:600;"></span></h3></div>
@@ -1425,7 +1479,7 @@
   </div>
 </div>
 
-<script src="/scripts/xodimlar-asosiy2.js?v=14"></script>
+<script src="/scripts/xodimlar-asosiy2.js?v=15"></script>
 <script src="/scripts/bank-cheklar.js?v=3"></script>
 <script src="/scripts/xodimlar-hodisalar.js?v=1"></script>
 </body>

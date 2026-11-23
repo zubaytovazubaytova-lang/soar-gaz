@@ -71,7 +71,11 @@ def kabinet_turi(lavozim):
 def kabinet_malumoti(lavozim):
     """Frontendga beriladigan tuzilma: {'tur': ..., 'bolimlar': [...]}."""
     tur = kabinet_turi(lavozim)
-    return {'tur': tur, 'bolimlar': list(BOLIMLAR[tur])}
+    bolimlar = list(BOLIMLAR[tur])
+    # Metrolog: oddiy kabinet + «Hisoblagichlar» (muddatli hisoblagichlar, qiyoslov — apps/kabinet/metrolog.py)
+    if tur == ODDIY and 'metrolog' in (lavozim or '').lower():
+        bolimlar.insert(bolimlar.index('tasks') + 1, 'metr-hisob')
+    return {'tur': tur, 'bolimlar': bolimlar}
 
 
 def vazifa_olishi_mumkin(lavozim):

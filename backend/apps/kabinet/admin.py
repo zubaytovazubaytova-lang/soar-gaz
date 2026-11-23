@@ -89,3 +89,19 @@ class SavolJavobAdmin(admin.ModelAdmin):
 
 
 admin.site.register(KabinetSozlama)
+
+
+from .models import QiyoslovYozuvi  # noqa: E402
+
+
+@admin.register(QiyoslovYozuvi)
+class QiyoslovYozuviAdmin(admin.ModelAdmin):
+    """Metrologlar kiritgan qiyoslov natijalari — faqat o'qish (tarix)."""
+    list_display = ['sana', 'hisoblagich', 'natija', 'keyingi_tekshiruv', 'metrolog', 'yaratilgan']
+    list_filter = ['natija', 'sana']
+    search_fields = ['hisoblagich__seriya_raqam', 'hisoblagich__obyekt__mijoz__telefon', 'izoh']
+    date_hierarchy = 'sana'
+
+    def has_add_permission(self, request): return False
+    def has_change_permission(self, request, obj=None): return False
+    def has_delete_permission(self, request, obj=None): return False

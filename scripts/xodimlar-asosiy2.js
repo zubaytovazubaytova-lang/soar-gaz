@@ -1939,6 +1939,111 @@ function tgUlanishniKut() {
   }, 4000);
 }
 
+// ═══════ Metrolog: mijozlar hisoblagichlari va qiyoslov ═══════
+let mhRoyxat = [], mhTanlangan = null, mhQidirTaymer = null;
+
+async function metrHisobYukla(){
+  const holat = document.getElementById('mhHolat');
+  const q = document.getElementById('mhQidir').value.trim();
+  const filtr = document.getElementById('mhFiltr').value;
+  try {
+    const d = await apiSorov('/kabinet/metrolog/hisoblagichlar/?holat=' + encodeURIComponent(filtr)
+      + (q ? '&q=' + encodeURIComponent(q) : ''));
+    mhRoyxat = d.hisoblagichlar;
+    Object.keys(d.xulosa).forEach(k => document.querySelectorAll(`[data-mh="${k}"]`).forEach(e => { e.textContent = d.xulosa[k]; }));
+    const tana = document.getElementById('mhTana');
+    tana.innerHTML = '';
+    mhRoyxat.forEach(h => {
+      const tr = document.createElement('tr');
+      const m = katak(tr, h.mijoz.ism || '—', 'matn-keng');
+      if (h.mijoz.telefon) {
+        const a = document.createElement('a');
+        a.href = 'tel:' + String(h.mijoz.telefon).replace(/[^\d+]/g, '');
+        a.textContent = h.mijoz.telefon;
+        a.style.cssText = 'display:block;font-weight:700;font-size:12.5px;';
+        m.appendChild(a);
+      }
+      const joy = katak(tr, [h.obyekt.tuman, h.obyekt.manzil].filter(Boolean).join(', ') || '—', 'matn-keng');
+      if (h.obyekt.moljal) { const s = document.createElement('small'); s.textContent = "Mo'ljal: " + h.obyekt.moljal; joy.appendChild(s); }
+      const hs = katak(tr, h.seriya_raqam, 'matn-keng');
+      { const s = document.createElement('small'); s.textContent = [h.turi_nomi, h.markasi].filter(Boolean).join(' · ') + (h.holat !== 'faol' ? ' · ' + h.holat_nomi : ''); hs.appendChild(s); }
+      const mt = document.createElement('td');
+      if (!h.keyingi_tekshiruv) mt.appendChild(belgi('Sanasi yo\'q', 'wait'));
+      else {
+        mt.appendChild(belgi(sanaFormat(h.keyingi_tekshiruv),
+          h.muddat_holati === 'otgan' ? 'red' : h.muddat_holati === 'yaqin' ? 'kech' : 'done'));
+        const s = document.createElement('small');
+        s.style.cssText = 'display:block;margin-top:4px;color:var(--text-muted);';
+        s.textContent = h.kun_qoldi < 0 ? `${-h.kun_qoldi} kun o'tgan` : `${h.kun_qoldi} kun qoldi`;
+        mt.appendChild(s);
+      }
+      tr.appendChild(mt);
+      const amal = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'mini-btn yashil'; btn.textContent = 'Qiyoslov kiritish';
+      btn.disabled = KORISH;
+      btn.addEventListener('click', () => mhDialogOch(h));
+      amal.appendChild(btn);
+      tr.appendChild(amal);
+      tana.appendChild(tr);
+    });
+    holat.textContent = mhRoyxat.length ? '' : (d.xulosa.jami ? "Bu filtr bo'yicha hisoblagich yo'q." : "Mijozlar hali hisoblagich kiritmagan.");
+    holat.style.display = mhRoyxat.length ? 'none' : 'block';
+  } catch (e) {
+    holat.textContent = "Yuklab bo'lmadi: " + e.message;
+    holat.style.display = 'block';
+  }
+}
+
+function mhDialogOch(h){
+  mhTanlangan = h;
+  document.getElementById('mhdSarlavha').textContent = 'Qiyoslov: ' + h.seriya_raqam;
+  document.getElementById('mhdTafsil').textContent = [h.mijoz.ism, h.obyekt.tuman, h.obyekt.manzil].filter(Boolean).join(' · ');
+  document.getElementById('mhdSana').value = bugunISO();
+  document.getElementById('mhdSana').max = bugunISO();
+  document.getElementById('mhdNatija').value = 'yaroqli';
+  document.getElementById('mhdKeyingi').value = '';
+  document.getElementById('mhdKeyingiBlok').style.display = 'block';
+  document.getElementById('mhdIzoh').value = '';
+  document.getElementById('mhdXato').classList.remove('show');
+  const d = document.getElementById('mhDialog');
+  if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+}
+function mhDialogYop(){
+  const d = document.getElementById('mhDialog');
+  if (typeof d.close === 'function') d.close(); else d.removeAttribute('open');
+}
+document.getElementById('mhdNatija').addEventListener('change', (e) => {
+  document.getElementById('mhdKeyingiBlok').style.display = e.target.value === 'yaroqli' ? 'block' : 'none';
+});
+document.getElementById('mhdYopish').addEventListener('click', mhDialogYop);
+document.getElementById('mhdSaqlash').addEventListener('click', async (e) => {
+  const btn = e.currentTarget, xato = document.getElementById('mhdXato');
+  xato.classList.remove('show');
+  btn.disabled = true;
+  try {
+    await apiSorov(`/kabinet/metrolog/hisoblagichlar/${mhTanlangan.id}/qiyoslov/`, { method: 'POST', body: JSON.stringify({
+      sana: document.getElementById('mhdSana').value,
+      natija: document.getElementById('mhdNatija').value,
+      keyingi_tekshiruv: document.getElementById('mhdKeyingi').value || null,
+      izoh: document.getElementById('mhdIzoh').value,
+    }) });
+    mhDialogYop();
+    await metrHisobYukla();
+  } catch (err) {
+    xato.textContent = err.message;
+    xato.classList.add('show');
+  } finally {
+    btn.disabled = false;
+  }
+});
+document.getElementById('mhYangila').addEventListener('click', metrHisobYukla);
+document.getElementById('mhFiltr').addEventListener('change', metrHisobYukla);
+document.getElementById('mhQidir').addEventListener('input', () => {
+  clearTimeout(mhQidirTaymer);
+  mhQidirTaymer = setTimeout(metrHisobYukla, 350);
+});
+
 // ═══════ Kadrlar: davomat va kunlik hisobotlar ═══════
 let kunSana = null;          // 'YYYY-MM-DD'; null = bugun (server hal qiladi)
 let kunMalumot = null;
@@ -3535,6 +3640,7 @@ function showPage(key){
   if (key === 'op-arizalar' && typeof opXaritaTayyor === 'function') opXaritaTayyor();
   if (key === 'topshiriq' && typeof tsYukla === 'function') tsYukla();
   if (key === 'bank-chek' && window.BankCheklar) BankCheklar.yukla();
+  if (key === 'metr-hisob') metrHisobYukla();
 }
 
 // ═══════ Mobil yon panel ═══════
