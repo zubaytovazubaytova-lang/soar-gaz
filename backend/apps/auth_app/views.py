@@ -152,6 +152,8 @@ def token_yangilash(request):
         return rad()
 
     yangi = ser.validated_data
+    if xodim:
+        xodim_faolligi(egasi)                          # portal ochiq — oxirgi faollik yangilanadi
     tana = {'access': yangi['access']}
     mobil = _mobil(request)
     if mobil and yangi.get('refresh'):
@@ -769,7 +771,23 @@ def xodim_login(request):
     if user.holat == 'nofaol':
         return Response({'detail': _('Hisobingiz bloklangan. Admin bilan bog\'laning.')}, status=403)
 
+    # Kim portalga kirgani Kadrlar «Davomat»ida va Django panelida ko'rinadi
+    xodim_faolligi(user, kirish=True)
+    audit_yoz(request, 'kirish', 'Xodimlar portaliga kirdi', user=user)
     return _tokenli_javob(request, _tokens_for_user(user), {'xodim': _xodim_data(user)})
+
+
+FAOLLIK_ORALIQ = 15 * 60          # «oxirgi faollik» shu oraliqdan tez-tez yozilmaydi (bazaga yuk bo'lmasin)
+
+
+def xodim_faolligi(user, kirish=False):
+    """Xodimning portaldagi oxirgi faolligi (last_login): kirishda doim, sessiya yangilanganda
+    (har ~30 daqiqada, portal ochiq turganda) — FAOLLIK_ORALIQ dan bir marta."""
+    hozir = timezone.now()
+    if not kirish and user.last_login and (hozir - user.last_login).total_seconds() < FAOLLIK_ORALIQ:
+        return
+    Foydalanuvchi.objects.filter(pk=user.pk).update(last_login=hozir)
+    user.last_login = hozir
 
 
 @api_view(['GET', 'PATCH'])

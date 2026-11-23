@@ -170,6 +170,7 @@ def kun_korinishi(request):
             'soat': round(jami.total_seconds() / 3600, 1),
             'smena_soni': len(royxat),
             'hisobot': _hisobot_json(h),
+            'oxirgi_faollik': x.last_login,          # portalga oxirgi kirgan / faol bo'lgan vaqt
         })
 
     return Response({
@@ -177,7 +178,8 @@ def kun_korinishi(request):
         'bugun': sana == timezone.localdate(),
         'xulosa': {'jami': len(xodimlar), 'keldi': keldi, 'ishda': ishda,
                    'kelmadi': len(xodimlar) - keldi, 'qolda': len(belgilar), 'hisobotli': hisobotli,
-                   'hisobotsiz': len(xodimlar) - hisobotli},
+                   'hisobotsiz': len(xodimlar) - hisobotli,
+                   'portalsiz': sum(1 for x in xodimlar if x.last_login is None)},
         'xodimlar': qatorlar,
     })
 

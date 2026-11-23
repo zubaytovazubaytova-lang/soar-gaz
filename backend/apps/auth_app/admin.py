@@ -257,7 +257,11 @@ class XodimAdmin(YozilaOladiganTanlovMixin, UserAdmin):
         audit_yoz(request, 'xabar_yuborildi', f'{len(qabulchilar)} ta xodimga: {matn[:120]}')
         self.message_user(request, f'{len(qabulchilar)} ta xodimga xabar yuborildi.', messages.SUCCESS)
 
-    list_display = ['telefon', 'ism', 'lavozim', 'kirish_kodi', 'viloyat', 'tuman', 'holat']
+    list_display = ['telefon', 'ism', 'lavozim', 'kirish_kodi', 'viloyat', 'tuman', 'holat', 'portal_faolligi']
+
+    @admin.display(description='Portalda oxirgi', ordering='last_login', empty_value='hech kirmagan')
+    def portal_faolligi(self, obj):
+        return obj.last_login
     list_filter = [('lavozim', AllValuesFieldListFilter), 'holat',
                    ('viloyat', AllValuesFieldListFilter),
                    ('tuman', AllValuesFieldListFilter)]

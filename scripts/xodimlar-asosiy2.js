@@ -1930,6 +1930,17 @@ function kunChiz(){
   hisobotJadvalChiz();
 }
 
+// Portaldagi oxirgi faollik: «bugun 09:12», «kecha 18:40», «3 kun oldin», «12.11.2026»
+function faollikMatn(iso){
+  const t = new Date(iso), bugun = new Date();
+  const kun = Math.round((new Date(bugun.toDateString()) - new Date(t.toDateString())) / 86400000);
+  const soat = t.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (kun <= 0) return 'bugun ' + soat;
+  if (kun === 1) return 'kecha ' + soat;
+  if (kun < 7) return kun + ' kun oldin';
+  return t.toLocaleDateString('ru-RU');
+}
+
 function davomatChiz(){
   const tana = document.getElementById('davomatTana'), holat = document.getElementById('davomatHolat');
   const filtr = document.getElementById('davomatFiltr').value;
@@ -1939,6 +1950,9 @@ function davomatChiz(){
     const tr = document.createElement('tr');
     katak(tr, x.ism);
     katak(tr, x.lavozim || '—', 'matn-keng');
+    const pf = document.createElement('td');
+    pf.appendChild(x.oxirgi_faollik ? document.createTextNode(faollikMatn(x.oxirgi_faollik)) : belgi('Hech kirmagan', 'red'));
+    tr.appendChild(pf);
     const h = document.createElement('td');
     h.className = 'matn-keng';
     h.appendChild(x.holat === 'ishda' ? belgi('Smenada', 'progress')
