@@ -1943,6 +1943,124 @@ function tgUlanishniKut() {
   }, 4000);
 }
 
+// ═══════ Kadrlar: xodimlar ma'lumotlari (ishga kirgan sana, tabel, sertifikatlar, ish haqi) ═══════
+let kxmRoyxat = [], kxmJoriy = null;
+
+async function kxmYukla(){
+  const holat = document.getElementById('kxmHolat');
+  try {
+    kxmRoyxat = await apiSorov('/kadrlar/xodimlar/');
+    kxmChiz();
+  } catch (e) {
+    holat.textContent = "Yuklab bo'lmadi: " + e.message;
+    holat.style.display = 'block';
+  }
+}
+
+function kxmChiz(){
+  const q = document.getElementById('kxmQidir').value.trim().toLowerCase();
+  const royxat = kxmRoyxat.filter(x => !q || [x.ism, x.telefon, x.lavozim].join(' ').toLowerCase().includes(q));
+  const tana = document.getElementById('kxmTana');
+  tana.innerHTML = '';
+  royxat.forEach(x => {
+    const tr = document.createElement('tr');
+    const m = katak(tr, x.ism, 'matn-keng');
+    { const s = document.createElement('small'); s.textContent = x.telefon; m.appendChild(s); }
+    katak(tr, x.lavozim || '—', 'matn-keng');
+    const ik = document.createElement('td');
+    ik.appendChild(x.ishga_kirgan ? document.createTextNode(sanaFormat(x.ishga_kirgan)) : belgi('Kiritilmagan', 'wait'));
+    tr.appendChild(ik);
+    katak(tr, x.tabel_raqam || '—');
+    const st = document.createElement('td');
+    st.appendChild(x.sertifikat_soni ? document.createTextNode(x.sertifikat_soni + ' ta') : belgi("Yo'q", 'wait'));
+    if (x.sertifikat_ogoh) st.appendChild(belgi('muddati: ' + x.sertifikat_ogoh, 'red')).style.marginLeft = '6px';
+    tr.appendChild(st);
+    const a = document.createElement('td');
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'mini-btn asosiy'; b.textContent = 'Ochish';
+    b.addEventListener('click', () => kxmOch(x.id));
+    a.appendChild(b);
+    tr.appendChild(a);
+    tana.appendChild(tr);
+  });
+  const holat = document.getElementById('kxmHolat');
+  holat.textContent = kxmRoyxat.length ? "Qidiruv bo'yicha xodim topilmadi." : "Faol xodim yo'q.";
+  holat.style.display = royxat.length ? 'none' : 'block';
+}
+
+function kxmXato(matn){
+  const x = document.getElementById('kxmXato');
+  x.textContent = matn || '';
+  x.classList.toggle('show', !!matn);
+}
+
+async function kxmOch(id){
+  try {
+    kxmJoriy = await apiSorov(`/kadrlar/xodimlar/${id}/`);
+  } catch (e) { alert(e.message); return; }
+  kxmXato('');
+  const x = kxmJoriy;
+  document.getElementById('kxmSarlavha').textContent = x.ism;
+  document.getElementById('kxmTafsil').textContent = [x.lavozim, x.telefon].filter(Boolean).join(' · ');
+  document.getElementById('kxmIshga').value = x.ishga_kirgan || '';
+  document.getElementById('kxmTabel').value = x.tabel_raqam || '';
+  ['kxmSNomi', 'kxmSRaqam', 'kxmSBerilgan', 'kxmSAmal'].forEach(i => { document.getElementById(i).value = ''; });
+  kxmKartaChiz();
+  const d = document.getElementById('kxmDialog');
+  if (!d.open) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
+}
+
+function kxmKartaChiz(){
+  const x = kxmJoriy;
+  const sb = document.getElementById('kxmSertlar');
+  sb.innerHTML = x.sertifikatlar.length ? '' : '<p class="smena-matn" style="margin:0;">Sertifikat kiritilmagan.</p>';
+  x.sertifikatlar.forEach(s => {
+    const q = document.createElement('div');
+    q.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--card-border);border-radius:10px;margin-bottom:6px;font-size:13px;';
+    const t = document.createElement('div');
+    t.innerHTML = `<b>${matnEsc(s.nomi)}</b>${s.raqami ? ' · №' + matnEsc(s.raqami) : ''}<br><span style="color:var(--text-muted);font-size:12px">`
+      + (s.berilgan ? 'Berilgan: ' + matnEsc(sanaFormat(s.berilgan)) + ' · ' : '')
+      + (s.amal_qiladi ? 'Amal qiladi: ' + matnEsc(sanaFormat(s.amal_qiladi)) : 'Muddatsiz') + '</span>';
+    if (s.holat === 'tugagan') t.appendChild(belgi('Muddati tugagan', 'red'));
+    else if (s.holat === 'yaqin') t.appendChild(belgi('Tez orada tugaydi', 'kech'));
+    const o = document.createElement('button');
+    o.type = 'button'; o.className = 'mini-btn qizil tor'; o.textContent = "O'chirish";
+    o.addEventListener('click', () => kxmSertOchir(s));
+    q.append(t, o);
+    sb.appendChild(q);
+  });
+}
+
+async function kxmAmal(fn){
+  kxmXato('');
+  try { await fn(); await kxmOch(kxmJoriy.id); kxmYukla(); }
+  catch (e) { kxmXato(e.message); }
+}
+async function kxmSertOchir(s){
+  if (!confirm(`«${s.nomi}» sertifikati o'chirilsinmi?`)) return;
+  await kxmAmal(() => apiSorov(`/kadrlar/sertifikat/${s.id}/`, { method: 'DELETE' }));
+}
+document.getElementById('kxmAsosiySaqla').addEventListener('click', () => kxmAmal(() =>
+  apiSorov(`/kadrlar/xodimlar/${kxmJoriy.id}/`, { method: 'PATCH', body: JSON.stringify({
+    ishga_kirgan: document.getElementById('kxmIshga').value || null,
+    tabel_raqam: document.getElementById('kxmTabel').value,
+  }) })));
+document.getElementById('kxmSQosh').addEventListener('click', () => {
+  if (!document.getElementById('kxmSNomi').value.trim()) { kxmXato('Sertifikat nomini kiriting'); return; }
+  kxmAmal(() => apiSorov(`/kadrlar/xodimlar/${kxmJoriy.id}/sertifikat/`, { method: 'POST', body: JSON.stringify({
+    nomi: document.getElementById('kxmSNomi').value,
+    raqami: document.getElementById('kxmSRaqam').value,
+    berilgan: document.getElementById('kxmSBerilgan').value || null,
+    amal_qiladi: document.getElementById('kxmSAmal').value || null,
+  }) }));
+});
+document.getElementById('kxmYopish').addEventListener('click', () => {
+  const d = document.getElementById('kxmDialog');
+  if (typeof d.close === 'function') d.close(); else d.removeAttribute('open');
+});
+document.getElementById('kxmYangila').addEventListener('click', kxmYukla);
+document.getElementById('kxmQidir').addEventListener('input', kxmChiz);
+
 // ═══════ Metrolog: mijozlar hisoblagichlari va qiyoslov ═══════
 let mhRoyxat = [], mhTanlangan = null, mhQidirTaymer = null;
 
@@ -3673,6 +3791,7 @@ function showPage(key){
   if (key === 'topshiriq' && typeof tsYukla === 'function') tsYukla();
   if (key === 'bank-chek' && window.BankCheklar) BankCheklar.yukla();
   if (key === 'metr-hisob') metrHisobYukla();
+  if (key === 'kadr-xodimlar') kxmYukla();
 }
 
 // ═══════ Mobil yon panel ═══════

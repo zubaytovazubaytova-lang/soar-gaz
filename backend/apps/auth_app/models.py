@@ -268,6 +268,7 @@ AUDIT_AMAL_CHOICES = [
     ('shartnoma_tasdiq', 'Shartnoma tasdiqlandi'),
     ('shartnoma_bekor', 'Shartnoma bekor qilindi'),
     ('mijozlar_eksport', "Mijozlar ro'yxati yuklab olindi (Excel/CSV)"),
+    ('kadr_malumot', "Kadrlar: xodim ma'lumoti (sertifikat, tabel, ishga kirgan sana) o'zgardi"),
 ]
 
 

@@ -51,7 +51,10 @@ BOLIMLAR = {
     # Kadrlar: xodimlar nazorati. Mijozdan pul olmaydi — aksincha, har bir xodim topshirgan pulni
     # QABUL QILADI («kadr-tushum»). Qo'ng'iroq vazifasi ham shu kabinetda.
     # «bank-chek»: mijozlarning hisob raqamga to'lov cheklarini tasdiqlash (administrator bilan birga)
-    KADRLAR: ['overview', 'op-arizalar', 'op-qongiroq', 'topshiriq', 'bank-chek', 'kadr-davomat', 'kadr-hisobot', 'kadr-tushum', 'kadr-hujjat',
+    # «kadr-xodimlar»: xodimlar ma'lumotlari — ishga kirgan sana, tabel, sertifikatlar (apps/kadrlar/xodim_malumot.py).
+    # Oylik ish haqini Kadrlar kiritmaydi — faqat tizim egasi (Django panelida).
+    KADRLAR: ['overview', 'op-arizalar', 'op-qongiroq', 'topshiriq', 'bank-chek', 'kadr-davomat', 'kadr-hisobot', 'kadr-tushum',
+              'kadr-xodimlar', 'kadr-hujjat',
               'certs', 'pay', 'team', 'settings'],
 }
 

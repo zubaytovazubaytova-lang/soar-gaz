@@ -547,6 +547,7 @@
         <button class="sb-item" data-page="kadr-tushum" hidden><i class="ti ti-report-money"></i>Tushumlarni qabul qilish<span class="sb-son" id="ktBelgi" hidden></span></button>
         <button class="sb-item" data-page="op-arizalar" hidden><i class="ti ti-phone-call"></i>Arizalar</button>
         <button class="sb-item" data-page="op-qongiroq" hidden><i class="ti ti-headset"></i>Chiquvchi qo'ng'iroqlar</button>
+        <button class="sb-item" data-page="kadr-xodimlar" hidden><i class="ti ti-address-book"></i>Xodimlar ma'lumotlari</button>
         <button class="sb-item" data-page="kadr-hujjat" hidden><i class="ti ti-file-text"></i>Xodimlar hujjatlari</button>
         <button class="sb-item" data-page="tasks"><i class="ti ti-clipboard-list"></i>Vazifalarim</button>
         <button class="sb-item" data-page="metr-hisob" hidden><i class="ti ti-gauge"></i>Hisoblagichlar</button>
@@ -1008,6 +1009,45 @@
         </div>
 
         <!-- ---------- KADRLAR: XODIMLAR HUJJATLARI ---------- -->
+        <!-- ---------- KADRLAR: xodimlar ma'lumotlari ---------- -->
+        <div class="page" id="page-kadr-xodimlar">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-address-book"></i>Xodimlar ma'lumotlari</h3>
+              <button class="mini-btn asosiy" type="button" id="kxmYangila"><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Ishga kirgan sana, tabel raqami va sertifikatlarni shu yerda kiriting. Xodim ularni o'z kabinetida ko'radi.</p>
+            <input class="f-input" id="kxmQidir" type="search" placeholder="Ism, telefon yoki lavozim bo'yicha qidirish..." style="margin-bottom:14px;">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Xodim</th><th>Lavozim</th><th>Ishga kirgan</th><th>Tabel</th><th>Sertifikat</th><th></th></tr></thead>
+                <tbody id="kxmTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="kxmHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+        <dialog class="aloqa-dialog" id="kxmDialog" style="max-width:640px;width:calc(100% - 32px);">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <h3 id="kxmSarlavha" style="margin:0;">Xodim</h3>
+            <button class="mini-btn" type="button" id="kxmYopish" style="background:var(--bg-bottom);">Yopish</button>
+          </div>
+          <p class="smena-matn" id="kxmTafsil" style="margin:4px 0 14px;"></p>
+          <h4 style="margin:0 0 8px;font-size:14px;">Asosiy ma'lumot</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div><label class="f-label" for="kxmIshga">Ishga kirgan sana</label><input class="f-input" id="kxmIshga" type="date"></div>
+            <div><label class="f-label" for="kxmTabel">Tabel raqami</label><input class="f-input" id="kxmTabel" type="text" maxlength="20"></div>
+          </div>
+          <button class="mini-btn asosiy" type="button" id="kxmAsosiySaqla">Saqlash</button>
+          <h4 style="margin:18px 0 8px;font-size:14px;">Sertifikatlar</h4>
+          <div id="kxmSertlar"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
+            <div style="grid-column:1/-1"><label class="f-label" for="kxmSNomi">Sertifikat nomi *</label><input class="f-input" id="kxmSNomi" type="text" maxlength="200" placeholder="Masalan: Gaz xo'jaligi xavfsizligi attestatsiyasi"></div>
+            <div><label class="f-label" for="kxmSRaqam">Raqami</label><input class="f-input" id="kxmSRaqam" type="text" maxlength="60"></div>
+            <div><label class="f-label" for="kxmSBerilgan">Berilgan sana</label><input class="f-input" id="kxmSBerilgan" type="date"></div>
+            <div><label class="f-label" for="kxmSAmal">Amal qiladi (gacha)</label><input class="f-input" id="kxmSAmal" type="date"></div>
+          </div>
+          <button class="mini-btn yashil" type="button" id="kxmSQosh"><i class="ti ti-plus"></i> Sertifikat qo'shish</button>
+          <p class="smena-xato" id="kxmXato" style="margin-top:10px;"></p>
+        </dialog>
         <div class="page" id="page-kadr-hujjat">
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-file-text"></i>Hujjatlar holati <span id="hujjatSoni" style="color:var(--text-muted);font-weight:600;"></span></h3>
@@ -1480,7 +1520,7 @@
   </div>
 </div>
 
-<script src="/scripts/xodimlar-asosiy2.js?v=17"></script>
+<script src="/scripts/xodimlar-asosiy2.js?v=19"></script>
 <script src="/scripts/bank-cheklar.js?v=3"></script>
 <script src="/scripts/xodimlar-hodisalar.js?v=1"></script>
 </body>
