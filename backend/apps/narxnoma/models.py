@@ -113,6 +113,10 @@ class NarxnomaQator(models.Model):
 # ──────────────────────────────────────────────────────────────
 #  Seshanba aksiyasi: har seshanba 2 ta servis xizmatiga chegirma (promokod bilan)
 # ──────────────────────────────────────────────────────────────
+# Seshanba aksiyasi faqat shu narxnoma bo'limlaridagi xizmatlarga (servis)
+SERVIS_BOLIMLARI = ('profilaktika', 'buyurtma')
+
+
 class SeshanbaAksiya(models.Model):
     """Navbatdagi juftlik. Har seshanba navbat bo'yicha keyingisi amal qiladi:
     1-yozuv → birinchi seshanba, 2-yozuv → keyingi seshanba va h.k., oxiridan keyin yana boshidan.
@@ -142,12 +146,13 @@ class SeshanbaAksiya(models.Model):
         return [self.xizmat1, self.xizmat2]
 
     def qator_idlari(self):
-        """Chegirma qo'llanadigan barcha faol qatorlar: shu nomdagi xizmat qaysi narxnomada
-        (profilaktika, buyurtma, aholi yoki korxona) turmasin."""
+        """Chegirma qo'llanadigan barcha faol qatorlar: shu nomdagi xizmat qaysi SERVIS narxnomasida
+        (profilaktika yoki buyurtma; aholi yoki korxona) turmasin. O'rnatish (montaj) va metrologiya
+        narxnomalaridagi bir xil nomli qatorlarga chegirma TUSHMAYDI — aksiya faqat servis uchun."""
         from django.db.models import Q
         shart = Q(nomi__iexact=self.xizmat1.nomi.strip()) | Q(nomi__iexact=self.xizmat2.nomi.strip())
-        return sorted(set(NarxnomaQator.objects.filter(shart, faol=True).values_list('id', flat=True))
-                      | {self.xizmat1_id, self.xizmat2_id})
+        return sorted(set(NarxnomaQator.objects.filter(shart, faol=True, narxnoma__bolim__in=SERVIS_BOLIMLARI)
+                          .values_list('id', flat=True)) | {self.xizmat1_id, self.xizmat2_id})
 
 
 def seshanba_aksiyasi(sana):

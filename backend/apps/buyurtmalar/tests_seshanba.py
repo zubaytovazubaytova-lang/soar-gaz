@@ -124,6 +124,16 @@ class SeshanbaTestlari(TestCase):
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(Buyurtma.objects.get().xizmatlar.get().chegirma_foiz, 5)
 
+    def test_ornatish_narxnomasidagi_shu_nomli_qatorga_chegirma_yoq(self):
+        ornatish = NarxnomaQator.objects.filter(narxnoma__bolim='ornatish', faol=True).first()
+        if ornatish is None:
+            self.skipTest("O'rnatish narxnomasi yo'q")
+        a = SeshanbaAksiya.objects.create(tartib=9, xizmat1=self.q1, xizmat2=self.q2)
+        ornatish.nomi = self.q1.nomi
+        ornatish.save()
+        self.assertNotIn(ornatish.pk, a.qator_idlari())
+        self.assertIn(self.q1.pk, a.qator_idlari())
+
     def test_navbat_bosh_bolsa_aksiya_yoq(self):
         SeshanbaAksiya.objects.all().delete()
         with kun(SESHANBA):
