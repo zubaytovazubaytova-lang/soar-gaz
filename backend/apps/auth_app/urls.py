@@ -1,5 +1,5 @@
 from django.urls import path
-from . import rahbariyat, telegram_kirish, views
+from . import rahbariyat, telegram_kirish, views, xodim_telegram
 
 urlpatterns = [
     path('admin/login/', views.admin_login),
@@ -22,6 +22,7 @@ urlpatterns = [
     path('hududlar/', views.hududlar),
     path('xodim/login/', views.xodim_login),
     path('xodim/profil/', views.xodim_profil),
+    path('xodim/telegram-havola/', xodim_telegram.havola),     # xodim: botga ulanish (shaxsiy havola)
     path('xodim/sertifikatlar/', views.xodim_sertifikatlar),
     path('xodim/ish-haqi/', views.xodim_ish_haqi),
     path('mijozlar/', views.mijozlar_list),

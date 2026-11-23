@@ -1861,11 +1861,46 @@ function tgBotEslatma(p) {
       <b>Yangi vazifalar haqida Telegram'da xabar oling</b><br>
       Botni oching → <b>Start</b> → <b>«Raqamni ulashish»</b>. Raqamingiz shu kabinetdagi raqam bilan bir xil bo'lishi kerak. Tekin.
     </div>
-    <a href="https://t.me/${encodeURIComponent(p.telegram_bot)}?start=xodim" target="_blank" rel="noopener"
+    <a id="tgBotHavola" href="https://t.me/${encodeURIComponent(p.telegram_bot)}?start=xodim" target="_blank" rel="noopener"
        style="padding:10px 16px;border-radius:10px;background:#229ED9;color:#fff;font-weight:700;text-decoration:none;white-space:nowrap">
       Botga ulanish</a>`;
+  blok.querySelector('div:nth-child(2)').innerHTML = `<b>Yangi vazifalar haqida Telegram'da xabar oling</b><br>
+      «Botga ulanish» ni bosing → Telegram ochiladi → <b>Start</b>. Bo'ldi, raqam ulashish shart emas. Tekin.`;
   const sahifa = document.getElementById('page-overview');
   if (sahifa) sahifa.prepend(blok);
+  tgHavolaTayyorla();
+  document.getElementById('tgBotHavola').addEventListener('click', tgUlanishniKut);
+}
+
+// Shaxsiy bir martalik havola oldindan olinadi (bosilganda Telegram darhol ochilsin)
+let tgHavolaTaymer = null, tgKutTaymer = null;
+async function tgHavolaTayyorla() {
+  try {
+    const d = await apiSorov('/auth/xodim/telegram-havola/', { method: 'POST' });
+    const a = document.getElementById('tgBotHavola');
+    if (a && d.url) a.href = d.url;
+    clearTimeout(tgHavolaTaymer);
+    tgHavolaTaymer = setTimeout(tgHavolaTayyorla, Math.max(60, (d.muddat || 1800) - 120) * 1000);
+  } catch (e) { /* bo'lmasa oddiy havola qoladi */ }
+}
+function tgUlanishniKut() {
+  // Xodim botda «Start» bosgach banner o'zi yo'qoladi (3 daqiqa davomida har 4 soniyada tekshiriladi)
+  setTimeout(tgHavolaTayyorla, 1500);           // havola bir martalik — qayta bosish uchun yangisi
+  clearInterval(tgKutTaymer);
+  let marta = 0;
+  tgKutTaymer = setInterval(async () => {
+    if (++marta > 45) { clearInterval(tgKutTaymer); return; }
+    try {
+      const d = await apiSorov('/auth/xodim/profil/');
+      if (d.telegram_ulangan) {
+        clearInterval(tgKutTaymer); clearTimeout(tgHavolaTaymer);
+        const b = document.getElementById('tgBotEslatma');
+        if (b) b.innerHTML = '<div style="font-size:14px;color:#166534;font-weight:700">✅ Telegram botga ulandingiz — yangi vazifalar endi Telegram\'da keladi.</div>';
+        if (profil) profil.telegram_ulangan = true;
+        setTimeout(() => { const b2 = document.getElementById('tgBotEslatma'); if (b2) b2.remove(); }, 6000);
+      }
+    } catch (e) { /* tarmoq uzilsa keyingi urinishda */ }
+  }, 4000);
 }
 
 // ═══════ Kadrlar: davomat va kunlik hisobotlar ═══════
@@ -1953,6 +1988,9 @@ function davomatChiz(){
     const pf = document.createElement('td');
     pf.appendChild(x.oxirgi_faollik ? document.createTextNode(faollikMatn(x.oxirgi_faollik)) : belgi('Hech kirmagan', 'red'));
     tr.appendChild(pf);
+    const tg = document.createElement('td');
+    tg.appendChild(x.telegram ? belgi('Ulangan', 'done') : belgi('Ulanmagan', 'red'));
+    tr.appendChild(tg);
     const h = document.createElement('td');
     h.className = 'matn-keng';
     h.appendChild(x.holat === 'ishda' ? belgi('Smenada', 'progress')
@@ -2070,6 +2108,24 @@ document.querySelectorAll('.kun-sana').forEach(i => i.addEventListener('change',
 }));
 document.querySelectorAll('[data-kun-yangila]').forEach(b => b.addEventListener('click', kunYukla));
 document.getElementById('davomatFiltr').addEventListener('change', () => { if (kunMalumot) davomatChiz(); });
+
+document.getElementById('botEslatmaBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget, xabar = document.getElementById('botEslatmaXabar');
+  btn.disabled = true;
+  xabar.classList.add('show');
+  try {
+    const j = await apiSorov('/kadrlar/bot-eslatma/', { method: 'POST' });
+    xabar.style.color = 'var(--green)';
+    xabar.textContent = j.yuborildi
+      ? `${j.yuborildi} nafar xodimga kabinetida eslatma yuborildi.`
+      : "Hamma xodim Telegram botga ulangan.";
+  } catch (xato) {
+    xabar.style.color = '';
+    xabar.textContent = xato.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 document.getElementById('eslatmaBtn').addEventListener('click', async (e) => {
   const btn = e.currentTarget, xabar = document.getElementById('eslatmaXabar');

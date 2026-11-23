@@ -172,6 +172,10 @@ def yangilanishni_qayta_ishla(yangilanish):
         return
 
     asl_matn = (xabar.get('text') or '').strip()
+    if asl_matn.startswith('/start x_'):                               # xodim kabinetidan «Botga ulanish»
+        from apps.auth_app import xodim_telegram
+        xodim_telegram.bot_start(asl_matn[len('/start x_'):], chat_id, kimdan)
+        return
     if asl_matn.startswith('/start k_'):                               # saytdan «Telegram orqali kirish»
         from apps.auth_app import telegram_kirish
         telegram_kirish.bot_start(asl_matn[len('/start k_'):][:64], chat_id, kimdan)
