@@ -285,6 +285,8 @@
   body.kabinet-kadrlar .smena-blok,body.kabinet-kadrlar .hisobot-karta{display:none;}
   /* Buyurtma vazifalari bloki: Kadrlar kabinetida yo'q */
   body.kabinet-kadrlar .vazifa-blok{display:none !important;}
+  /* Operator (Nargiza) va hujjatchi (Ferangiz): buyurtma biriktirilmaydi — vazifa statistikasi va «Bugungi vazifalar» yo'q */
+  body.kabinet-qongiroq .vazifa-blok,body.kabinet-hujjat .vazifa-blok{display:none !important;}
   .op-blok{display:none;}
   body.kabinet-qongiroq .op-blok,body.kabinet-kadrlar .op-blok{display:block;}
   .sb-son{margin-left:auto;background:#dc2626;color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:2px 8px;min-width:22px;text-align:center;}
@@ -1423,7 +1425,7 @@
   </div>
 </div>
 
-<script src="/scripts/xodimlar-asosiy2.js?v=13"></script>
+<script src="/scripts/xodimlar-asosiy2.js?v=14"></script>
 <script src="/scripts/bank-cheklar.js?v=3"></script>
 <script src="/scripts/xodimlar-hodisalar.js?v=1"></script>
 </body>
