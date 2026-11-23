@@ -319,19 +319,27 @@ def natija(request, pk):
     except Buyurtma.DoesNotExist:
         return Response({'detail': _('Buyurtma topilmadi')}, status=404)
 
-    b.natija = request.data.get('natija', '')
+    # Natija faqat ish ketayotgan buyurtmaga kiritiladi (yangi, yakunlangan yoki bekor qilinganga — yo'q)
+    if b.holat not in NATIJA_HOLATLARI:
+        return Response({'detail': _("Bu buyurtmaga natija kiritib bo'lmaydi (holati: %(h)s)")
+                         % {'h': b.get_holat_display()}}, status=400)
+    oldingi = b.holat
+    b.natija = str(request.data.get('natija', '') or '')[:1000]
     b.natija_soat = request.data.get('natija_soat') or None
-    b.material = request.data.get('material', '')
-    holat = request.data.get('holat', 'bajarildi')
+    b.material = str(request.data.get('material', '') or '')[:500]
     # Xodim ishni o'zi YAKUNLAMAYDI: «Ishni tugatdim» → to'lov kutiladi. Buyurtma to'lov to'liq
     # qabul qilingach (Click / tasdiqlangan chek / Ruxsora qabul qilgan tushum) yakunlanadi (yakun.py).
-    if holat == 'bajarildi':
+    # Boshqa har qanday qiymat (eski panelning «qisman», «kerak» va h.k.) holatni o'zgartirmaydi —
+    # faqat izoh saqlanadi; xodim buyurtmani bu yo'l bilan bekor qila yoki noto'g'ri holatga o'tkaza olmaydi.
+    if request.data.get('holat', 'bajarildi') == 'bajarildi':
         holat = 'tolov_kutilmoqda'
+    else:
+        holat = oldingi if oldingi == 'tolov_kutilmoqda' else 'bajarilmoqda'
     b.holat = holat
     b.natija_sana = timezone.now()
     b.save()
 
-    if holat == 'tolov_kutilmoqda':
+    if holat == 'tolov_kutilmoqda' and oldingi != 'tolov_kutilmoqda':
         natija_matni = f"\n📝 {b.natija[:200]}" if b.natija else ''
         if b.tolandi:                                  # oldindan to'langan — darhol yakunlanadi
             xodim_xabar.ish_holati(b, _ish_matni(b, "🏁 ishni tugatdi") + natija_matni)
@@ -344,6 +352,10 @@ def natija(request, pk):
             xodim_xabar.ish_holati(b, _ish_matni(b, "🏁 ishni tugatdi — to'lov kutilmoqda") + natija_matni)
 
     return Response(BuyurtmaSerializer(b).data)
+
+
+# «Ishni tugatdim» / natija kiritish mumkin bo'lgan holatlar
+NATIJA_HOLATLARI = ('qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda')
 
 
 @api_view(['POST'])

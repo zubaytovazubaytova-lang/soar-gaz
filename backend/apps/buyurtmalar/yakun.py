@@ -34,3 +34,13 @@ def _yakun_xabarlari(b):
     except Exception:                  # noqa: BLE001 — xabar xatosi yakunlashni buzmasin
         logger.exception('Yakun xabari mijozga yuborilmadi')
     xodim_xabar.ish_holati(b, _ish_matni(b, "✅ buyurtmasi to'liq yakunlandi (to'lov qabul qilindi)"))
+    # Ustaning o'ziga ham: ishi to'liq yopildi
+    if b.xodim_id:
+        try:
+            from apps.aloqa.models import Xabar
+            from apps.sms_app import telegram
+            matn = f"✅ #{b.id} buyurtma to'liq yakunlandi: to'lov qabul qilindi. Rahmat!"
+            Xabar.objects.create(xodim=b.xodim, matn=matn)
+            telegram.yubor(b.xodim.telefon, matn)
+        except Exception:              # noqa: BLE001
+            logger.exception('Yakun xabari ustaga yuborilmadi')

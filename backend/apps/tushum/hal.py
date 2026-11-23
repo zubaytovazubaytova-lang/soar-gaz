@@ -35,9 +35,34 @@ def hal_qil(request, pk, yangi_holat, sabab=''):
             # Ruxsora pulni qabul qildi: ish tugagan bo'lsa buyurtma to'liq yakunlanadi
             from apps.buyurtmalar.yakun import tolov_yakuni
             tolov_yakuni(t.buyurtma_id)
+    _xodimga_xabar(t, yangi_holat, sabab)
     amal = 'tushum_qabul' if yangi_holat == 'qabul' else 'tushum_rad'
     tafsilot = f"{t.xodim.ism or t.xodim.telefon}: {t.summa} so'm, #{t.pk}"
     if sabab:
         tafsilot += f' — {sabab}'
     audit_yoz(request, amal, tafsilot)
     return OK, t
+
+
+def _xodimga_xabar(t, yangi_holat, sabab=''):
+    """Ustaga: topshirgan puli qabul qilindi yoki rad etildi (sababi bilan) — kabinet + Telegram."""
+    import logging
+
+    from django.db import transaction
+    summa = f"{t.summa:,}".replace(',', ' ')
+    buyurtma = f" (#{t.buyurtma_id} buyurtma)" if t.buyurtma_id else ''
+    if yangi_holat == 'qabul':
+        matn = f"✅ Topshirgan pulingiz qabul qilindi: {summa} so'm{buyurtma}."
+    else:
+        matn = (f"❌ Kiritgan tushumingiz rad etildi: {summa} so'm{buyurtma}."
+                + (f" Sabab: {sabab}" if sabab else '') + " Kadrlar bo'limi bilan bog'laning.")
+
+    def _yubor():
+        try:
+            from apps.aloqa.models import Xabar
+            from apps.sms_app import telegram
+            Xabar.objects.create(xodim=t.xodim, matn=matn[:500])
+            telegram.yubor(t.xodim.telefon, matn)
+        except Exception:                      # noqa: BLE001 — xabar xatosi pul qabulini buzmasin
+            logging.getLogger(__name__).exception('Tushum xabari xodimga yuborilmadi')
+    transaction.on_commit(_yubor)
