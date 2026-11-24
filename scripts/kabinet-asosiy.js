@@ -662,22 +662,64 @@ async function seshanbaBanneri() {
   try { seshanba = await so('/narxnoma/seshanba/'); } catch (e) { return; }
   const quti = el('aSeshanba');
   if (!quti || !seshanba || !seshanba.bor) return;
-  const nomlar = seshanba.xizmatlar.map(x => '«' + xavfsiz(x.nomi) + '»').join(' va ');
+  // Mijoz o'z tarmog'idagi xizmatni ko'radi (korxona — ulgurji, qolgani — aholi); ma'lumot bo'lmasa ikkalasi
+  const meniki = (profil && profil.mulk_turi === 'korxona') ? 'ulgurji' : 'aholi';
+  const mos = seshanba.xizmatlar.filter(x => !x.tarmoq || x.tarmoq === meniki);
+  const nomlar = (mos.length ? mos : seshanba.xizmatlar).map(x => '«' + xavfsiz(x.nomi) + '»').join(' va ');
   quti.style.display = 'block';
   if (!seshanba.bugun) {
     const [y, m, d] = String(seshanba.sana).split('-');
     quti.innerHTML = `<div style="padding:10px 14px;border-radius:12px;background:#fffbeb;border:1px dashed #f59e0b;font-size:12.5px;color:#92400e;line-height:1.45">
-      🗓 <b>Seshanba aksiyasi (${d}.${m}):</b> ${nomlar} xizmatlariga <b>−${seshanba.foiz}%</b>. Promokod seshanba kuni beriladi (50 soat amal qiladi).</div>`;
+      🗓 <b>Seshanba aksiyasi (${d}.${m}):</b> ${nomlar} xizmatiga <b>−${seshanba.foiz}%</b>. Promokod seshanba kuni beriladi (50 soat amal qiladi).</div>`;
     return;
   }
   quti.innerHTML = `
     <div style="padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;box-shadow:0 2px 8px rgba(245,158,11,.25)">
-      <div style="font-size:13.5px;font-weight:800;color:#78350f">🎉 Seshanba aksiyasi — ${nomlar} xizmatlariga −${seshanba.foiz}% chegirma!</div>
+      <div style="font-size:13.5px;font-weight:800;color:#78350f">🎉 Seshanba aksiyasi — ${nomlar} xizmatiga −${seshanba.foiz}% chegirma!</div>
       <div style="font-size:12.5px;color:#92400e;margin:4px 0 8px">Promokod: <b style="letter-spacing:.06em">${xavfsiz(seshanba.promokod)}</b> — pastga yozing va xizmatni narxnomadan belgilang.
         ${seshanba.tugash ? `<br>⏳ Amal qiladi: <b>${tugashMatni(seshanba.tugash)}</b> gacha` : ''}</div>
       <input class="f-input" id="aPromo" placeholder="Promokod" autocomplete="off" style="margin:0;text-transform:uppercase;letter-spacing:.06em;background:#fff">
     </div>`;
   el('aPromo').addEventListener('input', arizaJamiHisobla);
+  // Bosh sahifadagi «Batafsil»dan kelgan: promokod yozilgan, servis tanlangan holda
+  if (aksiyaNiyati) {
+    aksiyaNiyati = false;
+    aksiyaBelgilash = true;
+    el('aPromo').value = seshanba.promokod;
+    const s = el('aXizmat');
+    if (s && !s.value) { s.value = 'servis'; s.dispatchEvent(new Event('change')); }
+    else aksiyaXizmatiniBelgila();
+    arizaJamiHisobla();
+  }
+}
+
+// «Batafsil»dan kelganda aksiyadagi xizmat (mijozning tarmog'idagisi) narxnomada o'zi belgilanadi
+let aksiyaBelgilash = false;
+function aksiyaXizmatiniBelgila() {
+  if (!aksiyaBelgilash || !seshanba || !seshanba.bor) return;
+  const meniki = (profil && profil.mulk_turi === 'korxona') ? 'ulgurji' : 'aholi';
+  const x = seshanba.xizmatlar.find(v => v.tarmoq === meniki);
+  const qator = x && document.querySelector(`#aNarxlar .nx-qator[data-qator="${Number(x.id)}"]`);
+  if (!qator) return;
+  aksiyaBelgilash = false;
+  qator.querySelector('.nx-bel').checked = true;
+  qator.style.background = '#fffbeb';
+  qator.scrollIntoView({ block: 'nearest' });
+  arizaJamiHisobla();
+}
+
+// Bosh sahifadagi aksiya kartasidagi «Batafsil» → /kabinet/?aksiya=seshanba. Kirmagan bo'lsa niyat
+// sessionStorage'da saqlanadi va Telegram orqali kirgandan keyin ariza oynasi o'zi ochiladi.
+let aksiyaNiyati = false;
+try {
+  if (new URLSearchParams(location.search).get('aksiya') === 'seshanba') sessionStorage.setItem('sg_aksiya', 'seshanba');
+} catch (e) {}
+function aksiyaNiyatiniBajar() {
+  let bor = false;
+  try { bor = sessionStorage.getItem('sg_aksiya') === 'seshanba'; sessionStorage.removeItem('sg_aksiya'); } catch (e) {}
+  if (!bor || KORISH) return;
+  aksiyaNiyati = true;
+  arizaModalOch();
 }
 
 function tugashMatni(iso) {
@@ -747,6 +789,7 @@ async function arizaNarxlariYukla() {
         <div id="aJami" style="padding:10px 14px;border-top:1px solid #e2e8f0;background:#f0fdfa;font-size:13.5px">Xizmat belgilanmagan</div>
       </div>
       <p class="f-hint" style="margin:6px 0 0;font-size:11.5px;opacity:.75">Narxlar taxminiy: yakuniy summani usta joyida ko'rib tasdiqlaydi.</p>`;
+    aksiyaXizmatiniBelgila();
   } catch (e) {
     if (raqam === arizaNarxSorov) quti.innerHTML = `<p class="f-hint" style="margin:0;color:#b91c1c">Narxlarni yuklab bo'lmadi: ${xavfsiz(e.message)}</p>`;
   }
@@ -1681,7 +1724,7 @@ document.addEventListener('keydown', e => {
   const qs = new URLSearchParams(location.search);
   const tgOk = qs.get('tg') === 'ok', tgXato = qs.get('tg_xato');
   const clickQaytdi = qs.get('click') === '1';
-  if (tgOk || tgXato || clickQaytdi) history.replaceState(null, '', location.pathname);
+  if (tgOk || tgXato || clickQaytdi || qs.get('aksiya')) history.replaceState(null, '', location.pathname);
   if (tgXato) { kirishKorsat(); authXato(TG_XATOLAR[tgXato] || TG_XATOLAR.rad); return; }
   if (tgOk && !KORISH) {
     saqlash.removeItem('sg_token');           // eski sessiya o'rniga Telegram'dan kelgani
@@ -1708,7 +1751,8 @@ document.addEventListener('keydown', e => {
       qadamgaOt(3);
       return;
     }
-    kabinetOch();
+    await kabinetOch();
+    aksiyaNiyatiniBajar();
     // Click to'lov sahifasidan qaytish: buyurtmalar ro'yxati ochiladi (holat Click tasdig'idan keyin yangilanadi)
     if (clickQaytdi) {
       pageOch('buyurtmalar');

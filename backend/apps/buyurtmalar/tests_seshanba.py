@@ -36,11 +36,16 @@ class SeshanbaTestlari(TestCase):
         self.mijoz = Foydalanuvchi.objects.create(telefon='+998901112266', ism='Karim', rol='mijoz')
         self.xodim = Foydalanuvchi.objects.create(telefon='+998900000081', ism='Ali', rol='xodim', holat='faol')
         self.m, self.x = klient(self.mijoz), klient(self.xodim)
-        q = list(NarxnomaQator.objects.filter(narxnoma__tarmoq='aholi', narxnoma__bolim='profilaktika',
-                                              faol=True, p_dan__isnull=False).order_by('tartib')[:4])
-        self.q1, self.q2, self.q3, self.q4 = q
+        aholi = list(NarxnomaQator.objects.filter(narxnoma__tarmoq='aholi', narxnoma__bolim='profilaktika',
+                                                  faol=True, p_dan__isnull=False).order_by('tartib')[:4])
+        ulgurji = list(NarxnomaQator.objects.filter(narxnoma__tarmoq='ulgurji', narxnoma__bolim='profilaktika',
+                                                    faol=True, p_dan__isnull=False).order_by('tartib')[:2])
+        self.q1, self.q3, self.q5, self.q6 = aholi              # q1, q3 — aholi aksiyasi; q5, q6 — aksiyasiz
+        self.q2, self.q4 = ulgurji                               # q2, q4 — ulgurji aksiyasi
         self.a1 = SeshanbaAksiya.objects.create(tartib=1, xizmat1=self.q1, xizmat2=self.q2)
         self.a2 = SeshanbaAksiya.objects.create(tartib=2, xizmat1=self.q3, xizmat2=self.q4)
+        self.korxona = Foydalanuvchi.objects.create(telefon='+998901112277', ism='MChJ', rol='mijoz',
+                                                    mulk_turi='korxona')
 
     def ariza(self, promokod, *qatorlar):
         return self.m.post(URL, {'xizmat': 'servis', 'promokod': promokod,
@@ -55,25 +60,46 @@ class SeshanbaTestlari(TestCase):
 
     def test_seshanba_promokod_faqat_aksiya_xizmatiga_chegirma(self):
         with kun(SESHANBA):
-            r = self.ariza('seshanba', self.q1, self.q3)
+            r = self.ariza('seshanba', self.q1, self.q5)
         self.assertEqual(r.status_code, 201, r.content)
         b = Buyurtma.objects.get()
         self.assertEqual((b.promokod, b.chegirma_foiz), ('SESHANBA', 5))
         x1 = b.xizmatlar.get(qator=self.q1)
-        x3 = b.xizmatlar.get(qator=self.q3)
+        x5 = b.xizmatlar.get(qator=self.q5)
         self.assertEqual(x1.narx_dan, (self.q1.p_dan * 95 + 50) // 100)
         self.assertEqual(x1.chegirma_foiz, 5)
-        self.assertEqual((x3.narx_dan, x3.chegirma_foiz), (self.q3.p_dan, 0))   # bu hafta aksiyada emas
+        self.assertEqual((x5.narx_dan, x5.chegirma_foiz), (self.q5.p_dan, 0))   # aksiyada emas
+
+    def test_korxona_ulgurji_xizmatiga_chegirma(self):
+        with kun(SESHANBA):
+            r = klient(self.korxona).post(URL, {'xizmat': 'servis', 'promokod': 'SESHANBA', 'xizmatlar': [
+                {'qator': self.q2.pk, 'ustun': 'p', 'soni': 1}]}, format='json')
+        self.assertEqual(r.status_code, 201, r.content)
+        x = Buyurtma.objects.get(pk=r.json()['id']).xizmatlar.get()
+        self.assertEqual((x.chegirma_foiz, x.narx_dan), (5, (self.q2.p_dan * 95 + 50) // 100))
+
+    def test_aholi_chegirmasi_ulgurjiga_tushmaydi(self):
+        egizak = NarxnomaQator.objects.filter(nomi__iexact=self.q1.nomi, narxnoma__tarmoq='ulgurji').first()
+        if egizak is None:
+            self.skipTest("Ulgurjida shu nomli qator yo'q")
+        self.assertNotIn(egizak.pk, self.a1.qator_idlari())
+
+    def test_tarmoq_tekshiruvi(self):
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            SeshanbaAksiya(tartib=5, xizmat1=self.q2, xizmat2=self.q1).full_clean()
 
     def test_usta_keyin_qoshgan_aksiya_xizmatiga_ham_chegirma(self):
         with kun(SESHANBA):
             b = Buyurtma.objects.get(pk=self.ariza('SESHANBA').json()['id'])
         b.xodim = self.xodim
         b.save()
-        r = self.x.post(f'{URL}{b.pk}/xizmatlar/', {'xizmatlar': [{'qator': self.q2.pk, 'ustun': 'p', 'soni': 2}]},
+        egizak = NarxnomaQator.objects.filter(nomi__iexact=self.q1.nomi, narxnoma__tarmoq='aholi',
+                                              narxnoma__bolim='buyurtma', faol=True, p_dan__isnull=False).first() or self.q1
+        r = self.x.post(f'{URL}{b.pk}/xizmatlar/', {'xizmatlar': [{'qator': egizak.pk, 'ustun': 'p', 'soni': 2}]},
                         format='json')
         self.assertEqual(r.status_code, 201, r.content)
-        self.assertEqual(r.json()['jami_dan'], (self.q2.p_dan * 95 + 50) // 100 * 2)
+        self.assertEqual(r.json()['royxat'][-1]['chegirma_foiz'], 5)
 
     def test_50_soat_payshanba_0200_gacha(self):
         with vaqt(SESHANBA + datetime.timedelta(days=1), 23, 30):          # chorshanba kechqurun — amalda

@@ -118,14 +118,17 @@ SERVIS_BOLIMLARI = ('profilaktika', 'buyurtma')
 
 
 class SeshanbaAksiya(models.Model):
-    """Navbatdagi juftlik. Har seshanba navbat bo'yicha keyingisi amal qiladi:
-    1-yozuv → birinchi seshanba, 2-yozuv → keyingi seshanba va h.k., oxiridan keyin yana boshidan.
-    Faqat xizmatlar uchun (do'kon mahsulotlariga emas). Chegirma foizi va promokod — settings da."""
+    """Navbatdagi juftlik: bitta xizmat AHOLI uchun, bittasi ULGURJI (korxona) uchun.
+    Har seshanba navbat bo'yicha keyingisi amal qiladi: 1-yozuv → birinchi seshanba, 2-yozuv → keyingi
+    seshanba va h.k., oxiridan keyin yana boshidan. Faqat xizmatlar uchun (do'kon mahsulotlariga emas).
+    Chegirma foizi va promokod — settings da."""
     tartib = models.PositiveSmallIntegerField(default=1, verbose_name='Navbat raqami')
     xizmat1 = models.ForeignKey(NarxnomaQator, on_delete=models.PROTECT, related_name='+',
-                                verbose_name='1-xizmat')
+                                verbose_name='Aholi uchun xizmat',
+                                limit_choices_to={'narxnoma__tarmoq': 'aholi'})
     xizmat2 = models.ForeignKey(NarxnomaQator, on_delete=models.PROTECT, related_name='+',
-                                verbose_name='2-xizmat')
+                                verbose_name='Ulgurji (korxona) uchun xizmat',
+                                limit_choices_to={'narxnoma__tarmoq': 'ulgurji'})
     faol = models.BooleanField(default=True)
     yaratilgan = models.DateTimeField(auto_now_add=True)
 
@@ -139,6 +142,10 @@ class SeshanbaAksiya(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
+        if self.xizmat1_id and self.xizmat1.narxnoma.tarmoq != 'aholi':
+            raise ValidationError({'xizmat1': 'Aholi narxnomasidan tanlang'})
+        if self.xizmat2_id and self.xizmat2.narxnoma.tarmoq != 'ulgurji':
+            raise ValidationError({'xizmat2': 'Ulgurji (korxona) narxnomasidan tanlang'})
         if self.xizmat1_id and self.xizmat1_id == self.xizmat2_id:
             raise ValidationError('Ikki xil xizmat tanlang')
 
@@ -146,11 +153,13 @@ class SeshanbaAksiya(models.Model):
         return [self.xizmat1, self.xizmat2]
 
     def qator_idlari(self):
-        """Chegirma qo'llanadigan barcha faol qatorlar: shu nomdagi xizmat qaysi SERVIS narxnomasida
-        (profilaktika yoki buyurtma; aholi yoki korxona) turmasin. O'rnatish (montaj) va metrologiya
-        narxnomalaridagi bir xil nomli qatorlarga chegirma TUSHMAYDI — aksiya faqat servis uchun."""
+        """Chegirma qo'llanadigan barcha faol qatorlar. Aholi xizmati — faqat AHOLI servis narxnomalaridagi
+        (profilaktika, buyurtma) shu nomli qatorlar; ulgurji xizmati — faqat ULGURJI servis narxnomalaridagi.
+        Ya'ni aholining chegirmasi korxonaga, korxonaniki aholiga tushmaydi. O'rnatish va metrologiya
+        narxnomalaridagi bir xil nomli qatorlarga ham tushmaydi — aksiya faqat servis uchun."""
         from django.db.models import Q
-        shart = Q(nomi__iexact=self.xizmat1.nomi.strip()) | Q(nomi__iexact=self.xizmat2.nomi.strip())
+        shart = (Q(nomi__iexact=self.xizmat1.nomi.strip(), narxnoma__tarmoq='aholi')
+                 | Q(nomi__iexact=self.xizmat2.nomi.strip(), narxnoma__tarmoq='ulgurji'))
         return sorted(set(NarxnomaQator.objects.filter(shart, faol=True, narxnoma__bolim__in=SERVIS_BOLIMLARI)
                           .values_list('id', flat=True)) | {self.xizmat1_id, self.xizmat2_id})
 

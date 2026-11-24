@@ -326,9 +326,21 @@ def seshanba(request):
         'bor': True, 'bugun': amalda, 'sana': sana, 'foiz': settings.SESHANBA_FOIZ,
         'boshlanish': boshi, 'tugash': tugash,
         'promokod': settings.SESHANBA_PROMOKOD if amalda else None,
-        'xizmatlar': [{'id': q.id, 'nomi': q.nomi} for q in a.qatorlar()],
+        'xizmatlar': [{'id': q.id, 'nomi': q.nomi, 'tarmoq': q.narxnoma.tarmoq,
+                       'kim_uchun': 'Aholi uchun' if q.narxnoma.tarmoq == 'aholi' else 'Korxonalar uchun',
+                       # Ko'rsatish uchun narx (profilaktika ustuni, bo'lmasa ikkinchisi) va chegirmali narxi
+                       'narx': _narx(q), 'chegirmali': _chegirmali(_narx(q), settings.SESHANBA_FOIZ)}
+                      for q in a.qatorlar()],
         'idlar': a.qator_idlari(),                  # shu nomdagi barcha narxnoma qatorlari
     })
+
+
+def _narx(q):
+    return q.p_dan if q.p_dan is not None else q.r_dan
+
+
+def _chegirmali(narx, foiz):
+    return None if narx is None else (narx * (100 - foiz) + 50) // 100      # buyurtmadagi hisob bilan bir xil
 
 
 # Mijoz tanlaydigan xizmat turi → narxnoma bo'limlari

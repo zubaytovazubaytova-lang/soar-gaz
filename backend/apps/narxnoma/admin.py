@@ -32,7 +32,9 @@ class SeshanbaAksiyaAdmin(admin.ModelAdmin):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         # Ro'yxatda qaysi narxnomadan ekani ham ko'rinsin (bir xil nomli xizmat bir necha narxnomada bor)
         if db_field.name in ('xizmat1', 'xizmat2'):
-            kwargs['queryset'] = (NarxnomaQator.objects.filter(faol=True)
+            tarmoq = 'aholi' if db_field.name == 'xizmat1' else 'ulgurji'
+            kwargs['queryset'] = (NarxnomaQator.objects.filter(faol=True, narxnoma__tarmoq=tarmoq,
+                                                               narxnoma__bolim__in=('profilaktika', 'buyurtma'))
                                   .select_related('narxnoma').order_by('narxnoma_id', 'tartib'))
             maydon = super().formfield_for_foreignkey(db_field, request, **kwargs)
             maydon.label_from_instance = lambda q: f'{q.narxnoma.tarmoq_nomi} · {q.narxnoma.bolim_nomi} — {q.tartib}. {q.nomi[:80]}'
