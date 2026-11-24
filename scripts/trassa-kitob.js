@@ -1,7 +1,7 @@
 /* Bosh sahifa, #tadbir bo'limi: «Yangi gaz trassasi» — kitob varag'i ochiladigandek slayder.
    Chap sahifa — matn, o'ng sahifa — rasm. «Keyingi»da o'ng varaq umurtqa atrofida 3D aylanib
    chapga o'tadi (orqasida yangi matn), ostidan keyingi rasm ochiladi. Telefonda — bitta sahifa.
-   «Kelajak Tadbirkori 2026» tadbiri shu bo'limda yonga, ixcham karta bo'lib o'tadi (CSS quyida).
+   Avtomatik varaqlash 2,5 soniyada bir (video kabi). «Kelajak Tadbirkori 2026» tadbiri shu bo'limda yonga, ixcham karta bo'lib o'tadi (CSS quyida).
    Markup: index.html dagi <div data-trassa>. Inline-hodisalar yo'q (CSP). */
 (function () {
   'use strict';
@@ -57,7 +57,8 @@
   .tk-varaq{position:relative;overflow:hidden;z-index:1}
   .tk-chap{border-radius:10px 0 0 10px;padding:clamp(18px,3vw,40px);display:flex;flex-direction:column;color:#2b1d0e;
     background:linear-gradient(90deg,#f7f1e3 0%,#f4ecd9 82%,#e3d6ba 100%)}
-  .tk-ong{border-radius:0 14px 14px 0;background:#1b2a3d}
+  .tk-ong{border-radius:0 14px 14px 0;background:#1b2a3d linear-gradient(110deg,#1b2a3d 30%,#26394f 50%,#1b2a3d 70%) 0 0/250% 100%;animation:tkYuk 1.4s linear infinite}
+  @keyframes tkYuk{to{background-position:-250% 0}}
   .tk-ong img,.tk-flip img{width:100%;height:100%;object-fit:cover;display:block}
   .tk-ong::after,.tk-old.tk-rasm::after,.tk-orqa.tk-rasm::after{content:'';position:absolute;inset:0 auto 0 0;width:16%;pointer-events:none;
     background:linear-gradient(90deg,rgba(0,0,0,.38),rgba(0,0,0,0))}
@@ -71,12 +72,12 @@
   .tk-chap::after{content:'SOAR GAZ';position:absolute;right:18px;bottom:14px;font:800 10px/1 Inter,Arial;letter-spacing:.3em;color:rgba(120,80,30,.35)}
   /* Ag'dariladigan varaq */
   .tk-flip{position:absolute;top:0;bottom:0;width:50%;z-index:4;transform-style:preserve-3d;will-change:transform}
-  .tk-flip.oldinga{left:50%;transform-origin:left center;animation:tkOldinga .95s cubic-bezier(.45,.05,.3,1) forwards}
-  .tk-flip.ortga{left:0;transform-origin:right center;animation:tkOrtga .95s cubic-bezier(.45,.05,.3,1) forwards}
+  .tk-flip.oldinga{left:50%;transform-origin:left center;animation:tkOldinga .6s cubic-bezier(.45,.05,.3,1) forwards}
+  .tk-flip.ortga{left:0;transform-origin:right center;animation:tkOrtga .6s cubic-bezier(.45,.05,.3,1) forwards}
   .tk-flip>div{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden}
   .tk-flip>.tk-orqa{transform:rotateY(180deg)}
   .tk-flip .tk-chap{position:absolute}
-  .tk-flip>div::before{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;animation:tkSoya .95s ease-in-out forwards}
+  .tk-flip>div::before{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;animation:tkSoya .6s ease-in-out forwards}
   .tk-flip.oldinga>.tk-old::before{background:linear-gradient(270deg,rgba(0,0,0,.55),rgba(0,0,0,.05))}
   .tk-flip.oldinga>.tk-orqa::before{background:linear-gradient(90deg,rgba(0,0,0,.05),rgba(0,0,0,.4))}
   .tk-flip.ortga>.tk-old::before{background:linear-gradient(90deg,rgba(0,0,0,.55),rgba(0,0,0,.05))}
@@ -90,7 +91,7 @@
     font-size:18px;cursor:pointer;display:grid;place-items:center;transition:background .2s,transform .2s}
   .tk-btn:hover{background:rgba(255,255,255,.2);transform:translateY(-2px)}
   .tk-chiziq{flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden}
-  .tk-chiziq i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffb866,#ff8a1f);transition:width .6s ease}
+  .tk-chiziq i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffb866,#ff8a1f);transition:width .4s ease}
   .tk-son{font:800 13px/1 Inter,Arial,sans-serif;letter-spacing:.12em;color:#ffcf99;min-width:68px;text-align:right}
   .tk-mobil{display:none}
   @media(max-width:720px){
@@ -134,38 +135,58 @@
   const mobil = ildiz.querySelector('[data-mobil]');
   const matnHtml = (i) => { const s = SAHIFALAR[i];
     return `<span class="tk-raqam">${raqam(i)}</span><h3>${esc(s.sarlavha)}</h3><p>${esc(s.matn)}</p><div class="tk-shior">${esc(s.shior)}</div>`; };
-  // Kechiktirib yuklash (lazy) YO'Q: keyingi kadr oldindan yuklanadi, varaq ochilganda darhol chizilishi kerak
-  const rasmHtml = (i) => `<img src="${URL(SAHIFALAR[i].rasm)}" alt="${esc(SAHIFALAR[i].sarlavha)}" width="720" height="960">`;
+  // Rasmlar bir marta yuklanadi va xotirada turadi: varaqlashda qayta yuklanmaydi, bo'sh sahifa chiqmaydi
+  const kesh = new Map();
+  function yukla(i) {
+    i = (i + JAMI) % JAMI;
+    if (!kesh.has(i)) {
+      const im = new Image();
+      im.src = URL(SAHIFALAR[i].rasm);
+      const tayyor = (im.decode ? im.decode() : new Promise((ok, xato) => { im.onload = ok; im.onerror = xato; })).catch(() => {});
+      kesh.set(i, { im, tayyor });
+    }
+    return kesh.get(i).tayyor;
+  }
+  // Rasm kechiksa ham slayder qotmasin: ko'pi bilan 3 soniya kutamiz
+  const kut = (i) => Promise.race([yukla(i), new Promise((ok) => setTimeout(ok, 3000))]);
+  const rasmHtml = (i) => `<img src="${URL(SAHIFALAR[i].rasm)}" alt="${esc(SAHIFALAR[i].sarlavha)}" width="720" height="960" decoding="sync">`;
+  // O'ng sahifadagi <img> bitta: faqat src almashadi (element qayta yaratilmaydi — miltillamaydi)
+  ong.innerHTML = rasmHtml(0);
+  const ongRasm = ong.querySelector('img');
+  function ongga(i) {
+    const s = URL(SAHIFALAR[i].rasm);
+    if (ongRasm.getAttribute('src') !== s) { ongRasm.setAttribute('src', s); ongRasm.alt = SAHIFALAR[i].sarlavha; }
+  }
 
   let joriy = 0, band = false;
   function chiz(i) {
     chap.innerHTML = matnHtml(i);
-    ong.innerHTML = rasmHtml(i);
+    ongga(i);
     mobil.innerHTML = matnHtml(i);
     ildiz.querySelector('[data-son]').textContent = raqam(i);
     ildiz.querySelector('[data-chiziq]').style.width = ((i + 1) / JAMI * 100) + '%';
   }
-  // Keyingi kadrni oldindan yuklab qo'yamiz (varaq ochilganda bo'sh joy ko'rinmasin)
-  const oldindan = (i) => { const im = new Image(); im.src = URL(SAHIFALAR[(i + JAMI) % JAMI].rasm); };
 
-  function bor(yangi, yon) {
-    if (band || yangi === joriy) return;
+  async function bor(yangi, yon) {
+    if (band) return;
     yangi = (yangi + JAMI) % JAMI;
-    if (sekin) { joriy = yangi; chiz(joriy); return; }
+    if (yangi === joriy) return;
     band = true;
+    await kut(yangi);                                    // yangi rasm tayyor bo'lgandan keyingina varaqlaymiz
+    if (sekin) { joriy = yangi; chiz(joriy); band = false; return; }
     const eski = joriy;
     const flip = document.createElement('div');
     if (yon > 0) {
       // O'ng varaq ag'dariladi: oldi — eski rasm, orqasi — yangi matn; ostida yangi rasm
       flip.className = 'tk-flip oldinga';
       flip.innerHTML = `<div class="tk-old tk-rasm">${rasmHtml(eski)}</div><div class="tk-orqa tk-chap">${matnHtml(yangi)}</div>`;
-      ong.innerHTML = rasmHtml(yangi);
+      ongga(yangi);
     } else {
       // Chap varaq ortga ag'dariladi: oldi — eski matn, orqasi — oldingi rasm; ostida oldingi matn
       flip.className = 'tk-flip ortga';
       flip.innerHTML = `<div class="tk-old tk-chap">${matnHtml(eski)}</div><div class="tk-orqa tk-rasm">${rasmHtml(yangi)}</div>`;
       chap.innerHTML = matnHtml(yangi);
-      if (window.matchMedia('(max-width:720px)').matches) ong.innerHTML = rasmHtml(yangi);
+      if (window.matchMedia('(max-width:720px)').matches) ongga(yangi);
     }
     kitob.appendChild(flip);
     let tugadi = false;
@@ -176,11 +197,11 @@
       chiz(joriy);
       flip.remove();
       band = false;
-      oldindan(joriy + 1);
+      yukla(joriy + 1);
     };
     flip.addEventListener('animationend', (e) => { if (e.target === flip) yakun(); });
     // Zaxira: tab yashirin bo'lsa animatsiya to'xtab, animationend kelmasligi mumkin — slayder qotib qolmasin
-    setTimeout(yakun, 1600);
+    setTimeout(yakun, 1100);
   }
   const keyingi = () => bor(joriy + 1, 1);
   const oldingi = () => bor(joriy - 1, -1);
@@ -204,26 +225,26 @@
     if (Math.abs(dx) > 40) { (dx < 0 ? keyingi : oldingi)(); qaytaBoshla(); }
   });
 
-  // Avtomatik varaqlash: 6 soniyada bir — sichqoncha ustida yoki bo'lim ko'rinmasa to'xtaydi
-  let taymer = null, korinadi = false, ustida = false;
+  // Avtomatik varaqlash — video kabi tez-tez (2,5 soniyada bir); bo'lim ko'rinmasa yoki tab yashirin bo'lsa to'xtaydi
+  const ORALIQ = 2500;
+  let taymer = null, korinadi = false;
   function qaytaBoshla() {
     clearInterval(taymer);
     if (sekin) return;
-    taymer = setInterval(() => { if (korinadi && !ustida && !document.hidden) keyingi(); }, 6000);
+    taymer = setInterval(() => { if (korinadi && !document.hidden) keyingi(); }, ORALIQ);
   }
-  ildiz.addEventListener('mouseenter', () => { ustida = true; });
-  ildiz.addEventListener('mouseleave', () => { ustida = false; });
   if ('IntersectionObserver' in window) {
     new IntersectionObserver((y) => { korinadi = y[0].isIntersecting; }, { threshold: 0.35 }).observe(kitob);
   } else { korinadi = true; }
 
   chiz(0);
-  // Bo'limga yaqinlashganda barcha sahifalar oldindan yuklanadi (9 ta, jami ~1,2 MB)
+  yukla(0); yukla(1);
+  // Bo'limga yaqinlashganda barcha sahifalar oldindan yuklanadi (9 ta, jami ~0,8 MB)
   if ('IntersectionObserver' in window) {
     const kuzat = new IntersectionObserver((y) => {
-      if (y[0].isIntersecting) { SAHIFALAR.forEach((_, i) => oldindan(i)); kuzat.disconnect(); }
+      if (y[0].isIntersecting) { SAHIFALAR.forEach((_, i) => yukla(i)); kuzat.disconnect(); }
     }, { rootMargin: '600px' });
     kuzat.observe(kitob);
-  } else { oldindan(1); }
+  } else { SAHIFALAR.forEach((_, i) => yukla(i)); }
   qaytaBoshla();
 })();
