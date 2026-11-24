@@ -771,7 +771,11 @@ def xodim_login(request):
         return Response({'detail': _('Hisobingiz bloklangan. Admin bilan bog\'laning.')}, status=403)
 
     # Kim portalga kirgani Kadrlar «Davomat»ida va Django panelida ko'rinadi
+    birinchi = user.last_login is None
     xodim_faolligi(user, kirish=True)
+    if birinchi:
+        from apps.sms_app import xodim_xabar
+        xodim_xabar.xodim_birinchi_kirdi(user)
     audit_yoz(request, 'kirish', 'Xodimlar portaliga kirdi', user=user)
     return _tokenli_javob(request, _tokens_for_user(user), {'xodim': _xodim_data(user)})
 

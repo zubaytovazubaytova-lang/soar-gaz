@@ -159,12 +159,16 @@ def yangilanishni_qayta_ishla(yangilanish):
             _javob(chat_id, BOSHQA_RAQAM, RAQAM_TUGMASI)
             return
         with transaction.atomic():
+            oldin_ulangan = TelegramUlanish.objects.filter(telefon=telefon).exists()
             # Bir Telegram hisobi — bitta raqam; bir raqam — bitta hisob (oxirgi tasdiqlangani)
             TelegramUlanish.objects.filter(chat_id=chat_id).exclude(telefon=telefon).delete()
             TelegramUlanish.objects.update_or_create(
                 telefon=telefon,
                 defaults={'chat_id': chat_id, 'username': (kimdan.get('username') or '')[:64]},
             )
+            if not oldin_ulangan:
+                from . import xodim_xabar
+                xodim_xabar.xodim_botga_ulandi(telefon)       # xodim bo'lsa — adminga xabar
         from apps.auth_app import telegram_kirish
         if telegram_kirish.bot_tasdiq(chat_id, telefon, kimdan):       # saytga kirish kutilayotgan edi
             return

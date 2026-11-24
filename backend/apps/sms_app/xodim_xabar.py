@@ -134,3 +134,35 @@ def yangi_ariza(xizmat, sarlavha, mijoz_ism='', telefon='', manzil='', izoh=''):
         if telegram.sozlangan():
             _yubor(xizmat, matn)
     transaction.on_commit(_hammasi)
+
+
+def adminlarga(matn):
+    """Administrator(lar)ning Telegram'iga xabar (tranzaksiyadan keyin; xato asosiy amalni buzmaydi)."""
+    from apps.auth_app.models import Foydalanuvchi
+
+    def _yubor():
+        if not telegram.sozlangan():
+            return
+        for telefon in Foydalanuvchi.objects.filter(rol='admin', holat='faol').values_list('telefon', flat=True):
+            try:
+                telegram.yubor(telefon, matn)
+            except Exception:                  # noqa: BLE001
+                logger.exception('Admin xabari yuborilmadi')
+    transaction.on_commit(_yubor)
+
+
+def _xodim_qatori(x):
+    return f"{x.ism or '—'} ({x.lavozim or 'lavozimsiz'}), {x.telefon}"
+
+
+def xodim_birinchi_kirdi(x):
+    """Xodim xodimlar portaliga BIRINCHI marta kirdi — adminga."""
+    adminlarga(f"👤 Xodim portalga birinchi marta kirdi:\n{_xodim_qatori(x)}")
+
+
+def xodim_botga_ulandi(telefon):
+    """Raqam botga YANGI ulandi va u faol xodimniki bo'lsa — adminga (mijozlar uchun xabar yo'q)."""
+    from apps.auth_app.models import Foydalanuvchi
+    x = Foydalanuvchi.objects.filter(telefon=telefon, rol='xodim', holat='faol').first()
+    if x is not None:
+        adminlarga(f"📲 Xodim Telegram botga ulandi — endi vazifa xabarlari unga yetadi:\n{_xodim_qatori(x)}")

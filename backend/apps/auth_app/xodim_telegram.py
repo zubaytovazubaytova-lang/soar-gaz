@@ -65,9 +65,13 @@ def bot_start(token, chat_id, kimdan):
         return
     telefon = telegram_bot.telefon_normallash(xodim.telefon) or xodim.telefon
     with transaction.atomic():
+        oldin_ulangan = TelegramUlanish.objects.filter(telefon=telefon).exists()
         # Bir Telegram hisobi — bitta raqam; bir raqam — bitta hisob (oxirgi ulangani)
         TelegramUlanish.objects.filter(chat_id=chat_id).exclude(telefon=telefon).delete()
         TelegramUlanish.objects.update_or_create(
             telefon=telefon,
             defaults={'chat_id': chat_id, 'username': ((kimdan or {}).get('username') or '')[:64]})
+        if not oldin_ulangan:
+            from apps.sms_app import xodim_xabar
+            xodim_xabar.xodim_botga_ulandi(telefon)
     telegram_bot._javob(chat_id, ULANDI.format(ism=xodim.ism or 'Hurmatli xodim'), {'remove_keyboard': True})
