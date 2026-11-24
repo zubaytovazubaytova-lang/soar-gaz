@@ -4056,6 +4056,18 @@
           shior: "Ko'rinmaydigan ish uzoq umr beradi.",
         },
         {
+          rasm: 'images/ish-jarayoni/10b-kran-manometr.webp',
+          sarlavha: 'Bosim sinoviga tayyorgarlik',
+          matn: "Trassa uchlari qopqoq bilan payvandlanadi, ularga kran va manometr o'rnatiladi. Har bir rezba zichlab tortiladi — sinov aniq bo'lishi kerak.",
+          shior: "Ishonchni o'lchov asbobi tasdiqlaydi.",
+        },
+        {
+          rasm: 'images/ish-jarayoni/10c-bosim-sinovi.webp',
+          sarlavha: 'Bosim sinovi (opressovka)',
+          matn: "Quvur me'yoriy bosim bilan to'ldiriladi va belgilangan vaqt kuzatiladi. Manometr ko'rsatkichi o'zgarmasa — trassa germetik, gaz berishga tayyor.",
+          shior: "Bosim tushmadi — demak, ish to'g'ri bajarilgan.",
+        },
+        {
           rasm: 'images/ish-jarayoni/11-yakuniy-nazorat.webp',
           sarlavha: 'Nazorat va topshirish',
           matn: "Choklar tekshiriladi, bosim sinovi o'tkaziladi va obyekt to'liq hujjatlari bilan topshiriladi.",
