@@ -33,8 +33,53 @@
     box-shadow:0 10px 22px -10px rgba(11,61,145,.8);transition:transform .2s}
   .sg-sesh-btn:hover{transform:translateY(-2px)}
   @media (max-width:760px){.sg-sesh{grid-template-columns:auto 1fr;padding:18px}.sg-sesh-foiz{width:72px;height:72px}
-    .sg-sesh-foiz b{font-size:24px}.sg-sesh h3{font-size:19px}.sg-sesh-btn{grid-column:1/-1;justify-content:center}}`;
+    .sg-sesh-foiz b{font-size:24px}.sg-sesh h3{font-size:19px}.sg-sesh-btn{grid-column:1/-1;justify-content:center}}
+  .sg-sesh.sg-sesh-yonib{animation:sgYonib 1.6s ease-out 1}
+  @keyframes sgYonib{0%{box-shadow:0 0 0 0 rgba(245,158,11,.9)}100%{box-shadow:0 0 0 22px rgba(245,158,11,0)}}
+  /* Navbardagi «Aksiya ↓» — pastga tebranib turadigan strelka */
+  .sg-aksiya-nav{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;margin-right:6px;border-radius:999px;
+    background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#431407 !important;font-weight:800;font-size:13px;
+    text-decoration:none;white-space:nowrap;box-shadow:0 6px 16px -8px rgba(217,119,6,.9);animation:sgNafas 2.4s ease-in-out infinite}
+  .sg-aksiya-nav:hover{filter:brightness(1.05)}
+  .sg-aksiya-nav .sg-strelka{display:inline-flex;width:18px;height:18px;border-radius:50%;background:#0b3d91;color:#fff;
+    align-items:center;justify-content:center;font-size:11px;animation:sgPastga 1.1s ease-in-out infinite}
+  .sg-aksiya-nav.mobil{display:none;padding:5px 10px;font-size:12px;margin-right:2px}
+  .sg-aksiya-nav.menyu{display:flex;justify-content:space-between;padding:12px 16px;border-radius:12px;margin:0 0 4px;font-size:14px}
+  @keyframes sgPastga{0%,100%{transform:translateY(-2px)}50%{transform:translateY(3px)}}
+  @keyframes sgNafas{0%,100%{box-shadow:0 6px 16px -8px rgba(217,119,6,.9)}50%{box-shadow:0 0 0 5px rgba(251,191,36,.35),0 6px 16px -8px rgba(217,119,6,.9)}}
+  @media (max-width:1023px){.sg-aksiya-nav.mobil{display:inline-flex}}
+  @media (prefers-reduced-motion:reduce){.sg-aksiya-nav,.sg-aksiya-nav .sg-strelka,.sg-sesh.sg-sesh-yonib{animation:none}}`;
   document.head.appendChild(uslub);
+
+  // Navbar: «Aksiya −N% ↓» — bosilganda aksiya kartasiga silliq tushadi va karta bir marta «yonadi»
+  function navbargaQosh(karta, foiz) {
+    const borish = (e) => {
+      e.preventDefault();
+      const menyu = document.getElementById('mobileNav');
+      if (menyu && !menyu.classList.contains('hidden')) {
+        const burger = document.querySelector('button[aria-label="Menyu"]');
+        if (burger) burger.click();
+      }
+      karta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      karta.classList.remove('sg-sesh-yonib');
+      setTimeout(() => karta.classList.add('sg-sesh-yonib'), 450);
+    };
+    const yasa = (sinf) => {
+      const a = document.createElement('a');
+      a.href = '#seshanba-aksiya';
+      a.className = 'sg-aksiya-nav' + (sinf ? ' ' + sinf : '');
+      a.setAttribute('aria-label', `Seshanba aksiyasi: ${foiz}% chegirma — pastga o'tish`);
+      a.innerHTML = `Aksiya −${foiz}% <span class="sg-strelka" aria-hidden="true">↓</span>`;
+      a.addEventListener('click', borish);
+      return a;
+    };
+    const desktop = document.querySelector('nav a.nav-link[href="#xaridlar"]');
+    if (desktop && desktop.parentNode) desktop.parentNode.insertBefore(yasa(''), desktop);
+    const burger = document.querySelector('nav button[aria-label="Menyu"]');
+    if (burger && burger.parentNode) burger.parentNode.insertBefore(yasa('mobil'), burger);
+    const menyu = document.querySelector('#mobileNav .flex');
+    if (menyu) menyu.insertBefore(yasa('menyu'), menyu.firstChild);
+  }
 
   fetch('/api/narxnoma/seshanba/', { credentials: 'same-origin' })
     .then((r) => (r.ok ? r.json() : null))
@@ -47,12 +92,14 @@
         + (x.narx != null ? ` — <s>${pul(x.narx)}</s><b>${pul(x.chegirmali)}</b>` : '') + '</li>').join('');
       const karta = document.createElement('div');
       karta.className = 'sg-sesh';
+      karta.id = 'seshanba-aksiya';
       karta.innerHTML = `
         <div class="sg-sesh-foiz"><b>−${Number(d.foiz)}%</b><small>SESHANBA</small></div>
         <div><h3>Seshanba aksiyasi — servis xizmatlariga chegirma</h3>
           <p class="sg-sesh-holat">${holat}</p><ul>${qatorlar}</ul></div>
         <a class="sg-sesh-btn" href="/kabinet/?aksiya=seshanba">Batafsil <span aria-hidden="true">→</span></a>`;
       bolim.parentNode.insertBefore(karta, bolim);
+      navbargaQosh(karta, Number(d.foiz));
     })
     .catch(() => { /* aksiya ma'lumoti kelmasa karta chiqmaydi */ });
 })();
