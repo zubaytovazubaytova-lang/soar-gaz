@@ -5182,7 +5182,7 @@
   function kirishRolgaQayt() {
     document.getElementById('kirish-rol').classList.remove('hidden');
     document.getElementById('kirish-telefon-bosqich').classList.add('hidden');
-    document.getElementById('kirish-sarlavha').textContent = 'Kirish';
+    document.getElementById('kirish-sarlavha').textContent = "Ro'yxatdan o'tish yoki kirish";
     document.getElementById('kirish-izoh').textContent = 'Hisobingiz turini tanlang';
   }
 
@@ -5290,22 +5290,25 @@
     }
   }
 
-  // Navbar tugmasi: tizimga kirgan bo'lsa "Kabinet", aks holda "Kirish"
+  // Navbar tugmalari: tizimga kirgan bo'lsa "Profilim", aks holda "Ro'yxatdan o'tish"
+  // (kirish-btn — kompyuter, kirish-btn-tepa — telefon yuqori paneli)
   function kirishTugmaYangila() {
-    const btn = document.getElementById('kirish-btn');
-    if (!btn) return;
     const s = kirishJoriySessiya();
     // To'liq ism uzun bo'lib navbarni cho'zib yuboradi — qisqa "Profilim" yozuvi
-    btn.innerHTML = s
-      ? '<i class="fas fa-user-circle mr-1 opacity-70"></i>Profilim'
-      : '<i class="fas fa-right-to-bracket mr-1 opacity-70"></i>Kirish';
-    btn.title = s ? (s.user.ism || s.user.telefon || '') : 'Kirish';
+    ['kirish-btn', 'kirish-btn-tepa'].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.innerHTML = s
+        ? '<i class="fas fa-user-circle"></i><span>Profilim</span>'
+        : `<i class="fas fa-user-plus"></i><span>Ro'yxatdan o'tish</span>`;
+      btn.title = s ? (s.user.ism || s.user.telefon || '') : "Ro'yxatdan o'tish yoki kirish";
+    });
 
     const mobil = document.getElementById('kirish-btn-mobil');
     if (mobil) {
       mobil.innerHTML = s
         ? '<i class="fas fa-user-circle mr-2"></i>Profilim'
-        : '<i class="fas fa-right-to-bracket mr-2"></i>Kirish';
+        : `<i class="fas fa-user-plus mr-2"></i>Ro'yxatdan o'tish`;
     }
   }
   document.addEventListener('DOMContentLoaded', kirishTugmaYangila);

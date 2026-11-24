@@ -2378,6 +2378,23 @@ html { scroll-padding-top: 96px !important; }
 #navbar .sg2-capsule .cobalt-btn{border-radius:9999px !important;background:linear-gradient(90deg,#ff8a00,#ffb347) !important;
   padding:10px 18px !important;box-shadow:0 8px 20px -6px rgba(255,138,0,.6) !important}
 #navbar .sg2-capsule button[aria-label="Menyu"]{color:#fff !important}
+/* «Ro'yxatdan o'tish» — ramka va fon bilan ajralib turadi */
+.sg-royxat-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:999px;border:1.5px solid #ffb347;
+  background:rgba(255,179,71,.16);color:#fff !important;font-weight:800;font-size:13.5px;line-height:1.2;white-space:nowrap;cursor:pointer;
+  box-shadow:0 0 0 3px rgba(255,179,71,.1);transition:background .2s,transform .2s,box-shadow .2s}
+.sg-royxat-btn i{color:#ffb347;font-size:.95em}
+.sg-royxat-btn:hover{background:rgba(255,179,71,.3);box-shadow:0 0 0 4px rgba(255,179,71,.18);transform:translateY(-1px)}
+.sg-royxat-tepa{display:none;margin-left:auto;margin-right:4px}
+@media(max-width:1023px){.sg-royxat-tepa{display:inline-flex;padding:6px 11px;font-size:12px;gap:5px}
+  #navbar .sg2-capsule{gap:6px}}
+@media(max-width:640px){#navbar .sg2-capsule > a .leading-none > div{display:none}}
+@media(max-width:460px){#navbar .sg2-capsule > a .leading-none{display:none}}
+@media(max-width:400px){.sg-royxat-tepa i{display:none}}
+/* Kompyuter (tor ekran): menyu so'zlari bir qatorda, tugmalar ixchamroq */
+#navbar .nav-link,#navbar a[href="#aloqa"],#navbar .sg2-capsule > a .leading-none > span{white-space:nowrap}
+@media(min-width:1024px) and (max-width:1279px){#navbar .nav-link{padding-left:7px !important;padding-right:7px !important}
+  #kirish-btn{padding:6px 11px;font-size:13px}#kirish-btn i{display:none}
+  #navbar .sg2-capsule > a .leading-none > div{display:none}}
 #mobileNav{background:transparent !important;border:0 !important}
 #mobileNav > div{margin:8px 12px 0;border-radius:20px;background:rgba(6,20,42,.95);
   backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);box-shadow:0 20px 40px rgba(3,18,42,.35)}
@@ -2669,13 +2686,16 @@ body > .cobalt-line{display:none}
       <span class="nav-ajratgich"></span>
 
       <!-- Yagona kirish nuqtasi — rol (mijoz/xodim) telefon raqamdan aniqlanadi -->
-      <button data-h-click="h2" id="kirish-btn" class="nav-link"><i class="fas fa-right-to-bracket mr-1 opacity-70"></i>Kirish</button>
+      <button data-h-click="h2" id="kirish-btn" class="sg-royxat-btn ml-1" type="button"><i class="fas fa-user-plus"></i><span>Ro'yxatdan o'tish</span></button>
       <!-- Admin tugmasi olib tashlandi — boshqaruv Django admin panelida (/admin/) -->
 
       <a href="#aloqa" class="cobalt-btn text-oq font-bold px-4 py-1.5 rounded-lg ml-2 hover:opacity-90 transition-all text-sm">
         <i class="fas fa-phone-alt mr-1.5"></i>Murojaat
       </a>
     </div>
+
+    <!-- Telefon: «Ro'yxatdan o'tish» yuqori panelda doim ko'rinadi (menyu ochilmasdan) -->
+    <button data-h-click="h2" id="kirish-btn-tepa" class="sg-royxat-btn sg-royxat-tepa" type="button"><i class="fas fa-user-plus"></i><span>Ro'yxatdan o'tish</span></button>
 
     <!-- Mobile burger -->
     <button data-h-click="h3" class="lg:hidden text-2xl p-2" style="color:var(--primary)" aria-label="Menyu">
@@ -2691,7 +2711,7 @@ body > .cobalt-line{display:none}
       <a href="#xizmatlar" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">Xizmatlar</a>
       <a href="#jarayon" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">Ish jarayoni</a>
       <a href="#savollar" data-h-click="h3" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all">Savol-javob</a>
-      <button data-h-click="h5" id="kirish-btn-mobil" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all text-left"><i class="fas fa-right-to-bracket mr-2"></i>Kirish</button>
+      <button data-h-click="h5" id="kirish-btn-mobil" class="py-2.5 px-4 text-gray-300 hover:text-white hover:bg-cobalt-600 rounded-lg transition-all text-left"><i class="fas fa-user-plus mr-2"></i>Ro'yxatdan o'tish</button>
       <!-- Admin panel tugmasi olib tashlandi — boshqaruv Django admin panelida (/admin/) -->
       <a href="#aloqa" data-h-click="h3" class="py-3 px-4 gold-btn text-oq font-bold rounded-lg text-center mt-1">Murojaat</a>
     </div>
@@ -5385,7 +5405,7 @@ body > .cobalt-line{display:none}
 
     <div class="flex items-start justify-between mb-5">
       <div>
-        <h3 class="font-black text-xl text-ink-900" id="kirish-sarlavha">Kirish</h3>
+        <h3 class="font-black text-xl text-ink-900" id="kirish-sarlavha">Ro'yxatdan o'tish yoki kirish</h3>
         <p class="text-sm mt-1" style="color:var(--neutral-400)" id="kirish-izoh">Hisobingiz turini tanlang</p>
       </div>
       <button data-h-click="h149" aria-label="Yopish"
@@ -6123,8 +6143,8 @@ body > .cobalt-line{display:none}
 
 <!-- ====== SCRIPTS ====== -->
 <script src="scripts/hodisa-boshqaruvchi.js?v=1"></script>
-<script src="scripts/index-asosiy.js?v=8"></script>
-<script src="scripts/seshanba-aksiya.js?v=3" defer></script>
+<script src="scripts/index-asosiy.js?v=9"></script>
+<script src="scripts/seshanba-aksiya.js?v=5" defer></script>
 <script src="scripts/trassa-kitob.js?v=3" defer></script>
 <script src="scripts/index-hodisalar.js?v=1"></script>
 <script src="scripts/hero-carousel.js?v=3" defer></script>

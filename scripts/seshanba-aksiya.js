@@ -55,6 +55,10 @@
   @keyframes sgPastga{0%,100%{transform:translateY(-2px)}50%{transform:translateY(3px)}}
   @keyframes sgNafas{0%,100%{box-shadow:0 6px 16px -8px rgba(217,119,6,.9)}50%{box-shadow:0 0 0 5px rgba(251,191,36,.35),0 6px 16px -8px rgba(217,119,6,.9)}}
   @media (max-width:1023px){.sg-aksiya-nav.mobil{display:inline-flex}}
+  /* Telefon: yuqori panelda «Ro'yxatdan o'tish»ga joy — nishon qisqa («−10% ↓») */
+  @media (max-width:520px){.sg-aksiya-nav.mobil .sg-aksiya-soz{display:none !important}.sg-aksiya-nav.mobil{padding:5px 8px;gap:4px}}
+  @media (max-width:340px){.sg-aksiya-nav.mobil{display:none}}
+  @media (min-width:1024px) and (max-width:1279px){.sg-aksiya-nav:not(.mobil):not(.menyu) .sg-aksiya-soz{display:none !important}}
   @media (prefers-reduced-motion:reduce){.sg-aksiya-nav,.sg-aksiya-nav .sg-strelka,.sg-sesh.sg-sesh-yonib{animation:none}}`;
   document.head.appendChild(uslub);
 
@@ -76,7 +80,7 @@
       a.href = '#seshanba-aksiya';
       a.className = 'sg-aksiya-nav' + (sinf ? ' ' + sinf : '');
       a.setAttribute('aria-label', `Seshanba aksiyasi: ${foiz}% chegirma — pastga o'tish`);
-      a.innerHTML = `Aksiya −${foiz}% <span class="sg-strelka" aria-hidden="true">↓</span>`;
+      a.innerHTML = `<span class="sg-aksiya-soz">Aksiya </span>−${foiz}% <span class="sg-strelka" aria-hidden="true">↓</span>`;
       a.addEventListener('click', borish);
       return a;
     };
