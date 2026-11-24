@@ -27,13 +27,20 @@
   .sg-sesh-holat .kod{display:inline-block;padding:2px 10px;border-radius:8px;background:#0b3d91;color:#fff;letter-spacing:.08em;margin:0 2px}
   .sg-sesh ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
   .sg-sesh li{font-size:14px;color:#57260a}.sg-sesh li i{font-style:normal;font-weight:800;color:#0b3d91}
-  .sg-sesh li s{opacity:.6;margin:0 4px}.sg-sesh li b{color:#14532d}
+  .sg-sesh li s{opacity:.6;margin:0 4px}.sg-sesh-tire{font-style:normal}.sg-sesh li b{color:#14532d}
   .sg-sesh-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;padding:14px 22px;border-radius:14px;
     background:#0b3d91;color:#fff;font-weight:800;font-size:15px;text-decoration:none;white-space:nowrap;
     box-shadow:0 10px 22px -10px rgba(11,61,145,.8);transition:transform .2s}
   .sg-sesh-btn:hover{transform:translateY(-2px)}
-  @media (max-width:760px){.sg-sesh{grid-template-columns:auto 1fr;padding:18px}.sg-sesh-foiz{width:72px;height:72px}
-    .sg-sesh-foiz b{font-size:24px}.sg-sesh h3{font-size:19px}.sg-sesh-btn{grid-column:1/-1;justify-content:center}}
+  /* Telefon: kichik nishon sarlavha yonida, qolgani to'liq kenglikda — karta ixcham bo'ladi */
+  @media (max-width:760px){.sg-sesh{grid-template-columns:58px minmax(0,1fr);gap:12px 14px;padding:16px;border-radius:18px;margin:0 0 22px}
+    .sg-sesh-foiz{width:58px;height:58px;border-radius:14px;align-self:center}
+    .sg-sesh-foiz b{font-size:19px}.sg-sesh-foiz small{font-size:7.5px;margin-top:4px;letter-spacing:.04em}
+    .sg-sesh-mat{display:contents}.sg-sesh h3{font-size:16.5px;line-height:1.25;margin:0;align-self:center}
+    .sg-sesh-holat,.sg-sesh ul{grid-column:1/-1;margin:0}.sg-sesh-holat{font-size:12.5px;line-height:1.7}
+    .sg-sesh li{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.55)}
+    .sg-sesh li .sg-sesh-narx{display:block;margin-top:2px}.sg-sesh-tire{display:none}
+    .sg-sesh-btn{grid-column:1/-1;justify-content:center;padding:12px 18px;font-size:14.5px}}
   .sg-sesh.sg-sesh-yonib{animation:sgYonib 1.6s ease-out 1}
   @keyframes sgYonib{0%{box-shadow:0 0 0 0 rgba(245,158,11,.9)}100%{box-shadow:0 0 0 22px rgba(245,158,11,0)}}
   /* Navbardagi «Aksiya ↓» — pastga tebranib turadigan strelka */
@@ -89,13 +96,13 @@
         ? `🟢 Hozir amalda · promokod <span class="kod">${esc(d.promokod)}</span> · ${esc(sana(d.tugash))} gacha`
         : `🗓 Keyingi seshanba: ${esc(sana(d.sana))} · promokod shu kuni beriladi (50 soat amal qiladi)`;
       const qatorlar = d.xizmatlar.map((x) => `<li><i>${esc(x.kim_uchun || '')}:</i> ${esc(x.nomi)}`
-        + (x.narx != null ? ` — <s>${pul(x.narx)}</s><b>${pul(x.chegirmali)}</b>` : '') + '</li>').join('');
+        + (x.narx != null ? ` <span class="sg-sesh-narx"><em class="sg-sesh-tire">— </em><s>${pul(x.narx)}</s><b>${pul(x.chegirmali)}</b></span>` : '') + '</li>').join('');
       const karta = document.createElement('div');
       karta.className = 'sg-sesh';
       karta.id = 'seshanba-aksiya';
       karta.innerHTML = `
         <div class="sg-sesh-foiz"><b>−${Number(d.foiz)}%</b><small>SESHANBA</small></div>
-        <div><h3>Seshanba aksiyasi — servis xizmatlariga chegirma</h3>
+        <div class="sg-sesh-mat"><h3>Seshanba aksiyasi — servis xizmatlariga chegirma</h3>
           <p class="sg-sesh-holat">${holat}</p><ul>${qatorlar}</ul></div>
         <a class="sg-sesh-btn" href="/kabinet/?aksiya=seshanba">Batafsil <span aria-hidden="true">→</span></a>`;
       bolim.parentNode.insertBefore(karta, bolim);

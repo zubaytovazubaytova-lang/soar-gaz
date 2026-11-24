@@ -39,8 +39,11 @@
   .sg2-event-grid .sg2-ev-thumbs{display:none}
   @media(max-width:1000px){.sg2-event-grid{grid-template-columns:1fr}
     .sg2-event-grid .sg2-ev{grid-template-columns:180px 1fr;align-items:center}}
-  @media(max-width:560px){.sg2-event-grid .sg2-ev{grid-template-columns:120px 1fr;gap:12px;padding:12px}
-    .sg2-event-grid .sg2-ev-side h2{font-size:17px}.sg2-event-grid .sg2-ev-lead{display:none}}
+  /* Telefon: tadbir kartasi — rasm tepada to'liq kenglikda, matn ostida */
+  @media(max-width:560px){.sg2-event-grid .sg2-ev{grid-template-columns:1fr;gap:12px;padding:12px}
+    .sg2-event-grid .sg2-ev-stage{aspect-ratio:4/3;border-radius:14px}
+    .sg2-event-grid .sg2-ev-side h2{font-size:18px;margin-top:8px}.sg2-event-grid .sg2-ev-lead{display:none}
+    .sg2-event-grid .sg2-ev-cap{min-height:0;font-size:13.5px}}
 
   .tk-bosh h2{margin:14px 0 0;font-size:clamp(26px,3vw,40px);font-weight:900;line-height:1.1;letter-spacing:-.02em;color:#fff}
   .tk-bosh h2 em{font-style:normal;color:#ffb866}
