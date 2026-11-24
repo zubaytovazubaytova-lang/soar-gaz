@@ -37,14 +37,24 @@ BOLIMLAR = {
     # Montaj ustalari, loyihachi, metrolog va boshqa tanilmagan lavozimlar: to'liq oddiy kabinet.
     ODDIY: ['overview'] + _ODDIY_BOLIMLAR,
     # Oddiy xodim kabineti + qo'ng'iroq vazifasi
-    QONGIROQ: ['overview', 'op-arizalar', 'op-qongiroq', 'topshiriq'] + _ODDIY_BOLIMLAR,
+    # «Vazifalarim», «Ish tarixi», «Pul tushumi», «Hujjatlarim» YO'Q: operatorga buyurtma biriktirilmaydi
+    # (vazifa_olishi_mumkin) va u mijozdan pul olmaydi. «Narxnoma» qoladi — mijozga narx aytish uchun.
+    QONGIROQ: ['overview', 'op-arizalar', 'op-qongiroq', 'topshiriq']
+              + [b for b in _ODDIY_BOLIMLAR if b not in ('tasks', 'history', 'cash', 'docs')],
     # Oddiy xodim kabineti + «hj-ishlar»: mijozlardan kelgan ishlar va ular uchun hujjat tayyorlash/yuborish
     # «Pul tushumi» (cash) YO'Q: hujjat tayyorlovchi mijozdan pul olmaydi.
     # «hj-yuborish»: tayyor hujjatlarni mijozga yuborish (hamma ishlar bo'yicha bitta ro'yxat).
-    HUJJAT: ['overview', 'hj-ishlar', 'hj-yuborish', 'topshiriq'] + [b for b in _ODDIY_BOLIMLAR if b != 'cash'],
+    # «Vazifalarim», «Ish tarixi», «Hujjatlarim» (kvitansiya/shartnoma) ham YO'Q: unga mijoz oldiga boradigan
+    # buyurtma biriktirilmaydi (vazifa_olishi_mumkin), hujjat ishlari «hj-ishlar» da xizmat turi bo'yicha keladi.
+    HUJJAT: ['overview', 'hj-ishlar', 'hj-yuborish', 'topshiriq']
+            + [b for b in _ODDIY_BOLIMLAR if b not in ('cash', 'tasks', 'history', 'docs')],
     # Kadrlar: xodimlar nazorati. Mijozdan pul olmaydi — aksincha, har bir xodim topshirgan pulni
     # QABUL QILADI («kadr-tushum»). Qo'ng'iroq vazifasi ham shu kabinetda.
-    KADRLAR: ['overview', 'op-arizalar', 'op-qongiroq', 'topshiriq', 'kadr-davomat', 'kadr-hisobot', 'kadr-tushum', 'kadr-hujjat',
+    # «bank-chek»: mijozlarning hisob raqamga to'lov cheklarini tasdiqlash (administrator bilan birga)
+    # «kadr-xodimlar»: xodimlar ma'lumotlari — ishga kirgan sana, tabel, sertifikatlar (apps/kadrlar/xodim_malumot.py).
+    # Oylik ish haqini Kadrlar kiritmaydi — faqat tizim egasi (Django panelida).
+    KADRLAR: ['overview', 'op-arizalar', 'op-qongiroq', 'topshiriq', 'bank-chek', 'kadr-davomat', 'kadr-hisobot', 'kadr-tushum',
+              'kadr-xodimlar', 'kadr-hujjat',
               'certs', 'pay', 'team', 'settings'],
 }
 
@@ -64,15 +74,20 @@ def kabinet_turi(lavozim):
 def kabinet_malumoti(lavozim):
     """Frontendga beriladigan tuzilma: {'tur': ..., 'bolimlar': [...]}."""
     tur = kabinet_turi(lavozim)
-    return {'tur': tur, 'bolimlar': list(BOLIMLAR[tur])}
+    bolimlar = list(BOLIMLAR[tur])
+    # Metrolog: oddiy kabinet + «Hisoblagichlar» (muddatli hisoblagichlar, qiyoslov — apps/kabinet/metrolog.py)
+    if tur == ODDIY and 'metrolog' in (lavozim or '').lower():
+        bolimlar.insert(bolimlar.index('tasks') + 1, 'metr-hisob')
+    return {'tur': tur, 'bolimlar': bolimlar}
 
 
 def vazifa_olishi_mumkin(lavozim):
     """Xodimga buyurtma biriktirsa bo'ladimi (u mijoz oldiga borib ishlaydigan xodimmi).
 
-    Ariza qabul qiluvchilar (Ruxsora, Nargiza) ish bajarmaydi — ularga vazifa BERILMAYDI va «eng yaqin xodim»
-    qidiruvida ular chiqmaydi, garchi Nargizaning kabinetida «Vazifalarim» bo'limi bo'lsa ham."""
-    return kabinet_turi(lavozim) in (ODDIY, HUJJAT)
+    Faqat joyga chiqib ishlaydigan xodimlar (ustalar, metrologlar, loyihachi — «oddiy» kabinet).
+    Ariza qabul qiluvchilar (Ruxsora, Nargiza) va mehnat muhofazasi muhandisi (Ferangiz) ish bajarmaydi —
+    ularga vazifa BERILMAYDI va «eng yaqin xodim» qidiruvida ular chiqmaydi."""
+    return kabinet_turi(lavozim) == ODDIY
 
 
 def faol_xodimmi(user):

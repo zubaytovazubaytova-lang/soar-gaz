@@ -19,6 +19,7 @@ from apps.auth_app.kabinet_turlari import KADRLAR, kabinet_turi, kadrmi
 from apps.auth_app.kabinet_turlari import faol_xodimmi as _faol_xodim
 from apps.auth_app.models import Foydalanuvchi
 from apps.joylashuv.models import Smena
+from apps.sms_app.models import TelegramUlanish
 from .models import (HUJJAT_TURLARI, KELMAGAN_SABAB_NOMI, MAJBURIY_HUJJATLAR, DavomatBelgisi, KunlikHisobot,
                      XodimHujjati)
 
@@ -127,6 +128,8 @@ def kun_korinishi(request):
     hisobotlar = {h.xodim_id: h for h in KunlikHisobot.objects.filter(sana=sana)}
     belgilar = {b.xodim_id: b for b in DavomatBelgisi.objects.filter(sana=sana).select_related('belgilagan')}
 
+    botdagilar = set(TelegramUlanish.objects.filter(telefon__in=[x.telefon for x in xodimlar])
+                     .values_list('telefon', flat=True))
     qatorlar = []
     keldi = ishda = hisobotli = 0
     for x in xodimlar:
@@ -170,6 +173,8 @@ def kun_korinishi(request):
             'soat': round(jami.total_seconds() / 3600, 1),
             'smena_soni': len(royxat),
             'hisobot': _hisobot_json(h),
+            'oxirgi_faollik': x.last_login,          # portalga oxirgi kirgan / faol bo'lgan vaqt
+            'telegram': x.telefon in botdagilar,     # yangi vazifa xabarlari Telegram'da yetadimi
         })
 
     return Response({
@@ -177,7 +182,9 @@ def kun_korinishi(request):
         'bugun': sana == timezone.localdate(),
         'xulosa': {'jami': len(xodimlar), 'keldi': keldi, 'ishda': ishda,
                    'kelmadi': len(xodimlar) - keldi, 'qolda': len(belgilar), 'hisobotli': hisobotli,
-                   'hisobotsiz': len(xodimlar) - hisobotli},
+                   'hisobotsiz': len(xodimlar) - hisobotli,
+                   'portalsiz': sum(1 for x in xodimlar if x.last_login is None),
+                   'botsiz': sum(1 for x in xodimlar if x.telefon not in botdagilar)},
         'xodimlar': qatorlar,
     })
 
@@ -237,6 +244,28 @@ def hisobot_eslatma(request):
     topshirgan = set(KunlikHisobot.objects.filter(sana=timezone.localdate()).values_list('xodim_id', flat=True))
     qabulchilar = [x for x in _kuzatiladigan_xodimlar() if x.id not in topshirgan]
     Xabar.objects.bulk_create([Xabar(xodim=x, yuboruvchi=request.user, matn=ESLATMA_MATNI)
+                               for x in qabulchilar])
+    return Response({'yuborildi': len(qabulchilar)}, status=201)
+
+
+BOT_ESLATMA_MATNI = ("Iltimos, SOAR GAZ Telegram botiga ulaning: yangi vazifalar va arizalar haqida xabar "
+                     "shu yerga keladi. Kabinetning «Bosh sahifa»sidagi «Botga ulanish» tugmasini bosing va "
+                     "botda «Start» ni bosing — bo'ldi. Tekin.")
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bot_eslatma(request):
+    """Telegram botga ulanmagan xodimlarga kabinetdagi xabar (qo'ng'iroqcha) yuboradi — soatiga bir marta."""
+    if not kadrmi(request.user):
+        return _ruxsat_yoq()
+    if not cache.add(f'kadrlar:bot-eslatma:{request.user.pk}', 1, ESLATMA_ORALIQ):
+        return Response({'detail': _("Eslatma yaqinda yuborilgan. Keyinroq urinib ko'ring.")}, status=429)
+    xodimlar = _kuzatiladigan_xodimlar()
+    botdagilar = set(TelegramUlanish.objects.filter(telefon__in=[x.telefon for x in xodimlar])
+                     .values_list('telefon', flat=True))
+    qabulchilar = [x for x in xodimlar if x.telefon not in botdagilar]
+    Xabar.objects.bulk_create([Xabar(xodim=x, yuboruvchi=request.user, matn=BOT_ESLATMA_MATNI)
                                for x in qabulchilar])
     return Response({'yuborildi': len(qabulchilar)}, status=201)
 

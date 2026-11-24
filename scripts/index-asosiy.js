@@ -435,7 +435,7 @@
   const XARID_NARX = { ornatish: 250000, yetkazish: 30000, bepul_chegara: 1000000 };
 
   let xaridYetk  = 'kuryer';
-  let xaridTlv   = 'naqd';
+  let xaridTlv   = 'click';      // naqd xaridlar uchun o'chirilgan: faqat Click yoki o'tkazma
   let xaridPromo = null;   // { kod, tavsif, chegirma }
   let xaridQadam = 1;      // joriy bosqich (1–4)
   let xaridBolibOy = 0;    // bo'lib to'lash muddati (oy), 0 — tanlanmagan
@@ -451,6 +451,7 @@
     payme: 'Payme',
     karta: 'Uzcard / Humo',
     bolib: "Bo'lib to'lash",
+    bank:  "Hisob raqamga o'tkazma",
   };
 
   async function xaridNarxlarYukla() {
@@ -1690,6 +1691,8 @@
       </div>`;
     }
 
+    if (p.method === 'bank') return bankPanel(b);
+
     // Onlayn to'lov (click / payme / karta)
     const xato = p.state === 'xato';
     const sozlanmagan = p.configured === false;
@@ -1752,6 +1755,128 @@
     }, 6000);
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Hisob raqamga o'tkazma (chek bilan) — do'kon xaridi
+  //  Mijoz pulni Click/bank ilovasidan o'tkazadi, chekni shu yerda yuklaydi;
+  //  admin yoki Kadrlar mutaxassisi bankda ko'rib tasdiqlaydi (apps/tolovlar/bank.py).
+  // ─────────────────────────────────────────────────────────────
+  const bankYol = raqam => '/tolovlar/bank/xarid/' + encodeURIComponent(raqam) + '/';
+  const bankTelOxiri = raqam => { try { return sessionStorage.getItem('sg_tel_' + raqam) || ''; } catch (e) { return ''; } };
+  const bankEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  async function bankSorov(raqam, sozlama) {
+    // Mehmon xaridi: egalik telefon oxiri bilan; kerak bo'lsa bir marta so'raladi
+    for (let urinish = 0; urinish < 2; urinish++) {
+      const headers = {};
+      const tok = apiToken();
+      if (tok) headers['Authorization'] = 'Bearer ' + tok;
+      const tel = bankTelOxiri(raqam);
+      if (tel) headers['X-Telefon-Oxiri'] = tel;
+      const res = await fetch(API + bankYol(raqam), { ...(sozlama || {}), headers });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) return data;
+      if (res.status === 403 && data.telefon_kerak && urinish === 0) {
+        const t = prompt("Buyurtma egasini tasdiqlash uchun telefon raqamingizning oxirgi 4 raqamini kiriting:");
+        if (!t) throw new Error(data.detail);
+        try { sessionStorage.setItem('sg_tel_' + raqam, t.replace(/\D/g, '').slice(-4)); } catch (e) {}
+        continue;
+      }
+      throw new Error(data.detail || 'Server xatosi');
+    }
+  }
+
+  function bankQator(nom, qiymat) {
+    return `<div class="flex items-center justify-between gap-2 py-1.5" style="border-bottom:1px dashed rgba(120,170,235,0.25)">
+      <span class="text-xs" style="color:#5b7fa6">${nom}</span>
+      <span class="flex items-center gap-2 text-right"><b class="text-sm text-ink-900" style="word-break:break-all">${bankEsc(qiymat)}</b>
+        <button type="button" data-xa-nusxa="${bankEsc(qiymat)}" class="text-xs font-bold rounded-lg"
+          style="padding:4px 9px;background:#e8f1ff;color:#0d6efd;border:1px solid rgba(120,170,235,0.35)">Nusxa</button></span>
+    </div>`;
+  }
+
+  function bankPanel(b) {
+    setTimeout(() => bankPanelYukla(b.id), 0);
+    return `<div class="xarid-card" id="xa-bank-panel">
+      <div class="text-sm" style="color:#5b7fa6"><i class="fas fa-spinner fa-spin mr-2"></i>Hisob raqam yuklanmoqda...</div>
+    </div>`;
+  }
+
+  async function bankPanelYukla(raqam) {
+    const box = document.getElementById('xa-bank-panel');
+    if (!box) return;
+    let d;
+    try { d = await bankSorov(raqam); }
+    catch (e) {
+      box.innerHTML = `<p class="text-sm" style="color:#dc2626">${bankEsc(e.message)}</p>${tolovUsulTugmasi()}`;
+      return;
+    }
+    const kutilmoqda = d.tolovlar.some(t => t.holat === 'tekshirilmoqda');
+    const oxirgiRad = d.tolovlar.find(t => t.holat === 'rad');
+    const r = d.rekvizit;
+    box.innerHTML = !r ? `
+        <div class="flex items-start gap-3"><i class="fas fa-university mt-1" style="color:#0d6efd"></i>
+          <div class="text-sm" style="color:#5b7fa6">Hisob raqam hali kiritilmagan. Operator siz bilan bog'lanadi yoki boshqa to'lov usulini tanlang.</div></div>
+        ${tolovUsulTugmasi()}` : `
+      <div class="font-bold text-ink-900 text-sm mb-2"><i class="fas fa-university mr-2" style="color:#0d6efd"></i>1. ${somFmt(d.summa)} ni shu hisob raqamga o'tkazing</div>
+      ${bankQator('Qabul qiluvchi', r.korxona)}
+      ${bankQator('Hisob raqam', r.hisob_raqam)}
+      ${bankQator('Bank', r.bank)}
+      ${bankQator('MFO', r.mfo)}
+      ${bankQator('STIR (INN)', r.stir)}
+      ${bankQator("To'lov maqsadi", d.maqsad)}
+      <p class="text-[11px] mt-2 mb-4" style="color:#5b7fa6">Click ilovasida: <b>To'lovlar → Rekvizitlar bo'yicha o'tkazma</b> yoki bankingiz ilovasida "Yuridik shaxsga o'tkazma".</p>
+      ${kutilmoqda ? `
+        <div class="rounded-xl text-sm p-3" style="background:#fffbeb;border:1px solid #fde68a;color:#78350f">
+          <i class="fas fa-hourglass-half mr-1"></i> Chekingiz tekshirilmoqda. Pul hisobimizga tushgani tasdiqlangach xabar olasiz.</div>` : `
+        ${oxirgiRad ? `<p class="text-xs mb-2" style="color:#dc2626"><i class="fas fa-circle-exclamation mr-1"></i>Oldingi chek tasdiqlanmadi: ${bankEsc(oxirgiRad.rad_sabab)}</p>` : ''}
+        <form id="xa-bank-forma">
+          <div class="font-bold text-ink-900 text-sm mb-2">2. To'lov chekini yuklang</div>
+          <input type="file" id="xa-bank-chek" accept="image/jpeg,image/png,image/webp,application/pdf" required
+            class="w-full text-sm mb-2 rounded-xl" style="padding:10px;background:#f1f7ff;border:1px solid rgba(120,170,235,0.28)">
+          <input type="text" id="xa-bank-izoh" maxlength="300" placeholder="Izoh (ixtiyoriy): masalan, to'lovchi — Valiyev A."
+            class="w-full text-sm mb-3 rounded-xl" style="padding:10px;background:#f1f7ff;border:1px solid rgba(120,170,235,0.28)">
+          <button type="submit" id="xa-bank-yubor" class="w-full font-black rounded-xl active:scale-95 transition-all"
+            style="padding:14px;background:linear-gradient(135deg,#0d6efd,#17538f);color:#fff">
+            <i class="fas fa-paper-plane mr-2"></i>Chekni yuborish</button>
+          <p class="text-[11px] text-center mt-2" style="color:#5b7fa6">Skrinshot yoki PDF, 5 MB gacha</p>
+        </form>`}
+      <div class="mt-3">${tolovUsulTugmasi()}</div>`;
+    const forma = document.getElementById('xa-bank-forma');
+    if (forma) forma.addEventListener('submit', e => bankChekYubor(e, raqam));
+  }
+
+  async function bankChekYubor(e, raqam) {
+    e.preventDefault();
+    const fayl = document.getElementById('xa-bank-chek').files[0];
+    if (!fayl) { showToast('Chek faylini tanlang'); return; }
+    if (fayl.size > 5 * 1024 * 1024) { showToast("Fayl 5 MB dan katta bo'lmasin"); return; }
+    const fd = new FormData();
+    fd.append('chek', fayl);
+    fd.append('izoh', document.getElementById('xa-bank-izoh').value.trim());
+    const tel = bankTelOxiri(raqam);
+    if (tel) fd.append('telefon', tel);
+    const tugma = document.getElementById('xa-bank-yubor');
+    tugma.disabled = true;
+    try {
+      await bankSorov(raqam, { method: 'POST', body: fd });
+      showToast('Chek yuborildi. Tekshirilgach xabar olasiz.');
+      bankPanelYukla(raqam);
+    } catch (err) {
+      showToast(err.message || 'Chek yuborilmadi');
+      tugma.disabled = false;
+    }
+  }
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-xa-nusxa]');
+    if (!t) return;
+    const matn = t.getAttribute('data-xa-nusxa');
+    (navigator.clipboard ? navigator.clipboard.writeText(matn) : Promise.reject())
+      .then(() => showToast('Nusxalandi'))
+      .catch(() => showToast("Nusxalab bo'lmadi — qo'lda belgilab oling"));
+  });
+  if (window.SG_H) SG_H['hBank'] = function () { xaridTolov('bank'); };
+
   async function tolovUsulOch() {
     const box = document.getElementById('xa-usul-royxat');
     if (!box.classList.contains('hidden')) { box.classList.add('hidden'); return; }
@@ -1761,8 +1886,9 @@
     const bolibBor = (XARID_NARX.bolib || []).length &&
                      (!XARID_NARX.bolib_eng_kam || (t && t.amount >= XARID_NARX.bolib_eng_kam));
 
+    const FAOL_USULLAR = ['click', 'bank'];      // bo'lib to'lash — tez orada
     box.innerHTML = Object.keys(TOLOV_NOMI)
-      .filter(u => u !== joriy && (u !== 'bolib' || bolibBor))
+      .filter(u => FAOL_USULLAR.includes(u) && u !== joriy && (u !== 'bolib' || bolibBor))
       .map(u => `
         <button data-h-click="c:tolovUsulTanla" data-a-click="${SG_A([String(u)])}" class="w-full text-left rounded-xl text-sm transition-all"
           style="padding:12px;background:#f1f7ff;color:#1c3d63;border:1px solid rgba(120,170,235,0.22)">
@@ -2714,8 +2840,8 @@
     document.querySelectorAll('#tolov-page .card').forEach(c => c.style.borderColor = '');
     el.style.borderColor = '#f83600';
     const pt = document.getElementById('payType');
-    if (pt) pt.value = type === 'bank' ? 'Bank o\'tkazmasi' : type === 'online' ? 'Onlayn (Click/Payme)' : 'Shartnoma / Bo\'lib to\'lash';
-    if (type === 'bank')       _openOverlay('bankDetails');
+    if (pt) pt.value = type === 'bank' ? 'Bank o\'tkazmasi' : type === 'online' ? 'Onlayn (Click)' : 'Shartnoma / Bo\'lib to\'lash';
+    if (type === 'bank')       { _openOverlay('bankDetails'); bankRekvizitlarYukla(); }
     else if (type === 'online') _openOverlay('onlineDetails');
     else                        _openOverlay('shartnomaDetails');
   }
@@ -2735,11 +2861,39 @@
     document.body.style.overflow = tolovOchiqmi() ? 'hidden' : '';
   }
 
-  function copyBankCard() {
-    const card = '8600 1234 5678 9012';
-    navigator.clipboard.writeText(card).then(
-      () => showToast('Karta raqami nusxalandi: ' + card),
-      () => showToast('Karta raqami: ' + card)
+  // Haqiqiy rekvizitlar serverdan (admin panelidagi «To'lov rekvizitlari»)
+  let BANK_REKVIZITLAR = null;
+  async function bankRekvizitlarYukla() {
+    const box = document.getElementById('bankRekvizitlar');
+    try {
+      if (!BANK_REKVIZITLAR) BANK_REKVIZITLAR = (await apiGetPub('/tolovlar/bank/rekvizitlar/')).royxat || [];
+    } catch (e) { BANK_REKVIZITLAR = null; if (box) box.textContent = "Rekvizitlarni yuklab bo'lmadi. Operatorga qo'ng'iroq qiling."; return []; }
+    if (!box) return BANK_REKVIZITLAR;
+    // Bir xil hisob raqam bir marta, yo'nalishlari birga ko'rsatiladi
+    const guruh = {};
+    BANK_REKVIZITLAR.forEach(r => {
+      (guruh[r.hisob_raqam] = guruh[r.hisob_raqam] || { ...r, nomlar: [] }).nomlar.push(r.yonalish_nomi);
+    });
+    const q = (n, v) => `<div class="flex justify-between gap-3 border-b border-navy-700 py-1.5"><span class="text-gray-400">${n}</span><span class="text-ink-900 font-mono text-right" style="word-break:break-all">${bankEsc(v)}</span></div>`;
+    const ruyxat = Object.values(guruh);
+    box.innerHTML = !ruyxat.length ? "Hisob raqam hali kiritilmagan. Operatorga qo'ng'iroq qiling." : ruyxat.map(r => `
+      <div class="mb-4">
+        <div class="text-xs font-bold mb-1" style="color:#0d6efd">${bankEsc(r.nomlar.join(', '))}</div>
+        <div class="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm">
+          ${q('Qabul qiluvchi', r.korxona)}${q('Hisob raqami', r.hisob_raqam)}${q('Bank', r.bank)}${q('MFO', r.mfo)}${q('STIR (INN)', r.stir)}
+          <div class="flex items-center py-1.5"><button type="button" data-xa-nusxa="${bankEsc(r.hisob_raqam)}" class="text-xs font-bold rounded-lg" style="padding:5px 10px;background:#e8f1ff;color:#0d6efd;border:1px solid rgba(120,170,235,0.35)">Hisob raqamni nusxalash</button></div>
+        </div>
+      </div>`).join('');
+    return BANK_REKVIZITLAR;
+  }
+
+  async function copyBankCard() {
+    const r = (await bankRekvizitlarYukla()) || [];
+    if (!r.length) { showToast("Hisob raqam hali kiritilmagan"); return; }
+    const raqam = r[0].hisob_raqam;
+    (navigator.clipboard ? navigator.clipboard.writeText(raqam) : Promise.reject()).then(
+      () => showToast('Hisob raqam nusxalandi: ' + raqam),
+      () => showToast('Hisob raqam: ' + raqam)
     );
   }
 
@@ -2784,7 +2938,7 @@
   async function submitForm(e, type) {
     e.preventDefault();
     if (type === 'invoice') {
-      const turiMap = { 'Bank o\'tkazmasi': 'bank', 'Onlayn (Click/Payme)': 'online', 'Shartnoma / Bo\'lib to\'lash': 'shartnoma' };
+      const turiMap = { 'Bank o\'tkazmasi': 'bank', 'Onlayn (Click)': 'online', 'Onlayn (Click/Payme)': 'online', 'Shartnoma / Bo\'lib to\'lash': 'shartnoma' };
       const ptv = document.getElementById('payType').value;
       const turi = turiMap[ptv] || 'bank';
       const tizimi = turi === 'online' ? 'click' : '';
@@ -3085,7 +3239,8 @@
 
   const M_QOP400A = {nom:'Gaz bosim regulyatori QOP-400A', kalit:'qop-400a-regulyator', rasm:['images/jihozlar/qop-400a-1.jpg','images/jihozlar/qop-400a-2.jpg','images/jihozlar/qop-400a-video.mp4'], tavsif:'Membranali gaz yetkazib berish regulyatori. Kirish bosimi qanday o\'zgarmasin, chiqishda barqaror bosimni ushlab turadi: bosimni sezuvchi membrana balanslashgan klapanni boshqaradi, prujina esa kerakli darajaga sozlanadi.', narx:'So\'rovnoma', birlik:'dona', qollanish:'GRP/GRU tugunlari, qozonxona va sanoat obyektlariga gaz uzatish liniyalari', belgi:'0.4–5 bar', eslatma:'Regulyator <b>chiqish bosimiga qarab</b> tanlanadi — jihozingiz talab qiladigan ishchi bosimni oldindan aniqlang. O\'rnatishda gaz oqimi yo\'nalishi (korpusdagi strelka) va rezba o\'lchami mos kelishi shart. Regulyatordan <b>oldin filtr</b> o\'rnatilishi tavsiya etiladi — mexanik zarrachalar membrana va klapan o\'rindig\'ini ishdan chiqaradi.', xus:[['Model','QOP-400A'],['Turi','Membranali, to\'g\'ridan-to\'g\'ri ta\'sirli'],['Gaz turi','Tabiiy gaz'],['Chiqish bosimi','0.4–5 bar (sozlanadigan)'],['Sozlash','Prujinali vint'],['Klapan','Balanslashgan (balanced poppet)'],['Qo\'shimcha','Nolinchi bosim klapani (ixtiyoriy rejim)'],['Ventilyatsiya','H-shaklidagi shtuserlar (2 dona)'],['Korpus material','Alyuminiy quyma'],['Ulanish','Rezbali (ichki)'],['Kafolat','2 yil']]};
 
-  const M_GRAFF = {nom:'Elektroklapan GRAFF G¾" (DN20)', kalit:'graff-elektroklapan-dn20', rasm:['images/jihozlar/graff-klapan-1.jpg','images/jihozlar/graff-klapan-2.jpg','images/jihozlar/graff-klapan-3.jpg','images/jihozlar/graff-klapan-video.mp4'], tavsif:'Gaz liniyasini avtomatik to\'suvchi elektromagnit klapan. Gaz sizib chiqish sensori bilan birga ishlaydi: xavf aniqlanganda sensordan signal keladi va klapan gaz oqimini bir zumda to\'sadi. Qayta ochish qo\'lda — ustidagi qizil tugma orqali.', narx:'So\'rovnoma', birlik:'dona', qollanish:'Oshxona, qozonxona va sanoat xonalarida avtomatik gaz to\'sish tizimi', belgi:'DC 9V', eslatma:'Klapan <b>gaz sizib chiqish sensori bilan juftlab</b> o\'rnatiladi — yolg\'iz o\'zi xavfni aniqlamaydi. O\'rnatishda korpusdagi <b>oqim yo\'nalishi strelkasiga</b> qat\'iy rioya qiling, teskari o\'rnatilsa klapan ishlamaydi. Rezba o\'lchami G¾" (DN20) — liniyangiz diametriga mos kelishini tekshiring.', xus:[['Brend','GRAFF'],['Turi','Elektromagnit klapan (elektroklapan)'],['O\'lcham','G¾" (DN20)'],['Ish bosimi','100 kPa'],['Kuchlanish','DC 9V'],['Ochish','Qo\'lda (qizil tugma)'],['Yopish','Sensordan signal bo\'yicha avtomatik'],['Oqim yo\'nalishi','Korpusdagi strelka bo\'yicha'],['Korpus material','Latun / alyuminiy'],['Kafolat','1 yil']]};
+  // Gaz xavfsizlik tizimi: indikator + elektroklapan — BITTA mahsulot (ikki qismdan iborat to'plam)
+  const M_GRAFF = {nom:'Gaz xavfsizlik tizimi «Smart Gas Guardian» + elektroklapan GRAFF G¾" (DN20)', kalit:'gaz-xavfsizlik-tizimi-graff', rasm:['images/jihozlar/gaz-indikatori-1.jpg','images/jihozlar/graff-klapan-1.jpg','images/jihozlar/gaz-indikatori-2.jpg','images/jihozlar/graff-klapan-2.jpg','images/jihozlar/graff-klapan-3.jpg','images/jihozlar/gaz-indikatori-video.mp4','images/jihozlar/graff-klapan-video.mp4'], tavsif:'Ikki qismdan iborat to\'plam: gaz sizishini aniqlovchi «Smart Gas Guardian» indikatori va gaz oqimini avtomatik to\'suvchi GRAFF elektroklapani. Indikator xonadagi havoni uzluksiz kuzatadi; gaz konsentratsiyasi xavfli darajaga yetganda sirena chalinadi va klapanga signal yuboriladi — klapan gaz liniyasini bir zumda to\'sadi. Qayta ochish qo\'lda — klapan ustidagi qizil tugma orqali.', narx:'So\'rovnoma', birlik:'to\'plam', qollanish:'Oshxona, qozonxona va gaz jihozlari o\'rnatilgan turar-joy va sanoat xonalari', belgi:'Indikator + klapan', eslatma:'To\'plam <b>ikki qismdan</b> iborat va ular birga ishlaydi: indikator xavfni aniqlaydi, klapan gazni to\'sadi — alohida-alohida to\'liq himoya bermaydi. Indikatorni o\'rnatish balandligi gaz turiga bog\'liq: tabiiy gaz (metan) havodan yengil — <b>shift yaqiniga</b>, suyultirilgan gaz (propan-butan) og\'ir — <b>polga yaqin</b>. Klapanni o\'rnatishda korpusdagi <b>oqim yo\'nalishi strelkasiga</b> rioya qiling, teskari o\'rnatilsa ishlamaydi; rezba G¾" (DN20) liniyangizga mosligini tekshiring. Indikator yonidagi <b>havo tirqishlarini</b> mebel yoki parda bilan to\'sib qo\'ymang.', xus:[['To\'plam tarkibi','Gaz indikatori «Smart Gas Guardian» + elektroklapan GRAFF'],['Indikator: sezgir element','Gaz sensori massivi + signal kuchaytirgich'],['Indikator: boshqaruv','Mikrokontroller (MCU)'],['Indikator: ovozli signal','Ichki trevoga sirenasi'],['Indikator: holat ko\'rsatkichi','2 ta LED'],['Indikator: quvvat','Tarmoqdan, AC-DC almashtirgich (shnur bilan)'],['Indikator: klapan chiqishi','Rele drayveri orqali'],['Klapan: brend','GRAFF'],['Klapan: o\'lcham','G¾" (DN20)'],['Klapan: ish bosimi','100 kPa'],['Klapan: kuchlanish','DC 9V'],['Klapan: ochish','Qo\'lda (qizil tugma)'],['Klapan: yopish','Indikator signali bo\'yicha avtomatik'],['Klapan korpusi','Latun / alyuminiy'],['Kafolat','1 yil']]};
 
   // ---- UNIVERSAL KATALOG SAHIFASI ----
   const KAT_DATA = {
@@ -3141,6 +3296,7 @@
       items: [
         // Jihozlar katalogi bilan umumiy — ta'rifi yuqorida, M_* o'zgaruvchilarida
         M_GRAFF,
+        {nom:'Welle gaz xavfsizligi to\'plami (signalizator + elektromagnit klapan)', kalit:'welle-gaz-xavfsizlik-toplami', rasm:['images/jihozlar/welle-toplam-1.webp','images/jihozlar/welle-toplam-2.webp','images/jihozlar/welle-toplam-3.webp','images/jihozlar/welle-toplam-4.webp'], tavsif:'Maishiy gaz xavfsizligi uchun to\'liq komplekt: gaz sizishini aniqlovchi detektor (signalizator) va gaz liniyasini avtomatik yopuvchi elektromagnit klapan. Detektor havodagi gazni sezadi, ovozli va yorug\'likli signal beradi hamda kabel orqali klapanga buyruq yuboradi — klapan gaz oqimini to\'sadi. Montajga tayyor to\'plam.', narx:'So\'rovnoma', birlik:'to\'plam', qollanish:'Uy, oshxona, qozonxona va ofislar: gaz qozoni, kolonka yoki plita o\'rnatilgan xonalar', belgi:'Sensor + klapan', eslatma:'To\'plam <b>ikki qismdan</b> iborat va birga ishlaydi: detektor xavfni aniqlaydi, klapan gazni to\'sadi. Detektor <b>220 V</b> tarmoqdan ishlaydi (vilkali kabel komplektda). O\'rnatish balandligi gaz turiga bog\'liq: tabiiy gaz (metan) — <b>shift yaqiniga</b>, suyultirilgan gaz (propan-butan) — <b>polga yaqin</b>. Klapan korpusidagi <b>oqim yo\'nalishi strelkasiga</b> rioya qiling. Klapanning rezba o\'lchamini buyurtma paytida liniyangiz diametriga moslab aniqlashtiring. Montajni mutaxassisga topshiring.', xus:[['Brend','Welle'],['To\'plam tarkibi','Detektor (signalizator), elektromagnit klapan, ulanish kabeli, mahkamlash vintlari, yo\'riqnoma'],['Detektor','Gaz sizishini aniqlaydi, ovozli va yorug\'likli (LED) ogohlantirish'],['Klapan','Elektromagnit, gaz sizganda avtomatik yopiladi'],['Quvvat','220 V tarmoqdan (2 pinli vilka)'],['Ulanish','Detektor va klapan kabel orqali bog\'lanadi'],['O\'rnatish','Devorga vint bilan; klapan gaz quvuriga'],['Sertifikat','CE'],['Yo\'riqnoma','Rus tilida (komplektda)'],['Qo\'llanish','Uy va ofis']]},
         M_RDSK50,
         M_QOP400A,
         {nom:'ГАЛЛОП latun shar kran (ichki rezbali)', kalit:'gallop-shar-kran', rasm:['images/jihozlar/gallop-shar-kran-1.jpg','images/jihozlar/gallop-shar-kran-2.jpg','images/jihozlar/gallop-shar-kran-3.jpg'], tavsif:'ГАЛЛОП brendi latun korpusli qo\'lda boshqariladigan shar kran. Ikki tomoni ichki rezbali (mufta-mufta), qizil richagida ON/OFF yo\'nalish strelkalari bor — chorak burilishda to\'liq ochib-yopiladi.', narx:'So\'rovnoma', birlik:'dona', qollanish:'Uy-ichki va ichki obyekt liniyalari, jihoz oldidagi to\'siq', eslatma:'O\'lcham (DN) rasmdan aniqlanmadi — kerakli diametrni buyurtma berishda ko\'rsating.', xus:[['Brend','ГАЛЛОП'],['Turi','Shar kran (ball valve)'],['Korpus material','Latun'],['Ulash','Ikki tomoni ichki rezba (mufta-mufta)'],['Boshqaruv','Qo\'lda, richag (chorak burilish)'],['Nominal diametr','Aniqlanmadi — so\'rovnoma bo\'yicha']]},
@@ -3155,7 +3311,6 @@
         {nom:'Gaz filtratori FGO-50',           tavsif:'Gazni mexanik zarrachalardan tozalovchi filtr. Regulyator va hisoblagichlarni himoya qiladi, xizmat muddatini uzaytiradi.', narx:'So\'rovnoma', birlik:'dona', qollanish:'Regulyator va hisoblagich oldida', xus:[['Standart','GOST R 54808'],['Nominal diametr','DN50'],['Filtrlash darajasi','40 mkm'],['Bosim klassi','PN16'],['Korpus material','Po\'lat'],['Element','To\'r/kaset'],['Kafolat','2 yil']]},
         {nom:'Gaz filtri SANITAS 1¼" (Y-shaklidagi)', kalit:'sanitas-filtr-1-4', rasm:['images/jihozlar/sanitas-filtr-1.jpg','images/jihozlar/sanitas-filtr-2.jpg'], tavsif:'Latun korpusli Y-shaklidagi mexanik filtr. Gaz oqimidagi qum, qirindi va zang zarrachalarini ushlab qoladi — shu orqali regulyator membranasi, hisoblagich va klapan o\'rindig\'ini ishdan chiqishdan saqlaydi. Qiya joylashgan filtr stakani yechib olinadi, ichidagi po\'lat to\'r tozalanib qayta ishlatiladi.', narx:'So\'rovnoma', birlik:'dona', qollanish:'Regulyator, hisoblagich va gaz jihozlari oldidagi tozalash tuguni', belgi:'1¼"', eslatma:'Filtr <b>regulyator va hisoblagichdan OLDIN</b> o\'rnatiladi — keyin qo\'yilsa vazifasini bajarmaydi. Korpusdagi <b>oqim yo\'nalishi</b>ga rioya qiling. Filtr stakani <b>pastga yoki yon tomonga</b> qaragan holda o\'rnatilsin — yuqoriga qaratilsa ushlangan zarrachalar tozalashda quvurga qaytib tushadi. Xizmat ko\'rsatishda to\'rni yechib olish uchun stakan atrofida bo\'sh joy qoldiring.', xus:[['Brend','SANITAS'],['Turi','Y-shaklidagi mexanik filtr (setkali)'],['O\'lcham','1¼" (DN32)'],['Ulanish','Rezbali, ichki (ikki tomon)'],['Korpus material','Latun'],['Filtr elementi','Po\'lat to\'r (yechib olinadi)'],['Xizmat','Tozalanadi, qayta ishlatiladi'],['Kafolat','2 yil']]},
         {nom:'Gaz sizib chiqish sensori',       tavsif:'Metan (CH4) konsentratsiyasini o\'lchovchi datchik. Xavfli darajaga yetganda ovozli va yorug\'lik signali beradi.', narx:'So\'rovnoma', birlik:'dona', qollanish:'Oshxona, qozonxona, sanoat xonalari', xus:[['O\'lchanadigan gaz','CH4 (metan)'],['Diapazon','0–100% LEL'],['Signal','Ovozli + LED'],['Kuchlanish','220V / 12V'],['Chiqish','Rele (klapanga)'],['O\'rnatish','Devorga'],['Kafolat','2 yil']]},
-        {nom:'Gaz indikatori «Smart Gas Guardian»', kalit:'gaz-indikatori-smart', rasm:['images/jihozlar/gaz-indikatori-1.jpg','images/jihozlar/gaz-indikatori-2.jpg','images/jihozlar/gaz-indikatori-video.mp4'], tavsif:'Xonadagi gaz sizib chiqishini uzluksiz kuzatib boruvchi indikator. Korpus yon tomonidagi tirqishlardan havo namunasi sensor massiviga o\'tadi, signal kuchaytirgich orqali mikrokontrollerga uzatiladi. Konsentratsiya xavfli darajaga yetganda ichki sirena ishga tushadi, LED indikatorlar holatni ko\'rsatadi va rele chiqishi orqali tashqi elektroklapanga buyruq beriladi. Kompakt oq korpus — oshxona interyeriga bilinmay qo\'shiladi.', narx:'So\'rovnoma', birlik:'dona', qollanish:'Oshxona, qozonxona va gaz jihozlari o\'rnatilgan turar-joy xonalari', belgi:'Klapan chiqishi', eslatma:'Indikatorning o\'zi gazni <b>to\'smaydi</b> — u sizishni aniqlaydi va <b>klapan boshqarish chiqishi</b> orqali buyruq beradi. Gaz oqimi avtomatik uzilishi uchun alohida <b>elektroklapan</b> kerak (katalogdagi GRAFF G¾" modeliga qarang). O\'rnatish balandligi gaz turiga bog\'liq: tabiiy gaz (metan) havodan yengil — indikator <b>shift yaqiniga</b>, suyultirilgan gaz (propan-butan) og\'ir — <b>polga yaqin</b> o\'rnatiladi. Korpus yonidagi <b>havo tirqishlarini</b> mebel yoki parda bilan to\'sib qo\'ymang.', xus:[['Turi','Gaz sizishi indikatori (signalizator)'],['Sezgir element','Gaz sensori massivi + signal kuchaytirgich'],['Boshqaruv','Mikrokontroller (MCU)'],['Ovozli signal','Ichki trevoga sirenasi'],['Holat ko\'rsatkichi','2 ta LED (MCU boshqaruvida)'],['Klapan chiqishi','Rele drayveri orqali — elektroklapanga'],['Quvvat','Tarmoqdan, AC-DC almashtirgich (shnur bilan)'],['Korpus','Plastik, yon tomonda havo tirqishlari']]},
         {nom:'МАНОКИП МП3-У manometr (0–4 kgf/sm²) uch yo\'lli kran bilan', kalit:'manokip-mp3u-manometr', rasm:['images/jihozlar/manokip-mp3u-manometr-1.jpg','images/jihozlar/manokip-mp3u-manometr-2.jpg'], tavsif:'МАНОКИП МП3-У rusumli oq siferblatli bosim o\'lchagich, latun uch yo\'lli sinov krani (jo\'mrak) bilan yaxlit blok holida. Siferblat 0–4 kgf/sm² shkalasi, qora korpus, IP40 himoya darajasi. Uch yo\'lli kran manometrni tizimdan uzish va sinovdan o\'tkazish imkonini beradi.', narx:'So\'rovnoma', birlik:'dona', qollanish:'GRP, regulyator va bosim tugunlarida bosim nazorati', eslatma:'Siferblat diametri va ulanish rezbasi rasmdan aniqlanmadi — buyurtmada aniqlashtiring.', xus:[['Brend','МАНОКИП'],['Rusum','МП3-У'],['O\'lchov diapazoni','0–4 kgf/sm²'],['Aniqlik klassi','1,5'],['Himoya darajasi','IP40'],['Komplekt','Latun uch yo\'lli sinov krani bilan'],['Boshqaruv','Vizual ko\'rsatkich (strelkali)']]},
         {nom:'Manometr (0–1.6 MPa)',         tavsif:'Bosimni vizual nazorat qiluvchi glitserinli manometr. Tebranishga chidamli, paslanmaydigan korpus.', narx:'So\'rovnoma', birlik:'dona', qollanish:'GRP, regulyator va tugunlarda bosim nazorati', xus:[['Standart','GOST 2405'],['O\'lchov diapazoni','0–1.6 MPa'],['Diametr','100 mm'],['To\'ldirgich','Glitserin'],['Aniqlik klassi','1.5'],['Ulanish','M20×1.5'],['Kafolat','1 yil']]},
         {nom:'Termostat gaz qozonlari uchun',   tavsif:'Qozon haroratini avtomatik boshqaruvchi kapilyar termostat. Belgilangan haroratda gaz klapanini boshqaradi.', narx:'So\'rovnoma', birlik:'dona', qollanish:'Gaz qozonlari, isitish tizimlari', xus:[['Turi','Kapilyar termostat'],['Harorat diapazoni','0–90 °C'],['Boshqaruv','Klapan (rele)'],['Kapilyar uzunligi','1.5 m'],['Kuchlanish','220V'],['O\'rnatish','Panelga'],['Kafolat','2 yil']]},
@@ -3899,6 +4054,18 @@
           sarlavha: 'Izolyatsiya qoplamasi',
           matn: "Chok tozalanib, issiqlikda qisiluvchi qoplama bilan yopiladi. Bu — korroziyaga qarshi ko'rinmas qalqon.",
           shior: "Ko'rinmaydigan ish uzoq umr beradi.",
+        },
+        {
+          rasm: 'images/ish-jarayoni/10b-kran-manometr.webp',
+          sarlavha: 'Bosim sinoviga tayyorgarlik',
+          matn: "Trassa uchlari qopqoq bilan payvandlanadi, ularga kran va manometr o'rnatiladi. Har bir rezba zichlab tortiladi — sinov aniq bo'lishi kerak.",
+          shior: "Ishonchni o'lchov asbobi tasdiqlaydi.",
+        },
+        {
+          rasm: 'images/ish-jarayoni/10c-bosim-sinovi.webp',
+          sarlavha: 'Bosim sinovi (opressovka)',
+          matn: "Quvur me'yoriy bosim bilan to'ldiriladi va belgilangan vaqt kuzatiladi. Manometr ko'rsatkichi o'zgarmasa — trassa germetik, gaz berishga tayyor.",
+          shior: "Bosim tushmadi — demak, ish to'g'ri bajarilgan.",
         },
         {
           rasm: 'images/ish-jarayoni/11-yakuniy-nazorat.webp',
@@ -5015,7 +5182,7 @@
   function kirishRolgaQayt() {
     document.getElementById('kirish-rol').classList.remove('hidden');
     document.getElementById('kirish-telefon-bosqich').classList.add('hidden');
-    document.getElementById('kirish-sarlavha').textContent = 'Kirish';
+    document.getElementById('kirish-sarlavha').textContent = "Ro'yxatdan o'tish yoki kirish";
     document.getElementById('kirish-izoh').textContent = 'Hisobingiz turini tanlang';
   }
 
@@ -5123,22 +5290,25 @@
     }
   }
 
-  // Navbar tugmasi: tizimga kirgan bo'lsa "Kabinet", aks holda "Kirish"
+  // Navbar tugmalari: tizimga kirgan bo'lsa "Profilim", aks holda "Ro'yxatdan o'tish"
+  // (kirish-btn — kompyuter, kirish-btn-tepa — telefon yuqori paneli)
   function kirishTugmaYangila() {
-    const btn = document.getElementById('kirish-btn');
-    if (!btn) return;
     const s = kirishJoriySessiya();
     // To'liq ism uzun bo'lib navbarni cho'zib yuboradi — qisqa "Profilim" yozuvi
-    btn.innerHTML = s
-      ? '<i class="fas fa-user-circle mr-1 opacity-70"></i>Profilim'
-      : '<i class="fas fa-right-to-bracket mr-1 opacity-70"></i>Kirish';
-    btn.title = s ? (s.user.ism || s.user.telefon || '') : 'Kirish';
+    ['kirish-btn', 'kirish-btn-tepa'].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.innerHTML = s
+        ? '<i class="fas fa-user-circle"></i><span>Profilim</span>'
+        : `<i class="fas fa-user-plus"></i><span>Ro'yxatdan o'tish</span>`;
+      btn.title = s ? (s.user.ism || s.user.telefon || '') : "Ro'yxatdan o'tish yoki kirish";
+    });
 
     const mobil = document.getElementById('kirish-btn-mobil');
     if (mobil) {
       mobil.innerHTML = s
         ? '<i class="fas fa-user-circle mr-2"></i>Profilim'
-        : '<i class="fas fa-right-to-bracket mr-2"></i>Kirish';
+        : `<i class="fas fa-user-plus mr-2"></i>Ro'yxatdan o'tish`;
     }
   }
   document.addEventListener('DOMContentLoaded', kirishTugmaYangila);
@@ -5429,18 +5599,18 @@
     const detail = document.getElementById('md-pay-detail');
     detail.classList.remove('hidden');
     const info = {
-      click: '📱 Click ilovasini oching → To\'lov → Telefon raqam: <strong>+998712345678</strong>',
-      payme: '💳 Payme ilovasini oching → Uzcard/Humo karta orqali to\'lang: <strong>8600 1234 5678 9012</strong>',
-      bank: '🏦 Bank hisob raqami: <strong>2020 1234 5678 9012</strong> | Bank: NBU Buxoro filiali'
+      click: '📱 <b>Click orqali to\'lov</b>: «Davom etish»ni bosing — Click to\'lov oynasi ochiladi, summani kiritib karta yoki Click ilovasi orqali to\'laysiz. To\'lov avtomatik tasdiqlanadi.',
+      bank: '🏦 <b>Hisob raqamga o\'tkazma</b>: «Davom etish»ni bosing — kabinetingizda buyurtma ostidagi «Hisob raqamga to\'lash» tugmasi orqali rekvizitlarni ko\'rasiz va to\'lov chekini yuklaysiz.'
     };
     detail.innerHTML = info[method] || '';
   }
 
   async function mijozConfirmPayment() {
     if (!selectedPayMethod) { showToast('To\'lov usulini tanlang!'); return; }
-    showToast('To\'lov tasdiqlandi! SMS yuborildi ✓');
-    mijozRenderTolov();
-    mijozUpdateStats();
+    // To'lov faqat haqiqiy yo'l orqali: Click — onlayn to'lov oynasi, bank — kabinetda chek yuklash
+    if (selectedPayMethod === 'bank') { window.location.href = '/kabinet/'; return; }
+    const kartochka = document.querySelector('#tolov-page .card[data-h-click="h36"]');
+    if (kartochka) selectPayment(kartochka, 'online'); else window.location.href = '/#tolov';
   }
 
   async function mijozRenderTarix() {

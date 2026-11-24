@@ -52,6 +52,7 @@ def _holat(xodim):
         'faol': smena is not None,
         'boshlandi': smena.boshlandi if smena else None,
         'oraliq_soniya': settings.JOYLASHUV_MIN_SONIYA,
+        'gps_majburiy': settings.JOYLASHUV_GPS_MAJBURIY,
     }
 
 
@@ -72,7 +73,8 @@ def smena_boshlash(request):
         return Response({'detail': _('Faqat xodim uchun')}, status=403)
     xodim = request.user
 
-    if not _rozilik_bor(xodim):
+    # Qo'l rejimida joylashuv olinmaydi — kuzatuvga rozilik ham so'ralmaydi (smena faqat davomat uchun)
+    if settings.JOYLASHUV_GPS_MAJBURIY and not _rozilik_bor(xodim):
         if request.data.get('rozilik') is not True:
             return Response(
                 {'detail': _('Joylashuvni kuzatishga rozilik berilmagan'),

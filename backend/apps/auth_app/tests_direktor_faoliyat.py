@@ -83,6 +83,51 @@ class MijozlarTestlari(Asos):
         self.assertEqual(c.get('/admin/auth_app/mijoz/').status_code, 403)
 
 
+class MijozlarBolimiTestlari(Asos):
+    """Django panelida «Mijozlar» alohida bo'lim: bosh sahifada eng yuqorida, filtrlar va Excel."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.sms_app.models import TelegramUlanish
+        mk = Foydalanuvchi.objects.create_user
+        self.m1 = mk(telefon='+998900000311', password='x-Maxfiy-1', ism='Telegramli', rol='mijoz')
+        self.m2 = mk(telefon='+998900000312', password='x-Maxfiy-1', ism='Oddiy', rol='mijoz')
+        TelegramUlanish.objects.create(telefon=self.m1.telefon, chat_id=777001)
+        Buyurtma.objects.create(mijoz=self.m1, xizmat='servis')
+
+    def test_bosh_sahifada_alohida_bolim_birinchi(self):
+        r = self.c.get('/admin/')
+        self.assertEqual(r.status_code, 200)
+        royxat = r.context['app_list']
+        self.assertEqual(royxat[0]['name'], 'Mijozlar')
+        self.assertEqual([m['object_name'] for m in royxat[0]['models']], ['Mijoz'])
+        boshqa = [m['object_name'] for a in royxat[1:] for m in a['models']]
+        self.assertNotIn('Mijoz', boshqa)
+
+    def test_filtrlar(self):
+        html = self.c.get('/admin/auth_app/mijoz/?telegram=ha').content.decode()
+        self.assertIn('+998900000311', html)
+        self.assertNotIn('+998900000312', html)
+        html = self.c.get('/admin/auth_app/mijoz/?buyurtma=yoq').content.decode()
+        self.assertIn('+998900000312', html)
+        self.assertNotIn('+998900000311', html)
+
+    def test_mijoz_sahifasida_buyurtmalari(self):
+        r = self.c.get(f'/admin/auth_app/mijoz/{self.m1.pk}/change/')
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("Mijozning buyurtmalari", r.content.decode())
+
+    def test_excelga_yuklash_va_jurnal(self):
+        r = self.c.post('/admin/auth_app/mijoz/', {'action': 'excelga_yuklash',
+                                                   '_selected_action': [self.m1.pk, self.m2.pk]})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r['Content-Type'], 'text/csv; charset=utf-8')
+        matn = r.content.decode('utf-8-sig')
+        self.assertIn('+998900000311;Telegramli', matn)
+        self.assertIn("ha;1", matn)
+        self.assertTrue(AuditYozuv.objects.filter(amal='mijozlar_eksport').exists())
+
+
 class XabarAmaliTestlari(Asos):
     URL = '/admin/auth_app/xodim/'
 

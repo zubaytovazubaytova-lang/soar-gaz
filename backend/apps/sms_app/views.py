@@ -1,9 +1,10 @@
 from django.utils.translation import gettext as _
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.auth_app.models import Foydalanuvchi
+from . import telegram
 from .gateway import sms_yubor
 from .models import SmsXabar
 from .serializers import SmsSerializer
@@ -54,4 +55,23 @@ def sms_yuborish(request):
 @permission_classes([IsAuthenticated])
 def sms_oqildi(request):
     SmsXabar.objects.filter(mijoz=request.user, oqildi=False).update(oqildi=True)
+    return Response({'ok': True})
+
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([])
+def telegram_webhook(request):
+    """Telegram botga yozilgan xabarlar. Faqat Telegram yuboradi: maxfiy sarlavha bilan tekshiriladi.
+
+    Telegram 200 dan boshqa javobni qayta-qayta yuboradi, shuning uchun to'g'ri sarlavhali
+    so'rovga har doim 200 qaytaramiz (ichki xato jurnalga yoziladi)."""
+    if not telegram.webhook_sarlavhasi_tugrimi(request.META.get('HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN')):
+        return Response({'detail': "Ruxsat yo'q"}, status=403)
+    try:
+        telegram.yangilanishni_qayta_ishla(request.data if isinstance(request.data, dict) else {})
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Telegram yangilanishini qayta ishlashda xato')
     return Response({'ok': True})

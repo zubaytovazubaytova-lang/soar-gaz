@@ -121,6 +121,9 @@ class Kvitansiya(models.Model):
     shartnoma_raqami = models.CharField('Kod (shartnoma raqami)', max_length=20, blank=True)
     # Qog'oz kvitansiyadagi jadval: [{raqam, nomi, ustun_nomi, soni, narx, jami}] (tuzilgan paytdagi qiymat)
     qatorlar = models.JSONField(default=list)
+    # Pulni qabul qiluvchi korxona (yo'nalishga qarab: servis / qurilish-montaj) — tolovlar.Rekvizit dan nusxa.
+    # Bo'sh bo'lsa (eski kvitansiyalar) umumiy Sozlama ishlatiladi.
+    rekvizit = models.JSONField(default=dict, blank=True)
     buyurtma_summa = models.BigIntegerField('Buyurtmaning umumiy summasi', null=True, blank=True)
     ish_turi = models.CharField(max_length=450, blank=True)
     summa = models.BigIntegerField()

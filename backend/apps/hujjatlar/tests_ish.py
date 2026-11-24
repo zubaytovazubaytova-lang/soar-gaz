@@ -65,9 +65,13 @@ class KabinetTuriTestlari(TestCase):
         for lavozim in ('Montaj ustasi', 'Metrolog', 'Loyihachi muhandis', 'Muhandis'):
             self.assertEqual(kabinet_turi(lavozim), 'oddiy', lavozim)
         m = kabinet_malumoti("Mehnat muhofazasi va texnika xavfsizligi bo'yicha muhandis")['bolimlar']
-        # Oddiy xodim kabineti + yangi bo'lim
-        # (lekin «Pul tushumi» — cash — yo'q: hujjatchi mijozdan pul olmaydi)
-        self.assertEqual(set(m), (set(BOLIMLAR['oddiy']) | {'hj-ishlar', 'hj-yuborish', 'topshiriq'}) - {'cash'})
+        # Oddiy xodim kabineti + yangi bo'lim; mijoz oldiga borib ishlamaydi, pul olmaydi —
+        # «Pul tushumi», «Vazifalarim», «Ish tarixi», «Hujjatlarim» yo'q
+        self.assertEqual(set(m), (set(BOLIMLAR['oddiy']) | {'hj-ishlar', 'hj-yuborish', 'topshiriq'})
+                         - {'cash', 'tasks', 'history', 'docs'})
+        from apps.auth_app.kabinet_turlari import vazifa_olishi_mumkin
+        self.assertFalse(vazifa_olishi_mumkin("Mehnat muhofazasi va texnika xavfsizligi bo'yicha muhandis"))
+        self.assertTrue(vazifa_olishi_mumkin('Chilangar'))
         for tur in ('oddiy', 'qongiroq', 'kadrlar'):
             self.assertNotIn('hj-ishlar', BOLIMLAR[tur])
 

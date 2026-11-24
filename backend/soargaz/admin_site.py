@@ -132,6 +132,24 @@ class SoarAdminSite(admin.AdminSite):
         _korildi_yoz(request, 'royxat', 'xarita (smenadagi xodimlar, Django paneli)')   # 10 daqiqada bir marta
         return JsonResponse(natija, safe=False, encoder=DjangoJSONEncoder)
 
+    def get_app_list(self, request, app_label=None):
+        """«Ro'yxatdan o'tgan mijozlar» foydalanuvchilar guruhidan ajratilib, bosh sahifada
+        ENG YUQORIDA alohida «Mijozlar» bo'limi bo'lib chiqadi."""
+        royxat = super().get_app_list(request, app_label)
+        if app_label:
+            return royxat
+        mijoz = None
+        for app in royxat:
+            for m in list(app['models']):
+                if app['app_label'] == 'auth_app' and m['object_name'] == 'Mijoz':
+                    app['models'].remove(m)
+                    mijoz = m
+        royxat = [a for a in royxat if a['models']]
+        if mijoz:
+            royxat.insert(0, {'name': 'Mijozlar', 'app_label': 'auth_app', 'app_url': mijoz['admin_url'],
+                              'has_module_perms': True, 'models': [mijoz]})
+        return royxat
+
     def index(self, request, extra_context=None):
         extra = dict(extra_context or {})
         if getattr(request.user, 'rol', '') == 'admin':

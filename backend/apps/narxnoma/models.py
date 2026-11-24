@@ -108,3 +108,102 @@ class NarxnomaQator(models.Model):
 
     def __str__(self):
         return f"{self.tartib}. {self.nomi[:60]}"
+
+
+# ──────────────────────────────────────────────────────────────
+#  Seshanba aksiyasi: har seshanba 2 ta servis xizmatiga chegirma (promokod bilan)
+# ──────────────────────────────────────────────────────────────
+# Seshanba aksiyasi faqat shu narxnoma bo'limlaridagi xizmatlarga (servis)
+SERVIS_BOLIMLARI = ('profilaktika', 'buyurtma')
+
+
+class SeshanbaAksiya(models.Model):
+    """Navbatdagi juftlik: bitta xizmat AHOLI uchun, bittasi ULGURJI (korxona) uchun.
+    Har seshanba navbat bo'yicha keyingisi amal qiladi: 1-yozuv → birinchi seshanba, 2-yozuv → keyingi
+    seshanba va h.k., oxiridan keyin yana boshidan. Faqat xizmatlar uchun (do'kon mahsulotlariga emas).
+    Chegirma foizi va promokod — settings da."""
+    tartib = models.PositiveSmallIntegerField(default=1, verbose_name='Navbat raqami')
+    xizmat1 = models.ForeignKey(NarxnomaQator, on_delete=models.PROTECT, related_name='+',
+                                verbose_name='Aholi uchun xizmat',
+                                limit_choices_to={'narxnoma__tarmoq': 'aholi'})
+    xizmat2 = models.ForeignKey(NarxnomaQator, on_delete=models.PROTECT, related_name='+',
+                                verbose_name='Ulgurji (korxona) uchun xizmat',
+                                limit_choices_to={'narxnoma__tarmoq': 'ulgurji'})
+    faol = models.BooleanField(default=True)
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['tartib', 'id']
+        verbose_name = 'Seshanba aksiyasi (navbat)'
+        verbose_name_plural = 'Seshanba aksiyasi — navbat'
+
+    def __str__(self):
+        return f'{self.tartib}-navbat: {self.xizmat1.nomi[:40]} + {self.xizmat2.nomi[:40]}'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.xizmat1_id and self.xizmat1.narxnoma.tarmoq != 'aholi':
+            raise ValidationError({'xizmat1': 'Aholi narxnomasidan tanlang'})
+        if self.xizmat2_id and self.xizmat2.narxnoma.tarmoq != 'ulgurji':
+            raise ValidationError({'xizmat2': 'Ulgurji (korxona) narxnomasidan tanlang'})
+        if self.xizmat1_id and self.xizmat1_id == self.xizmat2_id:
+            raise ValidationError('Ikki xil xizmat tanlang')
+
+    def qatorlar(self):
+        return [self.xizmat1, self.xizmat2]
+
+    def qator_idlari(self):
+        """Chegirma qo'llanadigan barcha faol qatorlar. Aholi xizmati — faqat AHOLI servis narxnomalaridagi
+        (profilaktika, buyurtma) shu nomli qatorlar; ulgurji xizmati — faqat ULGURJI servis narxnomalaridagi.
+        Ya'ni aholining chegirmasi korxonaga, korxonaniki aholiga tushmaydi. O'rnatish va metrologiya
+        narxnomalaridagi bir xil nomli qatorlarga ham tushmaydi — aksiya faqat servis uchun."""
+        from django.db.models import Q
+        shart = (Q(nomi__iexact=self.xizmat1.nomi.strip(), narxnoma__tarmoq='aholi')
+                 | Q(nomi__iexact=self.xizmat2.nomi.strip(), narxnoma__tarmoq='ulgurji'))
+        return sorted(set(NarxnomaQator.objects.filter(shart, faol=True, narxnoma__bolim__in=SERVIS_BOLIMLARI)
+                          .values_list('id', flat=True)) | {self.xizmat1_id, self.xizmat2_id})
+
+
+def seshanba_aksiyasi(sana):
+    """Shu sanada amal qiladigan juftlik (seshanba bo'lmasa yoki navbat bo'sh bo'lsa — None)."""
+    import datetime
+    from django.conf import settings
+    if sana.weekday() != 1:                       # 0 — dushanba, 1 — seshanba
+        return None
+    boshlanish = getattr(settings, 'SESHANBA_BOSHLANISH', datetime.date(2026, 11, 24))
+    if sana < boshlanish:
+        return None
+    navbat = list(SeshanbaAksiya.objects.filter(faol=True).select_related('xizmat1__narxnoma', 'xizmat2__narxnoma'))
+    if not navbat:
+        return None
+    return navbat[((sana - boshlanish).days // 7) % len(navbat)]
+
+
+def keyingi_seshanba(sana):
+    """Bugun seshanba bo'lsa — bugun, aks holda keyingi seshanba."""
+    import datetime
+    return sana + datetime.timedelta(days=(1 - sana.weekday()) % 7)
+
+
+def promokod_oynasi(hozir=None):
+    """Promokod amal qiladigan oyna: seshanba 00:00 dan SESHANBA_SOAT soat (standart 50 —
+    payshanba 02:00 gacha, Toshkent vaqti). Qaytaradi: (seshanba_sanasi, boshlanish, tugash, amaldami).
+    Oyna yopiq bo'lsa — keyingi seshanbaning oynasi."""
+    import datetime
+    from django.conf import settings
+    from django.utils import timezone
+    hozir = timezone.localtime(hozir)
+    soat = getattr(settings, 'SESHANBA_SOAT', 50)
+    oxirgi = hozir.date() - datetime.timedelta(days=(hozir.weekday() - 1) % 7)   # oxirgi seshanba (yoki bugun)
+    boshi = timezone.make_aware(datetime.datetime.combine(oxirgi, datetime.time.min))
+    if boshi <= hozir < boshi + datetime.timedelta(hours=soat):
+        return oxirgi, boshi, boshi + datetime.timedelta(hours=soat), True
+    keyingi = oxirgi + datetime.timedelta(days=7)
+    kboshi = timezone.make_aware(datetime.datetime.combine(keyingi, datetime.time.min))
+    return keyingi, kboshi, kboshi + datetime.timedelta(hours=soat), False
+
+
+def amaldagi_aksiya(hozir=None):
+    """Hozir promokod amal qilsa — o'sha seshanbaning juftligi, aks holda None."""
+    sana, _b, _t, amalda = promokod_oynasi(hozir)
+    return seshanba_aksiyasi(sana) if amalda else None

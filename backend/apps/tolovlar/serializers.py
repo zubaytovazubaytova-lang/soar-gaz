@@ -18,6 +18,12 @@ class TolovSoroviSerializer(serializers.ModelSerializer):
             'yaratilgan', 'yangilangan',
         ]
 
+    def validate_tolov_tizimi(self, qiymat):
+        # Saytdan yangi onlayn to'lov faqat Click orqali (Payme, Apelsin ulanmagan)
+        if self.instance is None and qiymat not in ('', 'click'):
+            raise serializers.ValidationError("Hozircha onlayn to'lov faqat Click orqali qabul qilinadi")
+        return qiymat
+
 
 class MahsulotSoroviSerializer(serializers.ModelSerializer):
     class Meta:

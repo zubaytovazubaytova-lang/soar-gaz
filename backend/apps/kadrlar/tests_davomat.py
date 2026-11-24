@@ -118,3 +118,38 @@ class BelgilashTestlari(Asos):
         self.kadr.holat = 'nofaol'
         self.kadr.save()
         self.assertEqual(self.belgila(xodim_id=self.usta.id, holat='keldi').status_code, 403)
+
+
+class PortalFaolligiTestlari(Asos):
+    """Xodim portalga kirsa — Kadrlar «Davomat»ida «Portalda oxirgi» va jurnal yozuvi."""
+
+    def test_kirmagan_xodim_va_kirish_qayd_etiladi(self):
+        from rest_framework.test import APIClient
+        from apps.auth_app.models import AuditYozuv
+        q, x = self.qator(self.usta)
+        self.assertIsNone(q['oxirgi_faollik'])
+        self.assertEqual(x['portalsiz'], 2)
+        self.usta.kirish_kodi = 'XD-SINOV1'
+        self.usta.save(update_fields=['kirish_kodi'])
+        r = APIClient().post('/api/auth/xodim/login/', {'telefon': self.usta.telefon, 'kod': 'xd-sinov1'},
+                             format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        q, x = self.qator(self.usta)
+        self.assertIsNotNone(q['oxirgi_faollik'])
+        self.assertEqual(x['portalsiz'], 1)
+        self.assertTrue(AuditYozuv.objects.filter(kim=self.usta, amal='kirish').exists())
+
+    def test_sessiya_yangilanishi_faollikni_yangilaydi_lekin_tez_tez_emas(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.auth_app.views import xodim_faolligi
+        eski = timezone.now() - timedelta(hours=2)
+        Foydalanuvchi.objects.filter(pk=self.usta.pk).update(last_login=eski)
+        self.usta.refresh_from_db()
+        xodim_faolligi(self.usta)
+        self.usta.refresh_from_db()
+        yangi = self.usta.last_login
+        self.assertGreater(yangi, eski)
+        xodim_faolligi(self.usta)                      # 15 daqiqa o'tmagan — qayta yozilmaydi
+        self.usta.refresh_from_db()
+        self.assertEqual(self.usta.last_login, yangi)

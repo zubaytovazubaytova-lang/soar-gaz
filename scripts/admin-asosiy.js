@@ -234,6 +234,7 @@ async function panelniOch(){
     statistikaYukla(), arizalarYukla(), xodimlarYukla(),
     mijozlarYukla(), moliyaYukla(), jurnalYukla(), tushumYukla(),
   ]);
+  if (window.BankCheklar) BankCheklar.yukla();      // kutilayotgan cheklar soni menyuda
 }
 
 function profilChiz(){
@@ -456,13 +457,13 @@ function halqaGrafik(bolaklar, markazBelgi){
 function kanbanChiz(){
   const ustunlar = [
     ['yangi',        'kanbanYangi'],
-    ['qabul',        'kanbanQabul'],
-    ['bajarilmoqda', 'kanbanJarayon'],
+    [['qabul', 'yolda'], 'kanbanQabul'],          // «yo'lda» ham shu ustunda
+    [['bajarilmoqda', 'tolov_kutilmoqda'], 'kanbanJarayon'],   // to'lov kutilayotgani ham jarayonda
     ['bajarildi',    'kanbanBajarildi'],
   ];
 
   ustunlar.forEach(([holat, id]) => {
-    const royxat = arizalar.filter(a => a.holat === holat);
+    const royxat = arizalar.filter(a => [].concat(holat).includes(a.holat));
     const quti = document.getElementById(id);
     const soni = document.getElementById(id + 'Soni');
     if (soni) soni.textContent = royxat.length;
@@ -1518,6 +1519,7 @@ document.querySelectorAll('.sb-item[data-page]').forEach(btn=>{
     if (btn.dataset.page === 'joy') joySahifasiOchildi(); else joySahifasiYopildi();
     if (btn.dataset.page === 'rahbariyat') rahSahifasiOchildi(); else rahSahifasiYopildi();
     if (btn.dataset.page === 'cash') tushumYukla();
+    if (btn.dataset.page === 'bankchek' && window.BankCheklar) BankCheklar.yukla();
     if (btn.dataset.page === 'msg') xabarSahifasiOchildi();
     if (btn.dataset.page === 'nn') nnYukla();
   });

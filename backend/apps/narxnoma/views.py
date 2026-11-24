@@ -290,6 +290,72 @@ class OchiqNarxnomaThrottle(AnonRateThrottle):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mijoz_narxlari(request):
+    """Mijoz ariza berishda: tanlangan xizmat turidagi narxnoma qatorlari (aholi yoki korxona narxi)."""
+    xizmat = request.query_params.get('xizmat', '')
+    bolimlar = XIZMAT_BOLIMLARI.get(xizmat)
+    if bolimlar is None:
+        return Response({'detail': "Xizmat turi noto'g'ri"}, status=400)
+    tarmoq = 'ulgurji' if getattr(request.user, 'mulk_turi', '') == 'korxona' else 'aholi'
+    javob = []
+    for n in Narxnoma.objects.filter(faol=True, tarmoq=tarmoq, bolim__in=bolimlar).prefetch_related('qatorlar'):
+        qatorlar = [{'id': q.id, 'nomi': q.nomi, 'p_dan': q.p_dan, 'p_gacha': q.p_gacha,
+                     'r_dan': q.r_dan, 'r_gacha': q.r_gacha, 'izoh': q.izoh}
+                    for q in n.qatorlar.all() if q.faol and (q.p_dan is not None or q.r_dan is not None)]
+        if qatorlar:
+            javob.append({'sarlavha': n.sarlavha, 'bolim_nomi': n.bolim_nomi, 'ustun1': n.ustun1,
+                          'ustun2': n.ustun2, 'qatorlar': qatorlar})
+    return Response({'tarmoq': tarmoq, 'narxnomalar': javob})
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([OchiqNarxnomaThrottle])
+def seshanba(request):
+    """Seshanba aksiyasi: promokod oynasi (seshanba 00:00 + 50 soat) ochiq bo'lsa — 2 xizmat va promokod;
+    aks holda keyingi seshanba sanasi va xizmatlari (promokod faqat oyna ochilganda beriladi)."""
+    from django.conf import settings
+    from .models import promokod_oynasi, seshanba_aksiyasi
+    sana, boshi, tugash, amalda = promokod_oynasi()
+    a = seshanba_aksiyasi(sana)
+    if not a:
+        return Response({'bor': False})
+    return Response({
+        'bor': True, 'bugun': amalda, 'sana': sana, 'foiz': settings.SESHANBA_FOIZ,
+        'boshlanish': boshi, 'tugash': tugash,
+        'promokod': settings.SESHANBA_PROMOKOD if amalda else None,
+        'xizmatlar': [{'id': q.id, 'nomi': q.nomi, 'tarmoq': q.narxnoma.tarmoq,
+                       'kim_uchun': 'Aholi uchun' if q.narxnoma.tarmoq == 'aholi' else 'Korxonalar uchun',
+                       # Ko'rsatish uchun narx (profilaktika ustuni, bo'lmasa ikkinchisi) va chegirmali narxi
+                       'narx': _aksiya_narxi(q),
+                       'chegirmali': _aksiya_chegirmali(_aksiya_narxi(q), settings.SESHANBA_FOIZ)}
+                      for q in a.qatorlar()],
+        'idlar': a.qator_idlari(),                  # shu nomdagi barcha narxnoma qatorlari
+    })
+
+
+def _aksiya_narxi(q):
+    # DIQQAT: `_narx` nomi band (yuqorida — narx matnini songa aylantiradi), shuning uchun boshqa nom
+    return q.p_dan if q.p_dan is not None else q.r_dan
+
+
+def _aksiya_chegirmali(narx, foiz):
+    return None if narx is None else (narx * (100 - foiz) + 50) // 100      # buyurtmadagi hisob bilan bir xil
+
+
+# Mijoz tanlaydigan xizmat turi → narxnoma bo'limlari
+XIZMAT_BOLIMLARI = {
+    'servis': ['profilaktika', 'buyurtma'],
+    'montaj': ['ornatish', 'buyurtma'],
+    'loyiha': ['buyurtma'],
+    'metrologiya': ['metrologiya'],
+    'uskunalar': ['ornatish'],
+}
+
+
+@api_view(['GET'])
 @authentication_classes([])          # token tekshirilmaydi: noto'g'ri sarlavha ham 401 bermaydi
 @permission_classes([AllowAny])
 @throttle_classes([OchiqNarxnomaThrottle])

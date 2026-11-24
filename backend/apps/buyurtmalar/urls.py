@@ -15,6 +15,7 @@ urlpatterns = [
     path('<int:pk>/tayinlash/', views.tayinlash),
     path('<int:pk>/', views.buyurtma_update),
     path('<int:pk>/qabul/', views.qabul),
+    path('<int:pk>/bosqich/', views.bosqich),          # xodim: yo'lga chiqdi / ishni boshladi
     path('<int:pk>/natija/', views.natija),
     path('<int:pk>/foto/', views.foto_yuklash),
     # Narxnomadan xizmat tanlash va summani tasdiqlash (xodim / admin)

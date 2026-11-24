@@ -1,4 +1,6 @@
 /* "Kelajak Tadbirkori 2026" lavhalari slayderi — vanilla JS, kutubxonasiz.
+   O'zi doim aylanib turadi (qo'lda boshqarilmaydi): har 2 soniyada shaxmat effekti bilan
+   almashadi — yangi rasm kataklar bo'lib (avval bir rangdagi kataklar, keyin ikkinchisi) ochiladi.
    Markup: index.html dagi #tadbir ichida ([data-ev] ...). Inline-hodisalar yo'q (CSP). */
 (function () {
   'use strict';
@@ -9,91 +11,94 @@
   var thumbs = Array.prototype.slice.call(root.querySelectorAll('.sg2-ev-th'));
   var stage = root.querySelector('[data-ev-stage]');
   var capEl = root.querySelector('[data-ev-cap]');
-  var countEl = root.querySelector('[data-ev-count]');
-  var bar = root.querySelector('[data-ev-bar]');
-  var prev = root.querySelector('[data-ev-prev]');
-  var next = root.querySelector('[data-ev-next]');
   if (slides.length < 2 || !stage) return;
 
-  var INTERVAL = 5500;
-  var cur = 0, timer = null, hover = false, visible = false;
+  var COLS = 6, ROWS = 7;          // shaxmat taxtasi (rasm nisbatiga yaqin kvadrat kataklar)
+  var CYCLE = 2000;                // bir slayd ko'rinib turish + almashish: 2 soniya
+  var TILE = 340;                  // bitta katak ochilish vaqti, ms
+  var WAVE = 230;                  // ikkinchi rang kataklari kechikishi, ms
+  var RIPPLE = 14;                 // diagonal bo'ylab kechikish, ms
+  var TOTAL = TILE + WAVE + (COLS + ROWS - 2) * RIPPLE + 40;
+  var HOLD = Math.max(CYCLE - TOTAL, 400);
+
+  var cur = 0, timer = null, busy = null;
   var kam = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  root.style.setProperty('--ev-ms', INTERVAL + 'ms');
 
-  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  // Rasmlar oldindan yuklansin (shaxmat kataklari ularni fon sifatida ishlatadi)
+  slides.forEach(function (s) {
+    var im = s.querySelector('img');
+    if (im) { im.loading = 'eager'; }
+  });
 
-  function show(i) {
-    var n = (i + slides.length) % slides.length;
+  function setActive(n) {
     slides.forEach(function (s, k) {
       s.classList.toggle('is-active', k === n);
       s.setAttribute('aria-hidden', k === n ? 'false' : 'true');
     });
-    thumbs.forEach(function (t, k) {
-      t.classList.toggle('is-active', k === n);
-      if (k === n) t.setAttribute('aria-current', 'true'); else t.removeAttribute('aria-current');
-    });
-    var matn = slides[n].getAttribute('data-cap') || '';
-    if (capEl) {
-      if (kam) capEl.textContent = matn;
-      else {
-        capEl.classList.add('is-out');
-        setTimeout(function () { capEl.textContent = matn; capEl.classList.remove('is-out'); }, 250);
-      }
-    }
-    if (countEl) countEl.textContent = pad(n + 1) + ' / ' + pad(slides.length);
     cur = n;
   }
 
-  function runBar() {
-    if (!bar || kam) return;
-    bar.classList.remove('is-run');
-    void bar.offsetWidth;            // animatsiyani qayta boshlash
-    bar.classList.add('is-run');
+  function setMeta(n) {
+    thumbs.forEach(function (t, k) { t.classList.toggle('is-active', k === n); });
+    var matn = slides[n].getAttribute('data-cap') || '';
+    if (!capEl) return;
+    if (kam) { capEl.textContent = matn; return; }
+    capEl.classList.add('is-out');
+    setTimeout(function () { capEl.textContent = matn; capEl.classList.remove('is-out'); }, 220);
   }
 
-  function stop() {
+  function finish() {
+    if (!busy) return;
+    clearTimeout(busy.t);
+    setActive(busy.to);
+    if (busy.el.parentNode) busy.el.parentNode.removeChild(busy.el);
+    busy = null;
+  }
+
+  function chess(to) {
+    var im = slides[to].querySelector('img');
+    var src = im ? (im.currentSrc || im.src) : '';
+    var el = document.createElement('div');
+    el.className = 'sg2-ev-chess';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.gridTemplateColumns = 'repeat(' + COLS + ',1fr)';
+    el.style.gridTemplateRows = 'repeat(' + ROWS + ',1fr)';
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        var t = document.createElement('i');
+        t.style.backgroundImage = 'url("' + src + '")';
+        t.style.backgroundSize = (COLS * 100) + '% ' + (ROWS * 100) + '%';
+        t.style.backgroundPosition = (c / (COLS - 1) * 100) + '% ' + (r / (ROWS - 1) * 100) + '%';
+        t.style.animationDelay = (((r + c) % 2) * WAVE + (r + c) * RIPPLE) + 'ms';
+        el.appendChild(t);
+      }
+    }
+    stage.appendChild(el);
+    busy = { to: to, el: el, t: setTimeout(finish, TOTAL) };
+  }
+
+  function show(i) {
+    finish();
+    var n = (i + slides.length) % slides.length;
+    if (n === cur) return;
+    setMeta(n);
+    if (kam) { setActive(n); return; }
+    chess(n);
+  }
+
+  function tick() {
+    show(cur + 1);
+    timer = setTimeout(tick, HOLD + TOTAL);
+  }
+
+  // Sahifa yashirin (boshqa varaq) bo'lganda to'xtab, qaytganda davom etadi; boshqa to'xtatish yo'q
+  function sync() {
     clearTimeout(timer); timer = null;
-    if (bar) bar.classList.remove('is-run');
+    if (!document.hidden) timer = setTimeout(tick, HOLD + TOTAL);
   }
-  function start() {
-    stop();
-    if (kam || hover || !visible || document.hidden) return;
-    runBar();
-    timer = setTimeout(function () { show(cur + 1); start(); }, INTERVAL);
-  }
-  function go(i) { show(i); start(); }
+  document.addEventListener('visibilitychange', sync);
 
-  if (prev) prev.addEventListener('click', function () { go(cur - 1); });
-  if (next) next.addEventListener('click', function () { go(cur + 1); });
-  thumbs.forEach(function (t, k) { t.addEventListener('click', function () { go(k); }); });
-
-  root.addEventListener('mouseenter', function () { hover = true; stop(); });
-  root.addEventListener('mouseleave', function () { hover = false; start(); });
-  root.addEventListener('focusin', function () { hover = true; stop(); });
-  root.addEventListener('focusout', function () { hover = false; start(); });
-  document.addEventListener('visibilitychange', start);
-
-  root.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowLeft') { go(cur - 1); }
-    else if (e.key === 'ArrowRight') { go(cur + 1); }
-  });
-
-  // Surish (swipe)
-  var x0 = null;
-  stage.addEventListener('pointerdown', function (e) { x0 = e.clientX; });
-  stage.addEventListener('pointerup', function (e) {
-    if (x0 == null) return;
-    var dx = e.clientX - x0; x0 = null;
-    if (Math.abs(dx) > 40) go(dx < 0 ? cur + 1 : cur - 1);
-  });
-  stage.addEventListener('pointercancel', function () { x0 = null; });
-
-  // Faqat ko'rinib turganda avtomatik almashsin
-  if ('IntersectionObserver' in window) {
-    new IntersectionObserver(function (en) {
-      visible = en[0].isIntersecting; start();
-    }, { threshold: 0.25 }).observe(root);
-  } else { visible = true; start(); }
-
-  show(0);
+  setActive(0);
+  setMeta(0);
+  sync();
 })();

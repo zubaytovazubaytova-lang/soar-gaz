@@ -15,7 +15,9 @@ XIZMAT_CHOICES = [
 HOLAT_CHOICES = [
     ('yangi', _('Yangi')),
     ('qabul', _('Qabul qilindi')),
+    ('yolda', _("Xodim yo'lda")),
     ('bajarilmoqda', _('Bajarilmoqda')),
+    ('tolov_kutilmoqda', _("Ish bajarildi — to'lov kutilmoqda")),
     ('bajarildi', _('Bajarildi')),
     ('bekor', _('Bekor qilindi')),
 ]
@@ -62,6 +64,14 @@ class Buyurtma(models.Model):
     tavsif = models.TextField(blank=True)
     vaqt_istagi = models.CharField(max_length=100, blank=True)
     holat = models.CharField(max_length=20, choices=HOLAT_CHOICES, default='yangi')
+    # Mijoz ariza berishda tanlagan to'lov usuli (usta va operator shunga qarab ishlaydi)
+    tolov_usuli = models.CharField(max_length=10, blank=True, default='', verbose_name="To'lov usuli",
+                                   choices=[('naqd', 'Naqd (usta kelganda)'), ('otkazma', "Hisob raqamga o'tkazma")])
+    # Seshanba aksiyasi: ariza seshanba kuni promokod bilan berilsa — o'sha haftaning 2 ta xizmatiga chegirma
+    promokod = models.CharField(max_length=40, blank=True, default='', verbose_name='Promokod')
+    chegirma_foiz = models.PositiveSmallIntegerField(default=0, verbose_name='Chegirma (%)')
+    aksiya_qatorlar = models.JSONField(default=list, blank=True,
+                                       verbose_name='Chegirmali narxnoma qatorlari (id)')
     natija = models.TextField(blank=True)
     natija_soat = models.FloatField(null=True, blank=True)
     natija_sana = models.DateTimeField(null=True, blank=True)
@@ -99,7 +109,8 @@ class Buyurtma(models.Model):
             self.manzil = self.mijoz.manzil
         if self.mijoz:
             self.mijoz_ism = self.mijoz_ism or self.mijoz.ism
-            self.mijoz_telefon = self.mijoz_telefon or self.mijoz.telefon
+            # Aloqa raqami (Telegram eski raqamga ochilgan mijozning hozirgi raqami) birinchi o'rinda
+            self.mijoz_telefon = self.mijoz_telefon or self.mijoz.qoshimcha_telefon or self.mijoz.telefon
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -135,6 +146,9 @@ class BuyurtmaXizmat(models.Model):
     soni = models.PositiveSmallIntegerField(default=1)
     narx_dan = models.BigIntegerField()
     narx_gacha = models.BigIntegerField(null=True, blank=True)
+    # Aksiya chegirmasi (%). narx_dan/narx_gacha CHEGIRMA QO'LLANGAN holda saqlanadi —
+    # summa tasdiqlash, shartnoma va kvitansiya avtomatik shu narxdan hisoblanadi.
+    chegirma_foiz = models.PositiveSmallIntegerField(default=0)
     qoshgan = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                 null=True, blank=True, related_name='+')
     yaratilgan = models.DateTimeField(auto_now_add=True)

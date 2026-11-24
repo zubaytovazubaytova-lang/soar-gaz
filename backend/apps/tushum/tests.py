@@ -218,3 +218,25 @@ class AdminTestlari(Asos):
         self.assertEqual(len(self.a.get(ADMIN_URL + '?holat=qabul').json()['yozuvlar']), 1)
         self.assertEqual(len(self.a.get(ADMIN_URL + '?holat=kutilmoqda').json()['yozuvlar']), 1)
         self.assertEqual(len(self.a.get(ADMIN_URL + '?holat=zzz').json()['yozuvlar']), 2)
+
+
+class TolovUsuliHimoyasiTestlari(Asos):
+    """Mijoz tanlagan to'lov usuli va to'langan buyurtma: usta noto'g'ri pul kiritmaydi."""
+
+    def test_otkazma_tanlagan_mijozdan_naqd_olinmaydi(self):
+        Buyurtma.objects.filter(pk=self.b1.pk).update(tolov_usuli='otkazma')
+        r = self.kirit(usul='naqd')
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("o'tkazma", r.json()['detail'])
+        self.assertEqual(self.kirit(usul='otkazma').status_code, 201)
+
+    def test_tolangan_buyurtmaga_pul_kiritilmaydi(self):
+        Buyurtma.objects.filter(pk=self.b1.pk).update(tolandi=True)
+        r = self.kirit()
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("to'langan", r.json()['detail'])
+        self.assertFalse(Tushum.objects.exists())
+
+    def test_naqd_tanlagan_yoki_usulsiz_buyurtma_avvalgidek(self):
+        Buyurtma.objects.filter(pk=self.b1.pk).update(tolov_usuli='naqd')
+        self.assertEqual(self.kirit().status_code, 201)

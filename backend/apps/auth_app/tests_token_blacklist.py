@@ -23,6 +23,11 @@ def kirish(client, telefon=TELEFON, **extra):
                        format='json', **extra)
 
 
+def xodim_kirish(client, telefon, kod='XD-TEST22'):
+    """Xodim mijoz kodi yo'lidan emas, /xodimlar dagi kabi telefon + admin bergan kod bilan kiradi."""
+    return client.post('/api/auth/xodim/login/', {'telefon': telefon, 'kod': kod}, format='json')
+
+
 class RefreshCookieTest(TestCase):
     def setUp(self):
         cache.clear()      # IP cheklovlari (15/daqiqa) testlar orasida to'planib qolmasin
@@ -66,8 +71,8 @@ class RefreshCookieTest(TestCase):
         mijoz = APIClient()
         kirish(mijoz)
         mijoz_cookie = mijoz.cookies[REFRESH_COOKIE].value
-        Foydalanuvchi.objects.create(telefon='+998909998877', rol='xodim')
-        r = kirish(mijoz, telefon='+998909998877')
+        Foydalanuvchi.objects.create(telefon='+998909998877', rol='xodim', kirish_kodi='XD-TEST22')
+        r = xodim_kirish(mijoz, telefon='+998909998877')
         self.assertIn(REFRESH_COOKIE_XODIM, r.cookies)
         self.assertNotIn(REFRESH_COOKIE, r.cookies)
         self.assertEqual(mijoz.cookies[REFRESH_COOKIE].value, mijoz_cookie)   # mijoz cookie'si joyida
@@ -78,8 +83,8 @@ class RefreshCookieTest(TestCase):
 
     def test_xodim_sessiyasi_faqat_xodim_cookiesi_bilan_yangilanadi(self):
         xodim = APIClient()
-        Foydalanuvchi.objects.create(telefon='+998909998877', rol='xodim')
-        kirish(xodim, telefon='+998909998877')
+        Foydalanuvchi.objects.create(telefon='+998909998877', rol='xodim', kirish_kodi='XD-TEST22')
+        self.assertEqual(xodim_kirish(xodim, telefon='+998909998877').status_code, 200)
         self.assertEqual(xodim.post('/api/auth/token/yangilash/', {'sessiya': 'xodim'},
                                     format='json').status_code, 200)
         # sessiya ko'rsatilmasa mijoz cookie'si qidiriladi — xodimniki ishlatilmaydi

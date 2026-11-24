@@ -331,6 +331,10 @@ if DEBUG:
 #  XODIMLAR JOYLASHUVI (faqat smena davomida, xodim roziligi bilan)
 # ──────────────────────────────────────────────────────────────
 JOYLASHUV_MIN_SONIYA = 15      # Nuqtalar orasidagi eng kam vaqt (server shundan tezini tashlaydi)
+# GPS majburiymi: 1 — «Ishni boshlash» uchun joylashuvga ruxsat va GPS shart, smena davomida kuzatiladi;
+# 0 — QO'L REJIMI: xodim ish kunini GPS'siz boshlaydi, bosqichlarni (yo'lga chiqdim, ishni boshladim,
+# yakunladim) o'zi belgilaydi, joylashuv olinmaydi. Hozircha 0.
+JOYLASHUV_GPS_MAJBURIY = os.environ.get('JOYLASHUV_GPS_MAJBURIY', '0') == '1'
 JOYLASHUV_ALOQA_SONIYA = 120   # Shuncha vaqt nuqta kelmasa, xodim "aloqada emas" hisoblanadi
 JOYLASHUV_SMENA_MAX_SOAT = 16  # Unutilgan smena shuncha soatdan keyin o'zi yopiladi
 JOYLASHUV_SAQLASH_KUN = 30     # Nuqtalar shuncha kundan keyin o'chiriladi (joylashuv_tozala)
@@ -372,6 +376,38 @@ SMS_PROVAYDER = os.environ.get('SMS_PROVAYDER', 'konsol')
 ESKIZ_EMAIL = os.environ.get('ESKIZ_EMAIL', '')
 ESKIZ_PAROL = os.environ.get('ESKIZ_PAROL', '')
 ESKIZ_FROM = os.environ.get('ESKIZ_FROM', '4546')
+
+# Telegram bot: kirish kodlari va xabarlar SMS o'rniga (bepul). `soargaz-telegram-kalit` yozadi.
+#   TELEGRAM_BOT_TOKEN       @BotFather bergan token
+#   TELEGRAM_WEBHOOK_SECRET  webhook so'rovlarini tasdiqlash uchun tasodifiy satr
+#   TELEGRAM_BOT_USERNAME    botning nomi (@ siz)
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_WEBHOOK_SECRET = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')
+TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', '')
+
+# Telegram Gateway: tasdiqlash kodini raqam bo'yicha Telegram'ga yuboradi (bot/Start shart emas).
+# Token — Telegram Gateway hisobi sozlamalarida. `soargaz-gateway-kalit` yozadi.
+TELEGRAM_GATEWAY_TOKEN = os.environ.get('TELEGRAM_GATEWAY_TOKEN', '')
+
+# Kod ketmasa mijozga «botni oching» yo'riqnomasi ko'rsatilsinmi. Standart — YO'Q: mijozlar botdan
+# foydalanmaydi (kod Gateway orqali, xabarlar SMS orqali). Bot faqat ichki zaxira (admin/xodim).
+TELEGRAM_BOT_MIJOZLARGA = os.environ.get('TELEGRAM_BOT_MIJOZLARGA', '0') == '1'
+
+# Gateway pullik (~$0.01/kod): standart — faqat mijozlar va yangi raqamlar uchun. Xodim/admin kodlari
+# (admin paneli 2FA, xodim OTP) Gateway'ga ketmaydi: bot (ulangan bo'lsa, tekin) yoki SMS orqali.
+# Sinov uchun vaqtincha TELEGRAM_GATEWAY_FAQAT_MIJOZ=0.
+TELEGRAM_GATEWAY_FAQAT_MIJOZ = os.environ.get('TELEGRAM_GATEWAY_FAQAT_MIJOZ', '1') == '1'
+
+# «Telegram orqali kirish» (OpenID Connect): @BotFather → bot → Login Widget dan olinadi.
+# Ikkalasi berilmaguncha saytdagi tugma ko'rinmaydi. `soargaz-telegram-login-kalit` yozadi.
+TELEGRAM_LOGIN_CLIENT_ID = os.environ.get('TELEGRAM_LOGIN_CLIENT_ID', '')
+TELEGRAM_LOGIN_CLIENT_SECRET = os.environ.get('TELEGRAM_LOGIN_CLIENT_SECRET', '')
+# Click (37118, «SOAR GAZ LUX SERVIS» hisobi) kabinetda qaysi yo'nalish buyurtmalarini qabul qiladi:
+# servis | montaj | xarid (vergul bilan). Montaj korxonasi uchun Click xizmati ochilgach kengaytiriladi.
+CLICK_YONALISHLAR = os.environ.get('CLICK_YONALISHLAR', 'servis')
+# Telegram orqali kirish yoqilganda kabinetdagi «Telegram yo'qmi? Telefon raqam orqali» oynasi:
+# 0 — «Tez orada» (SMS ulanmaguncha), 1 — ishlaydi. Telegram kirish o'chiq bo'lsa telefon formasi doim ishlaydi.
+TELEFON_KIRISH_YOQILGAN = os.environ.get('TELEFON_KIRISH_YOQILGAN', '0') == '1'
 
 # ──────────────────────────────────────────────────────────────
 #  TO'LOV TIZIMLARI (Click / Payme)
@@ -451,3 +487,26 @@ GEOKOD_URL = os.environ.get('GEOKOD_URL', 'https://nominatim.openstreetmap.org/s
 GEOKOD_USER_AGENT = os.environ.get('GEOKOD_USER_AGENT', f'SoarGaz/1.0 ({SAYT_MANZIL})')
 GEOKOD_STANDART_HUDUD = "Buxoro viloyati"     # tuman/shaharda viloyat ko'rsatilmasa qidiruvga qo'shiladi
 GEOKOD_TIMEOUT = 6
+
+# ──────────────────────────────────────────────────────────────
+#  JURNAL: server xatolari (500) to'liq tafsiloti (traceback) bilan journalctl ga yozilsin.
+#  Django standart holatda DEBUG=0 da xatoni faqat email bilan yuboradi — email sozlanmagani uchun
+#  xato izsiz yo'qolardi. Ko'rish: journalctl -u soargaz
+# ──────────────────────────────────────────────────────────────
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'konsol': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['konsol'], 'level': 'WARNING'},
+    'loggers': {
+        'django.request': {'handlers': ['konsol'], 'level': 'ERROR', 'propagate': False},
+        'apps': {'handlers': ['konsol'], 'level': 'INFO', 'propagate': False},
+    },
+}
+
+# Seshanba aksiyasi (faqat xizmatlar): navbatdagi 2 ta xizmatga chegirma, promokod bilan.
+# Navbat Django admin → «Seshanba aksiyasi — navbat» da kiritiladi.
+SESHANBA_PROMOKOD = os.environ.get('SESHANBA_PROMOKOD', 'SESHANBA').strip().upper()
+SESHANBA_FOIZ = int(os.environ.get('SESHANBA_FOIZ', '10'))
+# Promokod amal qilish muddati: seshanba 00:00 dan shuncha soat (50 — payshanba 02:00 gacha)
+SESHANBA_SOAT = int(os.environ.get('SESHANBA_SOAT', '50'))

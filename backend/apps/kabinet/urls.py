@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import metrolog, views
 
 urlpatterns = [
     # 1. Bosh sahifa
@@ -16,6 +16,9 @@ urlpatterns = [
     path('hisoblagichlar/', views.hisoblagichlar),
     path('hisoblagichlar/<int:pk>/', views.hisoblagich_detal),
     path('hisoblagichlar/<int:pk>/tekshiruv/', views.tekshiruvga_yozilish),
+    # 4b. Metrolog (xodim): muddatli hisoblagichlar va qiyoslov natijasi
+    path('metrolog/hisoblagichlar/', metrolog.hisoblagichlar),
+    path('metrolog/hisoblagichlar/<int:pk>/qiyoslov/', metrolog.qiyoslov),
     # 5. To'lovlar
     path('tolovlar/', views.tolovlarim),
     # 5b. Do'kon xaridlari

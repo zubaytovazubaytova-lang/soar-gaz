@@ -1,0 +1,11 @@
+[Unit]
+Description=SOAR GAZ zaxira nusxasi har kuni 03:30 da
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=300
+# Server o'chiq bo'lib o'tkazib yuborilgan nusxa yoqilganda olinadi
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -115,6 +115,9 @@ async function apiSorov(yol, sozlama = {}){
     headers: {
       ...(sozlama.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+      // Portal interfeysi o'zbekcha: server matnlari (xizmat, holat nomlari) ham o'zbekcha kelsin —
+      // aks holda telefoni rus tilida bo'lgan xodim «Метрология» kabi aralash matn ko'radi
+      'Accept-Language': 'uz',
       ...(sozlama.headers || {})
     }
   });
@@ -225,13 +228,13 @@ async function jamoaYukla(){
 // ═══════ Vazifalar (buyurtmalar) ═══════
 // GET /api/buyurtmalar/ — backend rol='xodim' bo'lsa faqat shu xodimga
 // tayinlangan buyurtmalarni qaytaradi, shuning uchun qo'shimcha filtr shart emas.
-const FAOL_HOLATLAR = ['yangi', 'qabul', 'bajarilmoqda'];
+const FAOL_HOLATLAR = ['yangi', 'qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda'];
 const HOLAT_MATN = {
-  yangi: 'Kutilmoqda', qabul: 'Qabul qilindi',
+  yangi: 'Kutilmoqda', qabul: 'Qabul qilindi', yolda: "Yo'lda", tolov_kutilmoqda: "To'lov kutilmoqda",
   bajarilmoqda: 'Jarayonda', bajarildi: 'Bajarildi', bekor: 'Bekor qilindi'
 };
 const HOLAT_TAG = {
-  yangi: 'wait', qabul: 'progress',
+  yangi: 'wait', qabul: 'progress', yolda: 'progress', tolov_kutilmoqda: 'wait',
   bajarilmoqda: 'progress', bajarildi: 'done', bekor: 'plan'
 };
 
@@ -264,6 +267,7 @@ function shuOymi(iso){
 let vazifaBelgilangan = null;   // narxnomadan biriktirilgan vazifa: ro'yxatda ajratib ko'rsatiladi
 
 function pulMatni(n){ return Number(n).toLocaleString('ru-RU'); }
+function narxOraliq(dan, gacha){ return pulMatni(dan) + (gacha != null && gacha !== dan ? ' – ' + pulMatni(gacha) : '') + " so'm"; }
 
 // Vazifadagi tanlangan xizmatlar, hisoblangan narx va tasdiqlangan summa
 function xizmatBloki(b, amallar){
@@ -280,7 +284,8 @@ function xizmatBloki(b, amallar){
     const nom = document.createElement('span');
     nom.className = 'nom';
     const narx = x.narx_gacha != null ? `${pulMatni(x.narx_dan)} – ${pulMatni(x.narx_gacha)}` : pulMatni(x.narx_dan);
-    nom.textContent = `${x.nomi}${x.ustun_nomi ? ` (${x.ustun_nomi})` : ''} × ${x.soni} — ${narx} so'm`;
+    nom.textContent = `${x.nomi}${x.ustun_nomi ? ` (${x.ustun_nomi})` : ''} × ${x.soni} — ${narx} so'm`
+      + (x.chegirma_foiz ? ` · seshanba −${x.chegirma_foiz}% qo'llangan` : '');
     q.append(nom);
     if (faol && !tasdiqlangan) {
       const olib = document.createElement('button');
@@ -375,6 +380,12 @@ function vazifaQator(b, amallar){
     tavsif.append(aloqa);
   }
   info.append(sarlavha, tavsif);
+  if (b.tolov_usuli) {                         // mijoz ariza berishda tanlagan to'lov usuli
+    const tu = document.createElement('p');
+    tu.style.cssText = 'margin:4px 0 0;font-size:12.5px;font-weight:700;color:' + (b.tolov_usuli === 'naqd' ? '#166534' : '#1d4ed8');
+    tu.textContent = b.tolov_usuli === 'naqd' ? "💵 Mijoz naqd to'laydi (pulni joyida oling)" : "🏦 Mijoz hisob raqamga o'tkazma qiladi";
+    info.append(tu);
+  }
   const xb = xizmatBloki(b, amallar);
   if (xb) info.append(xb);
   const hb = hujjatBloki(b, amallar);          // shartnoma (summa tasdiqlangan buyurtmalarda)
@@ -394,11 +405,34 @@ function vazifaQator(b, amallar){
     tugma.addEventListener('click', ()=> vazifaQabul(b.id, tugma));
     amal.appendChild(tugma);
   }
-  if (amallar && (b.holat === 'qabul' || b.holat === 'bajarilmoqda')) {
+  if (amallar && b.holat === 'qabul') {
+    const tugma = document.createElement('button');
+    tugma.className = 'mini-btn asosiy';
+    tugma.textContent = "🚗 Yo'lga chiqdim";
+    tugma.addEventListener('click', ()=> vazifaBosqich(b.id, 'yolda', tugma));
+    amal.appendChild(tugma);
+  }
+  if (amallar && (b.holat === 'qabul' || b.holat === 'yolda')) {
+    const tugma = document.createElement('button');
+    tugma.className = 'mini-btn ' + (b.holat === 'yolda' ? 'asosiy' : '');
+    tugma.textContent = '🔧 Yetib keldim — ishni boshladim';
+    tugma.addEventListener('click', ()=> vazifaBosqich(b.id, 'bajarilmoqda', tugma));
+    amal.appendChild(tugma);
+  }
+  if (amallar && b.holat === 'bajarilmoqda') {
     const tugma = document.createElement('button');
     tugma.className = 'mini-btn yashil';
-    tugma.textContent = 'Yakunlash';
+    tugma.textContent = '🏁 Ishni tugatdim';
     tugma.addEventListener('click', ()=> vazifaYakunla(b.id, tugma, b));
+    amal.appendChild(tugma);
+  }
+  // Ish tugagan, to'lov hali to'liq emas: xodim olgan pulni yozib, kvitansiya chiqaradi.
+  // Buyurtma Ruxsora pulni qabul qilgach (yoki Click / chek tasdig'idan keyin) o'zi yakunlanadi.
+  if (amallar && b.holat === 'tolov_kutilmoqda' && !b.tolandi) {
+    const tugma = document.createElement('button');
+    tugma.className = 'mini-btn asosiy';
+    tugma.textContent = "🧾 To'lovni yozish / kvitansiya";
+    tugma.addEventListener('click', ()=> yakunlashKvitansiyasi(b));
     amal.appendChild(tugma);
   }
 
@@ -438,33 +472,8 @@ function vazifalarChiz(){
     faol.forEach(b => vazifaRoyxat.appendChild(vazifaQator(b, true)));
   }
 
-  // — Ish tarixi
-  const tana = document.getElementById('tarixTana');
-  const tarixHolat = document.getElementById('tarixHolat');
-  document.getElementById('tarixSoni').textContent = tarix.length ? `(${tarix.length} ta)` : '';
-  tana.innerHTML = '';
-  if (!tarix.length) {
-    tarixHolat.textContent = 'Yakunlangan ish hozircha yo\'q.';
-    tarixHolat.style.display = 'block';
-  } else {
-    tarixHolat.style.display = 'none';
-    tarix.forEach(b => {
-      const tr = document.createElement('tr');
-      [
-        sanaVaqt(b.natija_sana || b.yangilangan || b.yaratilgan),
-        b.xizmat_nomi || b.xizmat,
-        [b.manzil, b.tuman].filter(Boolean).join(', ') || '—',
-        b.natija_soat ? b.natija_soat + ' soat' : '—',
-        b.material || '—',
-        HOLAT_MATN[b.holat] || b.holat
-      ].forEach(matn => {
-        const td = document.createElement('td');
-        td.textContent = matn;
-        tr.appendChild(td);
-      });
-      tana.appendChild(tr);
-    });
-  }
+  // — Ish tarixi: bosqichlar bo'yicha ustun-tugmalar (bosilsa alohida oynada ochiladi)
+  ishTarixiChiz(tarix);
 
   // — Bosh sahifa statistikasi
   const bajarildi = vazifalar.filter(b => b.holat === 'bajarildi');
@@ -476,6 +485,82 @@ function vazifalarChiz(){
   document.getElementById('statFaol').textContent = faol.length;
 }
 
+// Ish tarixi bosqichlari: [holat, nomi, belgi, rang]
+const ISH_BOSQICHLARI = [
+  ['yangi', 'Yangi (qabul kutilmoqda)', '📥', '#64748b'],
+  ['qabul', 'Qabul qilingan', '✅', '#2563eb'],
+  ['yolda', "Yo'lda", '🚗', '#0891b2'],
+  ['bajarilmoqda', 'Jarayonda', '🔧', '#d97706'],
+  ['tolov_kutilmoqda', "To'lov kutilmoqda", '💳', '#c2410c'],
+  ['bajarildi', 'Bajarildi', '🏁', '#16a34a'],
+  ['bekor', 'Bekor qilingan', '✖️', '#dc2626'],
+];
+let bqOchiq = null;                 // ochiq oynadagi bosqich (yangilanganda qayta chiziladi)
+
+function ishTarixiChiz(tarix){
+  const quti = document.getElementById('bosqichUstunlar');
+  const holat = document.getElementById('tarixHolat');
+  document.getElementById('tarixSoni').textContent = vazifalar.length ? `(${vazifalar.length} ta ish)` : '';
+  holat.style.display = vazifalar.length ? 'none' : 'block';
+  if (!vazifalar.length) holat.textContent = "Hozircha ish yo'q. Sizga buyurtma tayinlanganda shu yerda bosqichlar bo'yicha ko'rinadi.";
+  quti.innerHTML = '';
+  ISH_BOSQICHLARI.forEach(([kod, nomi, belgi, rang]) => {
+    const soni = vazifalar.filter(b => b.holat === kod).length;
+    const t = document.createElement('button');
+    t.type = 'button';
+    t.className = 'bq-ustun' + (soni ? '' : ' bosh');
+    t.style.setProperty('--rang', rang);
+    t.innerHTML = `<span class="bq-belgi">${belgi}</span><span class="bq-son">${soni}</span>
+      <span class="bq-nomi">${matnEsc(nomi)}</span><span class="bq-ochish">${soni ? 'Ochish ›' : "Bo'sh"}</span>`;
+    t.addEventListener('click', () => bosqichOynaOch(kod));
+    quti.appendChild(t);
+  });
+  if (bqOchiq) bosqichOynaOch(bqOchiq);        // ochiq oyna ham yangilansin (tugma bosilgandan keyin)
+}
+
+function bosqichOynaOch(kod){
+  const [_, nomi, belgi, rang] = ISH_BOSQICHLARI.find(x => x[0] === kod);
+  const ishlar = vazifalar.filter(b => b.holat === kod)
+    .sort((a, b) => new Date(b.natija_sana || b.yangilangan || b.yaratilgan) - new Date(a.natija_sana || a.yangilangan || a.yaratilgan));
+  bqOchiq = kod;
+  const fon = document.getElementById('bqOynaFon');
+  fon.querySelector('.bq-oyna').style.setProperty('--rang', rang);
+  document.getElementById('bqOynaSarlavha').textContent = `${belgi} ${nomi} — ${ishlar.length} ta`;
+  const tana = document.getElementById('bqOynaTana');
+  tana.innerHTML = '';
+  if (!ishlar.length) {
+    tana.innerHTML = '<p class="bosh-holat" style="display:block">Bu bosqichda ish yo\'q.</p>';
+  } else {
+    const faolBosqich = FAOL_HOLATLAR.includes(kod);
+    ishlar.forEach(b => {
+      tana.appendChild(vazifaQator(b, faolBosqich));     // faol bosqichda keyingi qadam tugmalari ham shu oynada
+      const qism = [];
+      if (b.natija_sana) qism.push('Yakun: ' + sanaVaqt(b.natija_sana));
+      if (b.natija) qism.push('Natija: ' + b.natija);
+      if (b.natija_soat) qism.push(b.natija_soat + ' soat');
+      if (b.material) qism.push('Material: ' + b.material);
+      if (['tolov_kutilmoqda', 'bajarildi'].includes(kod)) qism.push(b.tolandi ? "To'langan ✓" : "To'lanmagan");
+      if (qism.length) {
+        const p = document.createElement('div');
+        p.className = 'bq-tafsilot';
+        p.textContent = qism.join(' · ');
+        tana.appendChild(p);
+      }
+    });
+  }
+  fon.classList.add('ochiq');
+  document.body.style.overflow = 'hidden';
+}
+
+function bosqichOynaYop(){
+  bqOchiq = null;
+  document.getElementById('bqOynaFon').classList.remove('ochiq');
+  document.body.style.overflow = '';
+}
+document.getElementById('bqOynaYop').addEventListener('click', bosqichOynaYop);
+document.getElementById('bqOynaFon').addEventListener('click', e => { if (e.target.id === 'bqOynaFon') bosqichOynaYop(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && bqOchiq) bosqichOynaYop(); });
+
 async function vazifalarYukla(){
   try {
     const javob = await apiSorov('/buyurtmalar/');
@@ -483,6 +568,7 @@ async function vazifalarYukla(){
     vazifalarChiz();
     tushumBuyurtmaTanla();
     narxVazifaTanla();
+    hisobotTaklif();
   } catch (xato) {
     ['bugunHolat', 'vazifaHolat', 'tarixHolat'].forEach(id => {
       const el = document.getElementById(id);
@@ -503,13 +589,24 @@ async function vazifaQabul(id, tugma){
   }
 }
 
+async function vazifaBosqich(id, holat, tugma){
+  tugma.disabled = true;
+  try {
+    await apiSorov(`/buyurtmalar/${id}/bosqich/`, { method: 'POST', body: JSON.stringify({ holat }) });
+    await vazifalarYukla();
+  } catch (xato) {
+    alert("Saqlanmadi: " + xato.message);
+    tugma.disabled = false;
+  }
+}
+
 async function vazifaYakunla(id, tugma, b){
   // Ish yakunlanishidan oldin narx hisoblanib tasdiqlangan bo'lishi kerak (pul shu summa bo'yicha olinadi)
   if (b && !(b.xizmatlar && b.xizmatlar.tasdiq_summa != null)
       && !confirm('Bu buyurtmaning summasi hali tasdiqlanmagan (narxnomadan xizmat tanlab, "Summani tasdiqlash"ni bosing).\nBaribir yakunlaysizmi?')) {
     return;
   }
-  const natija = prompt('Bajarilgan ish natijasi (mijozga SMS orqali yuboriladi):');
+  const natija = prompt("Bajarilgan ish natijasi (mijozga yuboriladi). Buyurtma to'lov to'liq qabul qilingach yakunlanadi:");
   if (natija === null) return;
   const soat = prompt('Ishga ketgan vaqt (soat), masalan 2.5:', '');
   if (soat === null) return;
@@ -529,6 +626,45 @@ async function vazifaYakunla(id, tugma, b){
   } catch (xato) {
     alert('Yakunlanmadi: ' + xato.message);
     tugma.disabled = false;
+    return;
+  }
+  await yakunlashKvitansiyasi(b);
+}
+
+// Ish yakunlangach: mijozdan olingan pulni yozib, darhol kvitansiya chiqarish.
+// Kvitansiya chop etish uchun ochiladi va havolasi mijozga avval Telegram'ga, bo'lmasa SMS'ga yuboriladi.
+async function yakunlashKvitansiyasi(b){
+  if (!b || KORISH) return;
+  if (b.tolandi) {
+    alert("Ish tugadi ✓\nBu buyurtma oldindan to'langan (Click yoki hisob raqamga o'tkazma) — buyurtma yakunlandi, kvitansiya shart emas.");
+    return;
+  }
+  const tasdiq = b.xizmatlar && b.xizmatlar.tasdiq_summa;
+  if (tasdiq == null) {
+    alert("Ish tugadi ✓ (to'lov kutilmoqda)\nKvitansiya uchun avval buyurtma summasini tasdiqlang, so'ng «Pul tushumi» bo'limida kvitansiya chiqaring.");
+    return;
+  }
+  const kiritilgan = prompt(`Mijozdan qancha oldingiz (so'm)? Kvitansiya chiqariladi.\nBuyurtma Ruxsora pulni qabul qilgach yakunlanadi.\nPul olinmagan bo'lsa «Bekor»ni bosing (mijoz Click yoki hisob raqam orqali to'lashi mumkin).`, String(tasdiq));
+  if (kiritilgan === null) return;
+  const summa = parseInt(String(kiritilgan).replace(/\D/g, ''), 10);
+  if (!summa) { alert("Summa noto'g'ri. «Pul tushumi» bo'limidan kiriting."); return; }
+  const tanlov = prompt("To'lov usuli:\n1 — Naqd\n2 — Karta (terminal)\n3 — Pul o'tkazmasi", '1');
+  if (tanlov === null) return;
+  const usul = { '1': 'naqd', '2': 'karta', '3': 'otkazma' }[String(tanlov).trim()] || 'naqd';
+  let t;
+  try {
+    t = await apiSorov('/tushum/', { method: 'POST', body: JSON.stringify({ summa, usul, buyurtma: b.id }) });
+  } catch (e) {
+    alert("To'lov yozilmadi: " + e.message + "\n«Pul tushumi» bo'limidan qayta urinib ko'ring.");
+    return;
+  }
+  try {
+    const k = await kvitansiyaChiqar(t);
+    if (k) alert(`Kvitansiya ${k.raqam} chiqarildi ✓\n` + (k.sms_yuborildi === false
+      ? "Mijozga yuborilmadi — «Pul tushumi» bo'limidagi «Yuborish» tugmasi bilan qayta urinib ko'ring."
+      : `Havolasi mijozga yuborildi (Telegram yoki SMS): ${k.mijoz_telefon}`));
+  } catch (e) {
+    alert('Kvitansiya chiqmadi: ' + e.message + "\nTo'lov yozildi — «Pul tushumi» bo'limidan kvitansiyani chiqaring.");
   }
 }
 
@@ -561,6 +697,17 @@ function smenaChiz(){
   const rozi = document.getElementById('smenaRozilik');
   belgi.textContent = smena.faol ? 'Smena ochiq' : 'Smena yopiq';
   belgi.className = 'tag ' + (smena.faol ? 'done' : 'wait');
+  if (!smena.gps_majburiy) {
+    // QO'L REJIMI: GPS shart emas, joylashuv olinmaydi — xodim bosqichlarni o'zi belgilaydi
+    rozi.style.display = 'none';
+    btn.disabled = false;
+    matn.textContent = smena.faol
+      ? "Ish kuningiz boshlangan. Vazifalarda «Yo'lga chiqdim», «Ishni boshladim», «Ishni yakunlash» tugmalarini o'zingiz bosing. Kun tugagach «Ishni tugatish»ni bosing."
+      : "Ish kuningizni boshlash uchun bosing (GPS shart emas). Keyin vazifalarda har bir bosqichni o'zingiz belgilaysiz.";
+    btn.textContent = smena.faol ? 'Ishni tugatish' : 'Ishni boshlash';
+    btn.className = 'mini-btn ' + (smena.faol ? 'qizil' : 'yashil') + ' smena-btn';
+    return;
+  }
   rozi.style.display = (!smena.faol && !smena.rozilik) ? 'block' : 'none';
   btn.disabled = false;
   if (smena.faol) {
@@ -630,7 +777,7 @@ async function smenaYukla(){
     return;
   }
   smenaChiz();
-  if (smena.faol) joyKuzatuvBoshla();
+  if (smena.faol && smena.gps_majburiy) joyKuzatuvBoshla();
 }
 
 // Ruxsatni smena ochishdan OLDIN so'raymiz: rad etilsa, smena ochilmaydi va
@@ -657,11 +804,11 @@ document.getElementById('smenaBtn').addEventListener('click', async () => {
       smena = await apiSorov('/joylashuv/smena/tugatish/', { method: 'POST' });
       joyKuzatuvToxtat();
     } else {
-      await joyRuxsatiniSora();
+      if (smena.gps_majburiy) await joyRuxsatiniSora();     // qo'l rejimida GPS so'ralmaydi
       smena = await apiSorov('/joylashuv/smena/boshlash/', { method: 'POST',
         body: JSON.stringify({ rozilik: document.getElementById('roziBelgi').checked || smena.rozilik }) });
       oxirgiYuborilgan = 0;
-      joyKuzatuvBoshla();
+      if (smena.gps_majburiy) joyKuzatuvBoshla();
     }
   } catch (e) {
     smenaXato(e.message);
@@ -1110,6 +1257,42 @@ function tushumBuyurtmaTanla(){
 
 document.getElementById('tushTuri').addEventListener('change', tushumTuriChiz);
 
+// Buyurtma tanlanganda: qolgan summa va mijoz tanlagan to'lov usuli avtomatik qo'yiladi.
+// Summa — tasdiqlangan summadan shu buyurtma bo'yicha avval kiritilgan (rad etilmagan) pullar ayirilgan.
+let tushAvtoSumma = '';
+document.getElementById('tushBuyurtma').addEventListener('change', (e) => {
+  const b = (vazifalar || []).find(x => String(x.id) === e.target.value);
+  const izoh = document.getElementById('tushBuyurtmaIzoh');
+  const summaEl = document.getElementById('tushSumma');
+  izoh.style.color = '';
+  if (!b) { if (summaEl.value === tushAvtoSumma) summaEl.value = ''; tushAvtoSumma = ''; izoh.textContent = ''; return; }
+  const tasdiq = b.xizmatlar && b.xizmatlar.tasdiq_summa;
+  const olingan = (tushumRoyxati || []).filter(t => t.buyurtma_id === b.id && t.holat !== 'rad')
+    .reduce((s, t) => s + Number(t.summa || 0), 0);
+  const qoldiq = tasdiq != null ? Math.max(0, Number(tasdiq) - olingan) : null;
+  const qismlar = [];
+  if (qoldiq != null && (!summaEl.value || summaEl.value === tushAvtoSumma)) {
+    summaEl.value = qoldiq ? qoldiq.toLocaleString('ru-RU') : '';
+    tushAvtoSumma = summaEl.value;
+  }
+  if (tasdiq != null) qismlar.push(`Tasdiqlangan summa: ${pulMatni(tasdiq)} so'm` +
+    (olingan ? `, avval kiritilgan: ${pulMatni(olingan)} so'm, qoldiq: ${pulMatni(qoldiq)} so'm` : ''));
+  if (b.promokod) qismlar.push(`seshanba chegirmasi (−${b.chegirma_foiz}%) narxga kiritilgan`);
+  if (b.tolandi) {
+    qismlar.unshift("⚠️ Bu buyurtma to'liq to'langan — mijozdan qayta pul olmang.");
+    izoh.style.color = '#b91c1c';
+  } else if (b.tolov_usuli === 'otkazma') {
+    document.getElementById('tushUsul').value = 'otkazma';
+    qismlar.unshift("⚠️ Mijoz HISOB RAQAMGA O'TKAZMA (Click yoki bank) tanlagan — naqd pul olmang. " +
+      "Mijoz o'tkazma qilsa, pul tushgach buyurtma o'zi yakunlanadi.");
+    izoh.style.color = '#b45309';
+  } else if (b.tolov_usuli === 'naqd') {
+    document.getElementById('tushUsul').value = 'naqd';
+    qismlar.unshift("Mijoz naqd to'lashni tanlagan.");
+  }
+  izoh.textContent = qismlar.join('. ');
+});
+
 // ── Tushum: narxnomadagi ish turini tanlash ──
 // Maydon bosilganda narxnomadagi barcha ish turlari ochiladi (yozib qidirsa ham bo'ladi).
 // Narx tugmasi (profilaktika/reviziya) bosilsa tanlov saqlanadi; aniq narx bo'lsa summa
@@ -1371,15 +1554,16 @@ async function kvitansiyaChiqar(t){
       "Mijoz saytda ro'yxatdan o'tmagan bo'lsa, shu ma'lumot bilan avtomatik ro'yxatga olinadi.",
     ism: a.ism, telefon: a.telefon, manzil: a.manzil, smsKorsat: true, tugma: 'Kvitansiya chiqarish',
   }, (d) => apiSorov('/hujjatlar/kvitansiya/', { method: 'POST', body: JSON.stringify({ tushum: t.id, ...d }) }));
-  if (!k) return;
+  if (!k) return null;
   await tushumYukla();
   hujjatlarYukla();
   const havola = hujjatHavolasi(k.url);
   hujjatOch(havola);                                // chop etish uchun; bloklansa pastdagi "Kvitansiyani ochish" havolasi bor
   if (k.sms_yuborildi === false) {
-    tushXabari(`Kvitansiya ${k.raqam} chiqarildi, lekin mijozga SMS yuborilmadi. Jadvaldagi "SMS yuborish" tugmasi bilan qayta urinib ko'ring.`, havola);
-  } else if (k.yangi_mijoz) tushXabari(`${k.mijoz_ism} mijozlar ro'yxatiga olindi. ${k.mijoz_telefon} raqamiga SMS yuborildi.`, havola);
-  else tushXabari(`Kvitansiya ${k.raqam} chiqarildi. ${k.mijoz_telefon} raqamiga SMS yuborildi.`, havola);
+    tushXabari(`Kvitansiya ${k.raqam} chiqarildi, lekin mijozga xabar yetmadi (Telegram botga ulanmagan). Havolani mijozga o'zingiz yuboring yoki "Qayta yuborish" tugmasini bosing.`, havola);
+  } else if (k.yangi_mijoz) tushXabari(`${k.mijoz_ism} mijozlar ro'yxatiga olindi. ${k.mijoz_telefon} raqamiga xabar yuborildi.`, havola);
+  else tushXabari(`Kvitansiya ${k.raqam} chiqarildi. Havolasi ${k.mijoz_telefon} raqamiga (Telegram yoki SMS) yuborildi.`, havola);
+  return k;
 }
 
 // Pul tushumi formasi tagida yashil xabar (xato emas)
@@ -1402,7 +1586,7 @@ async function kvitansiyaSms(id, tugma){
   tugma.disabled = true;
   try {
     const k = await apiSorov(`/hujjatlar/kvitansiya/${id}/sms/`, { method: 'POST' });
-    if (!k.sms_yuborildi) alert('SMS yuborilmadi. Telefon raqamni tekshiring.');
+    if (!k.sms_yuborildi) alert("Xabar yetmadi: mijoz Telegram botga ulanmagan (SMS hali ulanmagan). Havolani mijozga o'zingiz yuboring.");
   } catch (e) { alert(e.message); }
   await tushumYukla();
   hujjatlarYukla();
@@ -1410,8 +1594,8 @@ async function kvitansiyaSms(id, tugma){
 
 function smsBelgisi(k){
   if (k.holat === 'bekor') return '<span class="sms-xato">Bekor qilingan</span>';
-  return k.sms_holat === 'yuborildi' ? '<span class="sms-ok">SMS ✓</span>'
-    : k.sms_holat === 'xato' ? '<span class="sms-xato">SMS yuborilmadi</span>' : '<span>SMS yuborilmagan</span>';
+  return k.sms_holat === 'yuborildi' ? '<span class="sms-ok">Yuborildi ✓</span>'
+    : k.sms_holat === 'xato' ? '<span class="sms-xato">Yetmadi</span>' : '<span>Yuborilmagan</span>';
 }
 
 // Tushum jadvalidagi "Kvitansiya" katagi
@@ -1420,7 +1604,7 @@ function kvitansiyaKatagi(t){
   if (k) {
     return `<a class="havola" href="${matnEsc(hujjatHavolasi(k.url))}" target="_blank" rel="noopener">${matnEsc(k.raqam)}</a><br>${smsBelgisi(k)}` +
       (k.holat === 'amal' && k.sms_holat !== 'yuborildi'
-        ? ` <button class="mini-btn" type="button" data-kv-sms="${Number(k.id)}">SMS yuborish</button>` : '');
+        ? ` <button class="mini-btn" type="button" data-kv-sms="${Number(k.id)}">Qayta yuborish</button>` : '');
   }
   return t.holat === 'rad' ? '—'
     : `<button class="mini-btn asosiy" type="button" data-kv-chiqar="${Number(t.id)}">Kvitansiya</button>`;
@@ -1482,7 +1666,7 @@ function hujjatBloki(b, amallar){
   if (faol && tugallanmagan) {
     const qator = document.createElement('div');
     qator.className = 'qator';
-    qator.append(tugmaYasa(s.holat === 'qoralama' ? 'Mijozga SMS kod yuborish' : 'Kodni qayta yuborish', 'asosiy',
+    qator.append(tugmaYasa(s.holat === 'qoralama' ? 'Mijozga tasdiqlash kodi yuborish' : 'Kodni qayta yuborish', 'asosiy',
       () => shartnomaAmali(`/hujjatlar/shartnoma/${s.id}/kod/`)));
     if (s.holat === 'tasdiq_kutilmoqda') {
       const kod = document.createElement('input');
@@ -1522,7 +1706,7 @@ async function hujjatlarYukla(){
         <td>${matnEsc(k.manzil)}</td>
         <td><b>${somFormat(k.summa)}</b></td>
         <td>${smsBelgisi(k)}</td>
-        <td>${k.holat === 'amal' ? `<button class="mini-btn" type="button" data-kv-sms="${Number(k.id)}">SMS qayta</button>` : ''}</td>
+        <td>${k.holat === 'amal' ? `<button class="mini-btn" type="button" data-kv-sms="${Number(k.id)}">Qayta yuborish</button>` : ''}</td>
       </tr>`).join('');
     const kh = document.getElementById('kvHolat');
     kh.textContent = kvlar.length ? '' : 'Hali kvitansiya chiqarilmagan';
@@ -1685,6 +1869,7 @@ function bolimNomiTopish(lavozim, tur){
 function menyuQur(){
   const k = profil && profil.kabinet;
   kabinetTuri = (k && k.tur) || 'oddiy';
+  tgBotEslatma(profil);
   ruxsatliBolimlar = (k && Array.isArray(k.bolimlar) && k.bolimlar.length) ? k.bolimlar : BARCHA_BOLIMLAR;
   document.body.classList.remove('kabinet-oddiy', 'kabinet-qongiroq', 'kabinet-hujjat', 'kabinet-kadrlar');
   document.body.classList.add('kabinet-' + kabinetTuri);
@@ -1696,7 +1881,290 @@ function menyuQur(){
   // Ruxsat etilganlar server bergan tartibda qayta joylanadi
   ruxsatliBolimlar.forEach(kalit => { const b = tugmalar[kalit]; if (b) { b.hidden = false; nav.appendChild(b); } });
   showPage('overview');
+  // Bank to'lovlari: kutilayotgan cheklar soni menyuda (skript keyinroq yuklanadi)
+  if (bolimBormi('bank-chek')) setTimeout(() => window.BankCheklar && BankCheklar.yukla(), 0);
 }
+
+// ═══════ Telegram bot: yangi vazifa xabarlari (tekin) ═══════
+// Xodim botga ulanmagan bo'lsa unga tayinlangan vazifa haqida HECH QANDAY xabar bormaydi (SMS hali yo'q) —
+// shuning uchun bosh sahifa tepasida ko'zga tashlanadigan eslatma va botni ochadigan tugma.
+function tgBotEslatma(p) {
+  const eski = document.getElementById('tgBotEslatma');
+  if (eski) eski.remove();
+  if (!p || p.telegram_ulangan || !p.telegram_bot || KORISH) return;
+  const blok = document.createElement('div');
+  blok.id = 'tgBotEslatma';
+  blok.style.cssText = 'display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 16px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#e0f2fe,#eff6ff);border:1px solid #7dd3fc;';
+  blok.innerHTML = `
+    <div style="font-size:26px;line-height:1">📲</div>
+    <div style="flex:1;min-width:220px;font-size:13.5px;color:#0c4a6e;line-height:1.5">
+      <b>Yangi vazifalar haqida Telegram'da xabar oling</b><br>
+      Botni oching → <b>Start</b> → <b>«Raqamni ulashish»</b>. Raqamingiz shu kabinetdagi raqam bilan bir xil bo'lishi kerak. Tekin.
+    </div>
+    <a id="tgBotHavola" href="https://t.me/${encodeURIComponent(p.telegram_bot)}?start=xodim" target="_blank" rel="noopener"
+       style="padding:10px 16px;border-radius:10px;background:#229ED9;color:#fff;font-weight:700;text-decoration:none;white-space:nowrap">
+      Botga ulanish</a>`;
+  blok.querySelector('div:nth-child(2)').innerHTML = `<b>Yangi vazifalar haqida Telegram'da xabar oling</b><br>
+      «Botga ulanish» ni bosing → Telegram ochiladi → <b>Start</b>. Bo'ldi, raqam ulashish shart emas. Tekin.`;
+  const sahifa = document.getElementById('page-overview');
+  if (sahifa) sahifa.prepend(blok);
+  tgHavolaTayyorla();
+  document.getElementById('tgBotHavola').addEventListener('click', tgUlanishniKut);
+}
+
+// Shaxsiy bir martalik havola oldindan olinadi (bosilganda Telegram darhol ochilsin)
+let tgHavolaTaymer = null, tgKutTaymer = null;
+async function tgHavolaTayyorla() {
+  try {
+    const d = await apiSorov('/auth/xodim/telegram-havola/', { method: 'POST' });
+    const a = document.getElementById('tgBotHavola');
+    if (a && d.url) a.href = d.url;
+    clearTimeout(tgHavolaTaymer);
+    tgHavolaTaymer = setTimeout(tgHavolaTayyorla, Math.max(60, (d.muddat || 1800) - 120) * 1000);
+  } catch (e) { /* bo'lmasa oddiy havola qoladi */ }
+}
+function tgUlanishniKut() {
+  // Xodim botda «Start» bosgach banner o'zi yo'qoladi (3 daqiqa davomida har 4 soniyada tekshiriladi)
+  setTimeout(tgHavolaTayyorla, 1500);           // havola bir martalik — qayta bosish uchun yangisi
+  clearInterval(tgKutTaymer);
+  let marta = 0;
+  tgKutTaymer = setInterval(async () => {
+    if (++marta > 45) { clearInterval(tgKutTaymer); return; }
+    try {
+      const d = await apiSorov('/auth/xodim/profil/');
+      if (d.telegram_ulangan) {
+        clearInterval(tgKutTaymer); clearTimeout(tgHavolaTaymer);
+        const b = document.getElementById('tgBotEslatma');
+        if (b) b.innerHTML = '<div style="font-size:14px;color:#166534;font-weight:700">✅ Telegram botga ulandingiz — yangi vazifalar endi Telegram\'da keladi.</div>';
+        if (profil) profil.telegram_ulangan = true;
+        setTimeout(() => { const b2 = document.getElementById('tgBotEslatma'); if (b2) b2.remove(); }, 6000);
+      }
+    } catch (e) { /* tarmoq uzilsa keyingi urinishda */ }
+  }, 4000);
+}
+
+// ═══════ Kadrlar: xodimlar ma'lumotlari (ishga kirgan sana, tabel, sertifikatlar, ish haqi) ═══════
+let kxmRoyxat = [], kxmJoriy = null;
+
+async function kxmYukla(){
+  const holat = document.getElementById('kxmHolat');
+  try {
+    kxmRoyxat = await apiSorov('/kadrlar/xodimlar/');
+    kxmChiz();
+  } catch (e) {
+    holat.textContent = "Yuklab bo'lmadi: " + e.message;
+    holat.style.display = 'block';
+  }
+}
+
+function kxmChiz(){
+  const q = document.getElementById('kxmQidir').value.trim().toLowerCase();
+  const royxat = kxmRoyxat.filter(x => !q || [x.ism, x.telefon, x.lavozim].join(' ').toLowerCase().includes(q));
+  const tana = document.getElementById('kxmTana');
+  tana.innerHTML = '';
+  royxat.forEach(x => {
+    const tr = document.createElement('tr');
+    const m = katak(tr, x.ism, 'matn-keng');
+    { const s = document.createElement('small'); s.textContent = x.telefon; m.appendChild(s); }
+    katak(tr, x.lavozim || '—', 'matn-keng');
+    const ik = document.createElement('td');
+    ik.appendChild(x.ishga_kirgan ? document.createTextNode(sanaFormat(x.ishga_kirgan)) : belgi('Kiritilmagan', 'wait'));
+    tr.appendChild(ik);
+    katak(tr, x.tabel_raqam || '—');
+    const st = document.createElement('td');
+    st.appendChild(x.sertifikat_soni ? document.createTextNode(x.sertifikat_soni + ' ta') : belgi("Yo'q", 'wait'));
+    if (x.sertifikat_ogoh) st.appendChild(belgi('muddati: ' + x.sertifikat_ogoh, 'red')).style.marginLeft = '6px';
+    tr.appendChild(st);
+    const a = document.createElement('td');
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'mini-btn asosiy'; b.textContent = 'Ochish';
+    b.addEventListener('click', () => kxmOch(x.id));
+    a.appendChild(b);
+    tr.appendChild(a);
+    tana.appendChild(tr);
+  });
+  const holat = document.getElementById('kxmHolat');
+  holat.textContent = kxmRoyxat.length ? "Qidiruv bo'yicha xodim topilmadi." : "Faol xodim yo'q.";
+  holat.style.display = royxat.length ? 'none' : 'block';
+}
+
+function kxmXato(matn){
+  const x = document.getElementById('kxmXato');
+  x.textContent = matn || '';
+  x.classList.toggle('show', !!matn);
+}
+
+async function kxmOch(id){
+  try {
+    kxmJoriy = await apiSorov(`/kadrlar/xodimlar/${id}/`);
+  } catch (e) { alert(e.message); return; }
+  kxmXato('');
+  const x = kxmJoriy;
+  document.getElementById('kxmSarlavha').textContent = x.ism;
+  document.getElementById('kxmTafsil').textContent = [x.lavozim, x.telefon].filter(Boolean).join(' · ');
+  document.getElementById('kxmIshga').value = x.ishga_kirgan || '';
+  document.getElementById('kxmTabel').value = x.tabel_raqam || '';
+  ['kxmSNomi', 'kxmSRaqam', 'kxmSBerilgan', 'kxmSAmal'].forEach(i => { document.getElementById(i).value = ''; });
+  kxmKartaChiz();
+  const d = document.getElementById('kxmDialog');
+  if (!d.open) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
+}
+
+function kxmKartaChiz(){
+  const x = kxmJoriy;
+  const sb = document.getElementById('kxmSertlar');
+  sb.innerHTML = x.sertifikatlar.length ? '' : '<p class="smena-matn" style="margin:0;">Sertifikat kiritilmagan.</p>';
+  x.sertifikatlar.forEach(s => {
+    const q = document.createElement('div');
+    q.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--card-border);border-radius:10px;margin-bottom:6px;font-size:13px;';
+    const t = document.createElement('div');
+    t.innerHTML = `<b>${matnEsc(s.nomi)}</b>${s.raqami ? ' · №' + matnEsc(s.raqami) : ''}<br><span style="color:var(--text-muted);font-size:12px">`
+      + (s.berilgan ? 'Berilgan: ' + matnEsc(sanaFormat(s.berilgan)) + ' · ' : '')
+      + (s.amal_qiladi ? 'Amal qiladi: ' + matnEsc(sanaFormat(s.amal_qiladi)) : 'Muddatsiz') + '</span>';
+    if (s.holat === 'tugagan') t.appendChild(belgi('Muddati tugagan', 'red'));
+    else if (s.holat === 'yaqin') t.appendChild(belgi('Tez orada tugaydi', 'kech'));
+    const o = document.createElement('button');
+    o.type = 'button'; o.className = 'mini-btn qizil tor'; o.textContent = "O'chirish";
+    o.addEventListener('click', () => kxmSertOchir(s));
+    q.append(t, o);
+    sb.appendChild(q);
+  });
+}
+
+async function kxmAmal(fn){
+  kxmXato('');
+  try { await fn(); await kxmOch(kxmJoriy.id); kxmYukla(); }
+  catch (e) { kxmXato(e.message); }
+}
+async function kxmSertOchir(s){
+  if (!confirm(`«${s.nomi}» sertifikati o'chirilsinmi?`)) return;
+  await kxmAmal(() => apiSorov(`/kadrlar/sertifikat/${s.id}/`, { method: 'DELETE' }));
+}
+document.getElementById('kxmAsosiySaqla').addEventListener('click', () => kxmAmal(() =>
+  apiSorov(`/kadrlar/xodimlar/${kxmJoriy.id}/`, { method: 'PATCH', body: JSON.stringify({
+    ishga_kirgan: document.getElementById('kxmIshga').value || null,
+    tabel_raqam: document.getElementById('kxmTabel').value,
+  }) })));
+document.getElementById('kxmSQosh').addEventListener('click', () => {
+  if (!document.getElementById('kxmSNomi').value.trim()) { kxmXato('Sertifikat nomini kiriting'); return; }
+  kxmAmal(() => apiSorov(`/kadrlar/xodimlar/${kxmJoriy.id}/sertifikat/`, { method: 'POST', body: JSON.stringify({
+    nomi: document.getElementById('kxmSNomi').value,
+    raqami: document.getElementById('kxmSRaqam').value,
+    berilgan: document.getElementById('kxmSBerilgan').value || null,
+    amal_qiladi: document.getElementById('kxmSAmal').value || null,
+  }) }));
+});
+document.getElementById('kxmYopish').addEventListener('click', () => {
+  const d = document.getElementById('kxmDialog');
+  if (typeof d.close === 'function') d.close(); else d.removeAttribute('open');
+});
+document.getElementById('kxmYangila').addEventListener('click', kxmYukla);
+document.getElementById('kxmQidir').addEventListener('input', kxmChiz);
+
+// ═══════ Metrolog: mijozlar hisoblagichlari va qiyoslov ═══════
+let mhRoyxat = [], mhTanlangan = null, mhQidirTaymer = null;
+
+async function metrHisobYukla(){
+  const holat = document.getElementById('mhHolat');
+  const q = document.getElementById('mhQidir').value.trim();
+  const filtr = document.getElementById('mhFiltr').value;
+  try {
+    const d = await apiSorov('/kabinet/metrolog/hisoblagichlar/?holat=' + encodeURIComponent(filtr)
+      + (q ? '&q=' + encodeURIComponent(q) : ''));
+    mhRoyxat = d.hisoblagichlar;
+    Object.keys(d.xulosa).forEach(k => document.querySelectorAll(`[data-mh="${k}"]`).forEach(e => { e.textContent = d.xulosa[k]; }));
+    const tana = document.getElementById('mhTana');
+    tana.innerHTML = '';
+    mhRoyxat.forEach(h => {
+      const tr = document.createElement('tr');
+      const m = katak(tr, h.mijoz.ism || '—', 'matn-keng');
+      if (h.mijoz.telefon) {
+        const a = document.createElement('a');
+        a.href = 'tel:' + String(h.mijoz.telefon).replace(/[^\d+]/g, '');
+        a.textContent = h.mijoz.telefon;
+        a.style.cssText = 'display:block;font-weight:700;font-size:12.5px;';
+        m.appendChild(a);
+      }
+      const joy = katak(tr, [h.obyekt.tuman, h.obyekt.manzil].filter(Boolean).join(', ') || '—', 'matn-keng');
+      if (h.obyekt.moljal) { const s = document.createElement('small'); s.textContent = "Mo'ljal: " + h.obyekt.moljal; joy.appendChild(s); }
+      const hs = katak(tr, h.seriya_raqam, 'matn-keng');
+      { const s = document.createElement('small'); s.textContent = [h.turi_nomi, h.markasi].filter(Boolean).join(' · ') + (h.holat !== 'faol' ? ' · ' + h.holat_nomi : ''); hs.appendChild(s); }
+      const mt = document.createElement('td');
+      if (!h.keyingi_tekshiruv) mt.appendChild(belgi('Sanasi yo\'q', 'wait'));
+      else {
+        mt.appendChild(belgi(sanaFormat(h.keyingi_tekshiruv),
+          h.muddat_holati === 'otgan' ? 'red' : h.muddat_holati === 'yaqin' ? 'kech' : 'done'));
+        const s = document.createElement('small');
+        s.style.cssText = 'display:block;margin-top:4px;color:var(--text-muted);';
+        s.textContent = h.kun_qoldi < 0 ? `${-h.kun_qoldi} kun o'tgan` : `${h.kun_qoldi} kun qoldi`;
+        mt.appendChild(s);
+      }
+      tr.appendChild(mt);
+      const amal = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'mini-btn yashil'; btn.textContent = 'Qiyoslov kiritish';
+      btn.disabled = KORISH;
+      btn.addEventListener('click', () => mhDialogOch(h));
+      amal.appendChild(btn);
+      tr.appendChild(amal);
+      tana.appendChild(tr);
+    });
+    holat.textContent = mhRoyxat.length ? '' : (d.xulosa.jami ? "Bu filtr bo'yicha hisoblagich yo'q." : "Mijozlar hali hisoblagich kiritmagan.");
+    holat.style.display = mhRoyxat.length ? 'none' : 'block';
+  } catch (e) {
+    holat.textContent = "Yuklab bo'lmadi: " + e.message;
+    holat.style.display = 'block';
+  }
+}
+
+function mhDialogOch(h){
+  mhTanlangan = h;
+  document.getElementById('mhdSarlavha').textContent = 'Qiyoslov: ' + h.seriya_raqam;
+  document.getElementById('mhdTafsil').textContent = [h.mijoz.ism, h.obyekt.tuman, h.obyekt.manzil].filter(Boolean).join(' · ');
+  document.getElementById('mhdSana').value = bugunISO();
+  document.getElementById('mhdSana').max = bugunISO();
+  document.getElementById('mhdNatija').value = 'yaroqli';
+  document.getElementById('mhdKeyingi').value = '';
+  document.getElementById('mhdKeyingiBlok').style.display = 'block';
+  document.getElementById('mhdIzoh').value = '';
+  document.getElementById('mhdXato').classList.remove('show');
+  const d = document.getElementById('mhDialog');
+  if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+}
+function mhDialogYop(){
+  const d = document.getElementById('mhDialog');
+  if (typeof d.close === 'function') d.close(); else d.removeAttribute('open');
+}
+document.getElementById('mhdNatija').addEventListener('change', (e) => {
+  document.getElementById('mhdKeyingiBlok').style.display = e.target.value === 'yaroqli' ? 'block' : 'none';
+});
+document.getElementById('mhdYopish').addEventListener('click', mhDialogYop);
+document.getElementById('mhdSaqlash').addEventListener('click', async (e) => {
+  const btn = e.currentTarget, xato = document.getElementById('mhdXato');
+  xato.classList.remove('show');
+  btn.disabled = true;
+  try {
+    await apiSorov(`/kabinet/metrolog/hisoblagichlar/${mhTanlangan.id}/qiyoslov/`, { method: 'POST', body: JSON.stringify({
+      sana: document.getElementById('mhdSana').value,
+      natija: document.getElementById('mhdNatija').value,
+      keyingi_tekshiruv: document.getElementById('mhdKeyingi').value || null,
+      izoh: document.getElementById('mhdIzoh').value,
+    }) });
+    mhDialogYop();
+    await metrHisobYukla();
+  } catch (err) {
+    xato.textContent = err.message;
+    xato.classList.add('show');
+  } finally {
+    btn.disabled = false;
+  }
+});
+document.getElementById('mhYangila').addEventListener('click', metrHisobYukla);
+document.getElementById('mhFiltr').addEventListener('change', metrHisobYukla);
+document.getElementById('mhQidir').addEventListener('input', () => {
+  clearTimeout(mhQidirTaymer);
+  mhQidirTaymer = setTimeout(metrHisobYukla, 350);
+});
 
 // ═══════ Kadrlar: davomat va kunlik hisobotlar ═══════
 let kunSana = null;          // 'YYYY-MM-DD'; null = bugun (server hal qiladi)
@@ -1760,6 +2228,17 @@ function kunChiz(){
   hisobotJadvalChiz();
 }
 
+// Portaldagi oxirgi faollik: «bugun 09:12», «kecha 18:40», «3 kun oldin», «12.11.2026»
+function faollikMatn(iso){
+  const t = new Date(iso), bugun = new Date();
+  const kun = Math.round((new Date(bugun.toDateString()) - new Date(t.toDateString())) / 86400000);
+  const soat = t.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (kun <= 0) return 'bugun ' + soat;
+  if (kun === 1) return 'kecha ' + soat;
+  if (kun < 7) return kun + ' kun oldin';
+  return t.toLocaleDateString('ru-RU');
+}
+
 function davomatChiz(){
   const tana = document.getElementById('davomatTana'), holat = document.getElementById('davomatHolat');
   const filtr = document.getElementById('davomatFiltr').value;
@@ -1769,6 +2248,12 @@ function davomatChiz(){
     const tr = document.createElement('tr');
     katak(tr, x.ism);
     katak(tr, x.lavozim || '—', 'matn-keng');
+    const pf = document.createElement('td');
+    pf.appendChild(x.oxirgi_faollik ? document.createTextNode(faollikMatn(x.oxirgi_faollik)) : belgi('Hech kirmagan', 'red'));
+    tr.appendChild(pf);
+    const tg = document.createElement('td');
+    tg.appendChild(x.telegram ? belgi('Ulangan', 'done') : belgi('Ulanmagan', 'red'));
+    tr.appendChild(tg);
     const h = document.createElement('td');
     h.className = 'matn-keng';
     h.appendChild(x.holat === 'ishda' ? belgi('Smenada', 'progress')
@@ -1886,6 +2371,24 @@ document.querySelectorAll('.kun-sana').forEach(i => i.addEventListener('change',
 }));
 document.querySelectorAll('[data-kun-yangila]').forEach(b => b.addEventListener('click', kunYukla));
 document.getElementById('davomatFiltr').addEventListener('change', () => { if (kunMalumot) davomatChiz(); });
+
+document.getElementById('botEslatmaBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget, xabar = document.getElementById('botEslatmaXabar');
+  btn.disabled = true;
+  xabar.classList.add('show');
+  try {
+    const j = await apiSorov('/kadrlar/bot-eslatma/', { method: 'POST' });
+    xabar.style.color = 'var(--green)';
+    xabar.textContent = j.yuborildi
+      ? `${j.yuborildi} nafar xodimga kabinetida eslatma yuborildi.`
+      : "Hamma xodim Telegram botga ulangan.";
+  } catch (xato) {
+    xabar.style.color = '';
+    xabar.textContent = xato.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 document.getElementById('eslatmaBtn').addEventListener('click', async (e) => {
   const btn = e.currentTarget, xabar = document.getElementById('eslatmaXabar');
@@ -2050,15 +2553,40 @@ function hisobotBelgiChiz(h){
   b.textContent = h ? 'Topshirildi' : 'Topshirilmagan';
   document.getElementById('hisobotBtn').textContent = h ? 'Hisobotni yangilash' : 'Hisobotni saqlash';
 }
+let hisobotBor = null;                 // null — hali yuklanmagan; true/false — bugungi hisobot bormi
+let hisobotAvto = { joy: '', ish: '' }; // oxirgi avtomatik taklif (xodim o'zgartirsa ustidan yozilmaydi)
+
 async function hisobotYukla(){
   try {
     const j = await apiSorov('/kadrlar/hisobot/');
+    hisobotBor = !!j.hisobot;
     if (j.hisobot) {
       document.getElementById('hisobotJoy').value = j.hisobot.joy;
       document.getElementById('hisobotIsh').value = j.hisobot.ish;
     }
     hisobotBelgiChiz(j.hisobot);
+    hisobotTaklif();
   } catch (e) { /* karta bo'sh holda qoladi — saqlash baribir ishlaydi */ }
+}
+
+// Hisobot topshirilmagan bo'lsa — bugun ishlangan buyurtmalardan avtomatik taklif (xodim tekshirib saqlaydi)
+function hisobotTaklif(){
+  if (hisobotBor !== false) return;
+  const joyEl = document.getElementById('hisobotJoy'), ishEl = document.getElementById('hisobotIsh');
+  if (!joyEl || (joyEl.value && joyEl.value !== hisobotAvto.joy) || (ishEl.value && ishEl.value !== hisobotAvto.ish)) return;
+  const bugun = new Date().toDateString();
+  const ishlar = (vazifalar || []).filter(b => b.yangilangan && new Date(b.yangilangan).toDateString() === bugun
+    && ['qabul', 'yolda', 'bajarilmoqda', 'tolov_kutilmoqda', 'bajarildi'].includes(b.holat));
+  const izoh = document.getElementById('hisobotAvtoIzoh');
+  if (!ishlar.length) { if (izoh) izoh.style.display = 'none'; return; }
+  const joylar = [...new Set(ishlar.map(b => [b.tuman, b.manzil].filter(Boolean).join(', ')).filter(Boolean))];
+  hisobotAvto = {
+    joy: joylar.join('; ').slice(0, 200),
+    ish: ishlar.map(b => `#${b.id} ${b.xizmat_nomi || b.xizmat} — ${HOLAT_MATN[b.holat] || b.holat}`).join('; ').slice(0, 500),
+  };
+  joyEl.value = hisobotAvto.joy;
+  ishEl.value = hisobotAvto.ish;
+  if (izoh) izoh.style.display = 'block';
 }
 document.getElementById('hisobotBtn').addEventListener('click', async (e) => {
   const btn = e.currentTarget, xato = document.getElementById('hisobotXato');
@@ -2073,6 +2601,9 @@ document.getElementById('hisobotBtn').addEventListener('click', async (e) => {
       })
     });
     hisobotBelgiChiz(j.hisobot);
+    hisobotBor = true;
+    const izoh = document.getElementById('hisobotAvtoIzoh');
+    if (izoh) izoh.style.display = 'none';
   } catch (x) {
     xato.textContent = x.message;
     xato.classList.add('show');
@@ -2237,6 +2768,12 @@ function arizalarChiz(){
     const tel = document.createElement('small'); tel.textContent = a.mijoz_telefon; m.appendChild(tel);
     const x = katak(tr, a.xizmat_nomi, 'matn-keng');
     { const s = document.createElement('small'); s.textContent = a.tarmoq === 'ulgurji' ? 'Tashkilot (ulgurji)' : 'Aholi'; x.appendChild(s); }
+    if (a.tanlangan) { const s = document.createElement('small'); s.style.color = '#0f766e';
+      s.textContent = a.tanlangan.royxat.map(t => t.nomi + (t.soni > 1 ? ' ×' + t.soni : '')).join('; ') + ' — ' + narxOraliq(a.tanlangan.jami_dan, a.tanlangan.jami_gacha); x.appendChild(s); }
+    if (a.promokod) { const s = document.createElement('small'); s.style.cssText = 'color:#92400e;font-weight:700';
+      s.textContent = `🎟 Promokod ${a.promokod} (−${a.chegirma_foiz}%)`; x.appendChild(s); }
+    if (a.tolov_usuli) { const s = document.createElement('small'); s.style.fontWeight = '700';
+      s.textContent = a.tolov_usuli === 'naqd' ? '💵 Naqd (usta kelganda)' : "🏦 Hisob raqamga o'tkazma"; x.appendChild(s); }
     const man = katak(tr, a.manzil || '—', 'matn-keng');
     if (a.tuman) { const s = document.createElement('small'); s.textContent = a.tuman; man.appendChild(s); }
     if (a.tavsif) { const s = document.createElement('small'); s.textContent = a.tavsif; man.appendChild(s); }
@@ -2246,6 +2783,8 @@ function arizalarChiz(){
     h.appendChild(a.holat === 'bajarildi' ? belgi('Bajarildi', 'done')
       : a.holat === 'bekor' ? belgi('Bekor qilindi', 'plan')
       : a.holat === 'bajarilmoqda' ? belgi('Jarayonda', 'progress')
+      : a.holat === 'tolov_kutilmoqda' ? belgi("Ish bajarildi — to'lov kutilmoqda", 'kech')
+      : a.holat === 'yolda' ? belgi("Xodim yo'lda", 'progress')
       : a.holat === 'qabul' ? belgi('Xodim qabul qildi', 'progress')
       : a.xodim_id ? belgi('Xodimga berilgan', 'wait') : belgi("Xodimi yo'q", 'red'));
     if (a.kechikkan) h.appendChild(belgi('Kechikkan', 'kech'));
@@ -2742,7 +3281,7 @@ async function ishHolatiniOzgartir(holat){
 }
 
 async function hujjatYubor(h, btn){
-  if (!confirm(`«${h.nom}» hujjati mijozga yuborilsinmi? Mijoz kabinetida ko'rinadi va unga SMS boradi.`)) return;
+  if (!confirm(`«${h.nom}» hujjati mijozga yuborilsinmi? Mijoz kabinetida ko'rinadi va unga Telegram'da xabar boradi.`)) return;
   ishXabar('');
   btn.disabled = true;
   try {
@@ -2853,7 +3392,7 @@ async function hyYukla(){
 }
 
 async function hyYubor(h, btn){
-  if (!confirm(`«${h.nom}» hujjati ${h.mijoz_ism || 'mijoz'}ga (${h.mijoz_telefon || '—'}) yuborilsinmi? Mijoz kabinetida ko'rinadi va unga SMS boradi.`)) return;
+  if (!confirm(`«${h.nom}» hujjati ${h.mijoz_ism || 'mijoz'}ga (${h.mijoz_telefon || '—'}) yuborilsinmi? Mijoz kabinetida ko'rinadi va unga Telegram'da xabar boradi.`)) return;
   hyXabar('');
   btn.disabled = true;
   try {
@@ -3250,6 +3789,9 @@ function showPage(key){
   closeSidebar();
   if (key === 'op-arizalar' && typeof opXaritaTayyor === 'function') opXaritaTayyor();
   if (key === 'topshiriq' && typeof tsYukla === 'function') tsYukla();
+  if (key === 'bank-chek' && window.BankCheklar) BankCheklar.yukla();
+  if (key === 'metr-hisob') metrHisobYukla();
+  if (key === 'kadr-xodimlar') kxmYukla();
 }
 
 // ═══════ Mobil yon panel ═══════

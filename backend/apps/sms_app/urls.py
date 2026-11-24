@@ -5,4 +5,5 @@ urlpatterns = [
     path('', views.sms_list),
     path('yuborish/', views.sms_yuborish),
     path('oqildi/', views.sms_oqildi),
+    path('telegram/webhook/', views.telegram_webhook),
 ]

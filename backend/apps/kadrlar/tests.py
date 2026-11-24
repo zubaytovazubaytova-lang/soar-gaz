@@ -79,7 +79,11 @@ class KabinetTuriTestlari(TestCase):
 
     def test_nargiza_oddiy_xodim_kabineti_ustiga_vazifa(self):
         # «topshiriq» — ichki topshiriqlar (Kadrlar, call center va hujjatchida bor, oddiy xodimda yo'q)
-        self.assertEqual(set(BOLIMLAR['qongiroq']), set(BOLIMLAR['oddiy']) | {'op-arizalar', 'op-qongiroq', 'topshiriq'})
+        # Operatorga buyurtma biriktirilmaydi, u pul olmaydi: «Vazifalarim», «Ish tarixi», «Pul tushumi»,
+        # «Hujjatlarim» yo'q; «Narxnoma» bor (mijozga narx aytadi)
+        self.assertEqual(set(BOLIMLAR['qongiroq']), (set(BOLIMLAR['oddiy']) | {'op-arizalar', 'op-qongiroq', 'topshiriq'})
+                         - {'tasks', 'history', 'cash', 'docs'})
+        self.assertIn('price', BOLIMLAR['qongiroq'])
         self.assertNotIn('topshiriq', BOLIMLAR['oddiy'])
         for tur in ('kadrlar', 'qongiroq', 'hujjat'):
             self.assertIn('topshiriq', BOLIMLAR[tur])
@@ -92,7 +96,8 @@ class KabinetTuriTestlari(TestCase):
     def test_arizalarni_qabul_qiluvchilarga_vazifa_berilmaydi(self):
         from apps.auth_app.kabinet_turlari import vazifa_olishi_mumkin
         self.assertTrue(vazifa_olishi_mumkin('Montaj ustasi'))
-        self.assertTrue(vazifa_olishi_mumkin("Mehnat muhofazasi va texnika xavfsizligi bo'yicha muhandis"))
+        # Mehnat muhofazasi muhandisi joyga chiqib usta ishini qilmaydi (hujjatlar bilan ishlaydi)
+        self.assertFalse(vazifa_olishi_mumkin("Mehnat muhofazasi va texnika xavfsizligi bo'yicha muhandis"))
         self.assertFalse(vazifa_olishi_mumkin("Kadrlar bo'yicha mutaxassis"))
         self.assertFalse(vazifa_olishi_mumkin('Call center operatori'))
 

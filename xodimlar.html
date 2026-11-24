@@ -285,6 +285,8 @@
   body.kabinet-kadrlar .smena-blok,body.kabinet-kadrlar .hisobot-karta{display:none;}
   /* Buyurtma vazifalari bloki: Kadrlar kabinetida yo'q */
   body.kabinet-kadrlar .vazifa-blok{display:none !important;}
+  /* Operator (Nargiza) va hujjatchi (Ferangiz): buyurtma biriktirilmaydi — vazifa statistikasi va «Bugungi vazifalar» yo'q */
+  body.kabinet-qongiroq .vazifa-blok,body.kabinet-hujjat .vazifa-blok{display:none !important;}
   .op-blok{display:none;}
   body.kabinet-qongiroq .op-blok,body.kabinet-kadrlar .op-blok{display:block;}
   .sb-son{margin-left:auto;background:#dc2626;color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:2px 8px;min-width:22px;text-align:center;}
@@ -399,7 +401,8 @@
     .status-pill{margin-left:0;}
     /* Vazifa qatori telefonda ustma-ust joylashadi */
     .task-row{flex-wrap:wrap;}
-    .task-amal{width:100%;justify-content:flex-end;}
+    /* Telefonda tugmalar bir qatorga sig'masa keyingi qatorga o'tadi (aks holda chap chetdan kesilardi) */
+    .task-amal{width:100%;justify-content:flex-end;flex-wrap:wrap;}
     .mini-btn,.btn-save,.sb-item{min-height:40px;}
     /* Jadval o'z o'lchamida qoladi, ekranga sig'masa o'z ichida yonga suriladi:
        ustunlar siqilib, so'zlar harf-harf bo'linib ketmasin */
@@ -415,6 +418,40 @@
       .content{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));}
     }
   }
+
+  /* ---------- Ish tarixi: bosqichlar ustun-tugmalar va alohida oyna ---------- */
+  .bq-ustunlar{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:14px;margin-top:6px;}
+  .bq-ustun{--rang:#2563eb;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;
+    min-height:168px;padding:20px 10px 16px;border-radius:16px;cursor:pointer;font-family:inherit;text-align:center;overflow:hidden;
+    background:linear-gradient(180deg,#ffffff 0%,#f4f7fb 100%);
+    border:1px solid rgba(15,27,45,.14);border-bottom:3px solid color-mix(in srgb,var(--rang) 55%,#0f1b2d);
+    box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 rgba(15,27,45,.04),0 1px 2px rgba(15,27,45,.08),0 6px 16px rgba(15,27,45,.08);
+    transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;}
+  .bq-ustun::before{content:"";position:absolute;inset:0 0 auto 0;height:6px;background:linear-gradient(90deg,var(--rang),color-mix(in srgb,var(--rang) 65%,#fff));}
+  .bq-ustun:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--rang) 45%,transparent);
+    box-shadow:inset 0 1px 0 #fff,0 2px 4px rgba(15,27,45,.08),0 14px 28px color-mix(in srgb,var(--rang) 22%,transparent);}
+  .bq-ustun:active{transform:translateY(1px);border-bottom-width:1px;margin-top:2px;
+    box-shadow:inset 0 2px 6px rgba(15,27,45,.12),0 1px 2px rgba(15,27,45,.06);}
+  .bq-ustun:focus-visible{outline:3px solid color-mix(in srgb,var(--rang) 45%,#fff);outline-offset:2px;}
+  .bq-ustun .bq-belgi{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;
+    background:color-mix(in srgb,var(--rang) 12%,#fff);border:1px solid color-mix(in srgb,var(--rang) 30%,transparent);
+    box-shadow:inset 0 2px 4px rgba(255,255,255,.9),0 2px 6px color-mix(in srgb,var(--rang) 20%,transparent);}
+  .bq-ustun .bq-son{font-size:30px;font-weight:800;line-height:1;color:var(--rang);text-shadow:0 1px 0 #fff;}
+  .bq-ustun .bq-nomi{font-size:13px;font-weight:700;color:var(--text-primary);line-height:1.25;}
+  .bq-ustun .bq-ochish{margin-top:auto;font-size:11.5px;color:var(--text-muted);}
+  .bq-ustun.bosh{opacity:.62;}
+  .bq-oyna-fon{display:none;position:fixed;inset:0;z-index:80;background:rgba(15,27,45,.5);padding:18px;overflow-y:auto;}
+  .bq-oyna-fon.ochiq{display:flex;align-items:flex-start;justify-content:center;}
+  .bq-oyna{width:100%;max-width:760px;margin:auto;background:#fff;border-radius:18px;overflow:hidden;
+    border:1px solid rgba(15,27,45,.12);box-shadow:0 24px 60px rgba(15,27,45,.35);}
+  .bq-oyna-bosh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;color:#fff;
+    background:linear-gradient(135deg,var(--rang,#2563eb),color-mix(in srgb,var(--rang,#2563eb) 70%,#0f1b2d));}
+  .bq-oyna-bosh h3{margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;}
+  .bq-oyna-yop{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;width:34px;height:34px;border-radius:10px;font-size:20px;cursor:pointer;line-height:1;}
+  .bq-oyna-tana{padding:12px 16px 18px;max-height:70vh;overflow-y:auto;}
+  .bq-oyna-tana .bq-tafsilot{font-size:12.5px;color:var(--text-secondary);margin:-4px 0 10px 4px;line-height:1.5;}
+  @media (max-width:560px){ .bq-ustunlar{grid-template-columns:repeat(2,1fr);gap:10px;} .bq-ustun{min-height:140px;padding:16px 8px 12px;}
+    .bq-ustun .bq-son{font-size:26px;} .bq-oyna-fon{padding:8px;} }
 </style>
 </head>
 <body>
@@ -426,12 +463,12 @@
     <p class="f-hint" id="aloqaIzoh" style="margin:0 0 14px;">Bu ma'lumot hujjatda chiqadi.</p>
     <label class="f-label" for="aloqaIsm">Mijoz ismi *</label>
     <input class="f-input" id="aloqaIsm" maxlength="120" required>
-    <label class="f-label" for="aloqaTel">Telefon raqami * (SMS shu raqamga boradi)</label>
+    <label class="f-label" for="aloqaTel">Telefon raqami * (xabar shu raqamga Telegram orqali boradi)</label>
     <input class="f-input" id="aloqaTel" type="tel" inputmode="tel" placeholder="+998 90 123 45 67" required>
     <label class="f-label" for="aloqaManzil">Turar joyi (manzil) *</label>
     <input class="f-input" id="aloqaManzil" maxlength="300" required>
     <label class="eslab-qol" id="aloqaSmsQator" style="margin-bottom:6px;">
-      <input type="checkbox" id="aloqaSms" checked><span>Mijozga SMS yuborilsin (kvitansiya raqami va havolasi)</span>
+      <input type="checkbox" id="aloqaSms" checked><span>Mijozga xabar yuborilsin — Telegram (kvitansiya raqami va havolasi)</span>
     </label>
     <p class="smena-xato" id="aloqaXato"></p>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
@@ -507,11 +544,14 @@
         <button class="sb-item" data-page="topshiriq" hidden><i class="ti ti-checklist"></i>Topshiriqlar <span id="tsNavSoni" class="tag red" style="display:none;margin-left:6px;"></span></button>
         <button class="sb-item" data-page="kadr-davomat" hidden><i class="ti ti-calendar-check"></i>Davomat</button>
         <button class="sb-item" data-page="kadr-hisobot" hidden><i class="ti ti-clipboard-check"></i>Kunlik hisobotlar</button>
+        <button class="sb-item" data-page="bank-chek" hidden><i class="ti ti-receipt-2"></i>Bank to'lovlari<span class="sb-son" id="bankChekBelgi" hidden></span></button>
         <button class="sb-item" data-page="kadr-tushum" hidden><i class="ti ti-report-money"></i>Tushumlarni qabul qilish<span class="sb-son" id="ktBelgi" hidden></span></button>
         <button class="sb-item" data-page="op-arizalar" hidden><i class="ti ti-phone-call"></i>Arizalar</button>
         <button class="sb-item" data-page="op-qongiroq" hidden><i class="ti ti-headset"></i>Chiquvchi qo'ng'iroqlar</button>
+        <button class="sb-item" data-page="kadr-xodimlar" hidden><i class="ti ti-address-book"></i>Xodimlar ma'lumotlari</button>
         <button class="sb-item" data-page="kadr-hujjat" hidden><i class="ti ti-file-text"></i>Xodimlar hujjatlari</button>
         <button class="sb-item" data-page="tasks"><i class="ti ti-clipboard-list"></i>Vazifalarim</button>
+        <button class="sb-item" data-page="metr-hisob" hidden><i class="ti ti-gauge"></i>Hisoblagichlar</button>
         <button class="sb-item" data-page="history"><i class="ti ti-history"></i>Ish tarixi</button>
         <button class="sb-item" data-page="certs"><i class="ti ti-certificate"></i>Sertifikatlarim</button>
         <button class="sb-item" data-page="cash"><i class="ti ti-cash"></i>Pul tushumi</button>
@@ -539,8 +579,8 @@
           </div>
 
           <div class="profile-chip" id="profileChip">
-            <div class="avatar" data-bosh-harf>AK</div>
-            <div><p class="pname" data-toliq-ism>Aziz Karimov</p><p class="prole" data-lavozim>Katta montaj ustasi</p></div>
+            <div class="avatar" data-bosh-harf></div>
+            <div><p class="pname" data-toliq-ism>…</p><p class="prole" data-lavozim></p></div>
             <i class="ti ti-chevron-down" style="color:var(--text-muted);font-size:14px;"></i>
           </div>
           <div class="dropdown" id="profileDropdown" style="right:0;">
@@ -558,10 +598,10 @@
         <div class="page active" id="page-overview">
           <div class="card">
             <div class="profile-hero">
-              <div class="avatar lg" data-bosh-harf>AK</div>
+              <div class="avatar lg" data-bosh-harf></div>
               <div class="info" style="flex:1;">
-                <h2 data-toliq-ism>Aziz Karimov</h2>
-                <p class="role"><span data-lavozim>Katta montaj ustasi</span> · <span id="bolimNomi">Montaj xizmati bo'limi</span></p>
+                <h2 data-toliq-ism>Yuklanmoqda…</h2>
+                <p class="role"><span data-lavozim></span> · <span id="bolimNomi"></span></p>
                 <div class="meta-row">
                   <span><i class="ti ti-map-pin"></i><span data-filial>—</span></span>
                   <span><i class="ti ti-calendar"></i>Ish boshlagan: <span data-ishga-kirgan>—</span></span>
@@ -621,6 +661,7 @@
             <input class="f-input" id="hisobotJoy" type="text" maxlength="200" placeholder="Masalan: Kogon, Navoiy ko'chasi 5-uy">
             <label class="f-label" for="hisobotIsh">Qanday ish qildingiz? *</label>
             <textarea class="f-input" id="hisobotIsh" maxlength="500" rows="3" placeholder="Masalan: hisoblagich o'rnatildi, gaz quvuri tekshirildi"></textarea>
+            <p class="f-hint" id="hisobotAvtoIzoh" style="display:none;margin:-6px 0 12px;color:#0f766e;"><i class="ti ti-sparkles"></i> Bugungi vazifalaringizdan avtomatik to'ldirildi — tekshiring, kerak bo'lsa o'zgartiring va saqlang.</p>
             <button class="btn-save" type="button" id="hisobotBtn">Hisobotni saqlash</button>
             <p class="smena-xato" id="hisobotXato"></p>
           </div>
@@ -667,18 +708,74 @@
         </div>
 
         <!-- ---------- HISTORY ---------- -->
+        <!-- ---------- METROLOG: hisoblagichlar va qiyoslov ---------- -->
+        <div class="page" id="page-metr-hisob">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-gauge"></i>Mijozlar hisoblagichlari</h3>
+              <button class="mini-btn asosiy" type="button" id="mhYangila"><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Davlat tekshiruvi (qiyoslov) muddati o'tgan va yaqinlashgan hisoblagichlar. Qiyoslov o'tkazgach natijani kiriting — mijozning kabinetiga xabar boradi.</p>
+            <div class="stat-grid" style="margin-top:0;margin-bottom:16px;">
+              <div class="stat-box"><p class="n" data-mh="otgan">—</p><p class="l">Muddati o'tgan</p></div>
+              <div class="stat-box"><p class="n" data-mh="yaqin">—</p><p class="l">30 kun ichida</p></div>
+              <div class="stat-box"><p class="n" data-mh="nomalum">—</p><p class="l">Sanasi kiritilmagan</p></div>
+              <div class="stat-box"><p class="n" data-mh="jami">—</p><p class="l">Jami hisoblagich</p></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+              <select class="f-select" id="mhFiltr" style="margin:0;max-width:260px;" aria-label="Filtr">
+                <option value="muddatli">Muddati o'tgan va yaqin</option>
+                <option value="otgan">Faqat muddati o'tgan</option>
+                <option value="yaqin">30 kun ichida</option>
+                <option value="nomalum">Sanasi kiritilmagan</option>
+                <option value="hammasi">Hammasi</option>
+              </select>
+              <input class="f-input" id="mhQidir" type="search" placeholder="Seriya, mijoz, telefon yoki manzil..." style="margin:0;flex:1;min-width:200px;">
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Mijoz</th><th>Manzil</th><th>Hisoblagich</th><th>Keyingi tekshiruv</th><th></th></tr></thead>
+                <tbody id="mhTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="mhHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+        <dialog class="aloqa-dialog" id="mhDialog">
+          <h3 id="mhdSarlavha">Qiyoslov natijasi</h3>
+          <p class="smena-matn" id="mhdTafsil" style="margin:0 0 10px;"></p>
+          <label class="f-label" for="mhdSana">Qiyoslov sanasi *</label>
+          <input class="f-input" id="mhdSana" type="date">
+          <label class="f-label" for="mhdNatija">Natija *</label>
+          <select class="f-select" id="mhdNatija">
+            <option value="yaroqli">Yaroqli — qiyoslovdan o'tdi</option>
+            <option value="yaroqsiz">Yaroqsiz — almashtirish kerak</option>
+          </select>
+          <div id="mhdKeyingiBlok">
+            <label class="f-label" for="mhdKeyingi">Keyingi tekshiruv sanasi *</label>
+            <input class="f-input" id="mhdKeyingi" type="date">
+          </div>
+          <label class="f-label" for="mhdIzoh">Izoh (ixtiyoriy)</label>
+          <input class="f-input" id="mhdIzoh" type="text" maxlength="255" placeholder="Masalan: plomba yangilandi">
+          <p class="smena-xato" id="mhdXato"></p>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button class="mini-btn" type="button" id="mhdYopish" style="background:var(--bg-bottom);">Bekor</button>
+            <button class="mini-btn yashil" type="button" id="mhdSaqlash">Saqlash</button>
+          </div>
+        </dialog>
         <div class="page" id="page-history">
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-history"></i>Ish tarixi <span id="tarixSoni" style="color:var(--text-muted);font-weight:600;"></span></h3></div>
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr><th>Sana</th><th>Xizmat</th><th>Manzil</th><th>Soat</th><th>Material</th><th>Holat</th></tr>
-                </thead>
-                <tbody id="tarixTana"></tbody>
-              </table>
-            </div>
+            <p class="smena-matn" style="margin-top:-4px">Bosqichni bosing — shu bosqichdagi ishlar alohida oynada ochiladi.</p>
+            <div class="bq-ustunlar" id="bosqichUstunlar"></div>
             <p class="bosh-holat" id="tarixHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+
+        <!-- Ish tarixi: tanlangan bosqichdagi ishlar oynasi -->
+        <div class="bq-oyna-fon" id="bqOynaFon">
+          <div class="bq-oyna" role="dialog" aria-modal="true" aria-labelledby="bqOynaSarlavha">
+            <div class="bq-oyna-bosh"><h3 id="bqOynaSarlavha"></h3>
+              <button type="button" class="bq-oyna-yop" id="bqOynaYop" aria-label="Yopish">&times;</button></div>
+            <div class="bq-oyna-tana" id="bqOynaTana"></div>
           </div>
         </div>
 
@@ -738,10 +835,10 @@
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-receipt"></i>Kvitansiyalarim</h3>
               <button class="mini-btn asosiy" id="hujjatYangila" type="button"><i class="ti ti-refresh"></i> Yangilash</button></div>
-            <p class="smena-matn">Mijozdan pul olgach, "Pul tushumi" bo'limida kvitansiya chiqariladi: mijozning telefoni va turar joyi unda yoziladi, mijozga SMS boradi.</p>
+            <p class="smena-matn">Mijozdan pul olgach, "Pul tushumi" bo'limida kvitansiya chiqariladi: mijozning telefoni va turar joyi unda yoziladi, mijozga Telegram'da xabar boradi.</p>
             <div class="table-wrap">
               <table class="data-table keng">
-                <thead><tr><th>Raqam</th><th>Sana</th><th>Mijoz</th><th>Telefon</th><th>Turar joyi</th><th>Summa</th><th>SMS</th><th></th></tr></thead>
+                <thead><tr><th>Raqam</th><th>Sana</th><th>Mijoz</th><th>Telefon</th><th>Turar joyi</th><th>Summa</th><th>Xabar</th><th></th></tr></thead>
                 <tbody id="kvTana"></tbody>
               </table>
             </div>
@@ -842,10 +939,16 @@
               <div class="stat-box"><p class="n" data-kx="keldi">—</p><p class="l">Ishga kelgan</p></div>
               <div class="stat-box"><p class="n" data-kx="ishda">—</p><p class="l">Hozir smenada</p></div>
               <div class="stat-box"><p class="n" data-kx="kelmadi">—</p><p class="l">Kelmagan</p></div>
+              <div class="stat-box"><p class="n" data-kx="portalsiz">—</p><p class="l">Portalga hech kirmagan</p></div>
+              <div class="stat-box"><p class="n" data-kx="botsiz">—</p><p class="l">Telegram botga ulanmagan</p></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-6px 0 16px;">
+              <button class="mini-btn yashil" type="button" id="botEslatmaBtn"><i class="ti ti-brand-telegram"></i> Botga ulanmaganlarga eslatma</button>
+              <span class="smena-xato" id="botEslatmaXabar" style="margin:0;"></span>
             </div>
             <div class="table-wrap">
               <table class="data-table">
-                <thead><tr><th>Xodim</th><th>Lavozim</th><th>Holat</th><th>Vaqti</th><th>Belgilash</th></tr></thead>
+                <thead><tr><th>Xodim</th><th>Lavozim</th><th>Portalda oxirgi</th><th>Telegram</th><th>Holat</th><th>Vaqti</th><th>Belgilash</th></tr></thead>
                 <tbody id="davomatTana"></tbody>
               </table>
             </div>
@@ -907,6 +1010,45 @@
         </div>
 
         <!-- ---------- KADRLAR: XODIMLAR HUJJATLARI ---------- -->
+        <!-- ---------- KADRLAR: xodimlar ma'lumotlari ---------- -->
+        <div class="page" id="page-kadr-xodimlar">
+          <div class="card">
+            <div class="card-head"><h3><i class="ti ti-address-book"></i>Xodimlar ma'lumotlari</h3>
+              <button class="mini-btn asosiy" type="button" id="kxmYangila"><i class="ti ti-refresh"></i> Yangilash</button></div>
+            <p class="smena-matn">Ishga kirgan sana, tabel raqami va sertifikatlarni shu yerda kiriting. Xodim ularni o'z kabinetida ko'radi.</p>
+            <input class="f-input" id="kxmQidir" type="search" placeholder="Ism, telefon yoki lavozim bo'yicha qidirish..." style="margin-bottom:14px;">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Xodim</th><th>Lavozim</th><th>Ishga kirgan</th><th>Tabel</th><th>Sertifikat</th><th></th></tr></thead>
+                <tbody id="kxmTana"></tbody>
+              </table>
+            </div>
+            <p class="bosh-holat" id="kxmHolat">Yuklanmoqda...</p>
+          </div>
+        </div>
+        <dialog class="aloqa-dialog" id="kxmDialog" style="max-width:640px;width:calc(100% - 32px);">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <h3 id="kxmSarlavha" style="margin:0;">Xodim</h3>
+            <button class="mini-btn" type="button" id="kxmYopish" style="background:var(--bg-bottom);">Yopish</button>
+          </div>
+          <p class="smena-matn" id="kxmTafsil" style="margin:4px 0 14px;"></p>
+          <h4 style="margin:0 0 8px;font-size:14px;">Asosiy ma'lumot</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div><label class="f-label" for="kxmIshga">Ishga kirgan sana</label><input class="f-input" id="kxmIshga" type="date"></div>
+            <div><label class="f-label" for="kxmTabel">Tabel raqami</label><input class="f-input" id="kxmTabel" type="text" maxlength="20"></div>
+          </div>
+          <button class="mini-btn asosiy" type="button" id="kxmAsosiySaqla">Saqlash</button>
+          <h4 style="margin:18px 0 8px;font-size:14px;">Sertifikatlar</h4>
+          <div id="kxmSertlar"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
+            <div style="grid-column:1/-1"><label class="f-label" for="kxmSNomi">Sertifikat nomi *</label><input class="f-input" id="kxmSNomi" type="text" maxlength="200" placeholder="Masalan: Gaz xo'jaligi xavfsizligi attestatsiyasi"></div>
+            <div><label class="f-label" for="kxmSRaqam">Raqami</label><input class="f-input" id="kxmSRaqam" type="text" maxlength="60"></div>
+            <div><label class="f-label" for="kxmSBerilgan">Berilgan sana</label><input class="f-input" id="kxmSBerilgan" type="date"></div>
+            <div><label class="f-label" for="kxmSAmal">Amal qiladi (gacha)</label><input class="f-input" id="kxmSAmal" type="date"></div>
+          </div>
+          <button class="mini-btn yashil" type="button" id="kxmSQosh"><i class="ti ti-plus"></i> Sertifikat qo'shish</button>
+          <p class="smena-xato" id="kxmXato" style="margin-top:10px;"></p>
+        </dialog>
         <div class="page" id="page-kadr-hujjat">
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-file-text"></i>Hujjatlar holati <span id="hujjatSoni" style="color:var(--text-muted);font-weight:600;"></span></h3>
@@ -956,6 +1098,24 @@
         </div>
 
         <!-- ---------- KADRLAR: XODIMLARDAN PUL QABUL QILISH ---------- -->
+        <div class="page" id="page-bank-chek">
+          <div class="card">
+          <p class="page-title">Bank to'lovlari (cheklar)</p>
+          <p class="page-sub">Mijozlar hisob raqamga o'tkazib, chek skrinshotini yuklagan to'lovlar</p>
+          <div class="ogoh" style="color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;">
+            <span>⚠️ Skrinshotni soxtalashtirish oson. <b>Bank ilovasida yoki ko'chirmada pul haqiqatan tushganini ko'rib</b>, keyin "Tasdiqlash"ni bosing. Tasdiq qaytarilmaydi.</span>
+          </div>
+          <div class="bc-filtrlar">
+            <button type="button" class="bc-filtr active" data-holat="tekshirilmoqda">Tekshirilmoqda</button>
+            <button type="button" class="bc-filtr" data-holat="tasdiqlandi">Tasdiqlangan</button>
+            <button type="button" class="bc-filtr" data-holat="rad">Rad etilgan</button>
+            <button type="button" class="bc-filtr" data-holat="">Hammasi</button>
+            <button type="button" class="bc-filtr" data-holat="click">Click to'lovlari</button>
+          </div>
+          <div id="bankChekPanel"><p class="bc-bosh-holat">Yuklanmoqda...</p></div>
+          </div>
+        </div>
+
         <div class="page" id="page-kadr-tushum">
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-report-money"></i>Xodimlardan pul qabul qilish</h3>
@@ -1071,7 +1231,7 @@
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-file-plus"></i>Mijozlardan kelgan hujjatlar va ishlar</h3>
               <button class="mini-btn asosiy" type="button" data-ish-yangila><i class="ti ti-refresh"></i> Yangilash</button></div>
-            <p class="smena-matn">Saytdan kelgan <b>metrologiya arizalari</b> va mijozlarning <b>loyihalashtirish / metrologiya buyurtmalari</b>. Ishni qabul qiling, hujjatini tayyorlab yuklang va tayyor hujjatni mijozga yuboring: u mijozning kabinetidagi «Hujjatlar»ga tushadi va SMS boradi.</p>
+            <p class="smena-matn">Saytdan kelgan <b>metrologiya arizalari</b> va mijozlarning <b>loyihalashtirish / metrologiya buyurtmalari</b>. Ishni qabul qiling, hujjatini tayyorlab yuklang va tayyor hujjatni mijozga yuboring: u mijozning kabinetidagi «Hujjatlar»ga tushadi va unga Telegram'da xabar boradi.</p>
             <div class="stat-grid" style="margin-top:0;">
               <div class="stat-box"><p class="n" data-hx="yangi">—</p><p class="l">Yangi (qabul qilinmagan)</p></div>
               <div class="stat-box"><p class="n" data-hx="qabul">—</p><p class="l">Qabul qilingan, hujjat tayyorlanadi</p></div>
@@ -1111,7 +1271,7 @@
           <div class="card">
             <div class="card-head"><h3><i class="ti ti-send"></i>Tayyor hujjatlarni mijozga yuborish</h3>
               <button class="mini-btn asosiy" type="button" data-hy-yangila><i class="ti ti-refresh"></i> Yangilash</button></div>
-            <p class="smena-matn">Tayyorlab yuklangan hujjatlar shu yerda turadi. «Mijozga yuborish» bosilgach hujjat mijozning kabinetidagi «Hujjatlar»ga tushadi va unga SMS boradi. Yuborilgan hujjatni o'chirib bo'lmaydi. Yangi hujjat yuklash uchun «Kelgan hujjatlar» bo'limida ishni oching.</p>
+            <p class="smena-matn">Tayyorlab yuklangan hujjatlar shu yerda turadi. «Mijozga yuborish» bosilgach hujjat mijozning kabinetidagi «Hujjatlar»ga tushadi va unga Telegram'da xabar boradi. Yuborilgan hujjatni o'chirib bo'lmaydi. Yangi hujjat yuklash uchun «Kelgan hujjatlar» bo'limida ishni oching.</p>
             <div class="stat-grid" style="margin-top:0;">
               <div class="stat-box"><p class="n" data-hy="tayyor">—</p><p class="l">Tayyor, mijozga yuborilmagan</p></div>
               <div class="stat-box"><p class="n" data-hy="bugun_yuborilgan">—</p><p class="l">Bugun yuborilgan hujjatlar</p></div>
@@ -1361,7 +1521,8 @@
   </div>
 </div>
 
-<script src="/scripts/xodimlar-asosiy2.js?v=1"></script>
+<script src="/scripts/xodimlar-asosiy2.js?v=20"></script>
+<script src="/scripts/bank-cheklar.js?v=3"></script>
 <script src="/scripts/xodimlar-hodisalar.js?v=1"></script>
 </body>
 </html>

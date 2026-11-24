@@ -203,7 +203,7 @@ class ServerNarxiTest(TestCase):
         data = {
             'customer': {'name': 'Ali', 'phone': '+998901234567'},
             'delivery': {'method': 'filialdan'},
-            'payment': {'method': 'naqd'},
+            'payment': {'method': 'bank'},
             'items': items,
         }
         data.update(qoshimcha)
@@ -271,7 +271,7 @@ class KatalogQatoriTest(TestCase):
     def buyurtma(self, items):
         return APIClient().post('/api/xaridlar/', {
             'customer': {'name': 'Ali', 'phone': '+998901234567'},
-            'delivery': {'method': 'filialdan'}, 'payment': {'method': 'naqd'},
+            'delivery': {'method': 'filialdan'}, 'payment': {'method': 'bank'},
             'items': items}, format='json')
 
     def jami(self, items):
@@ -319,3 +319,24 @@ class KatalogQatoriTest(TestCase):
         # bo'lmasa productId topilmaydi va 400 qaytadi (narx baribir mijozdan olinmaydi)
         r = self.buyurtma([{'productId': 'yoq-mahsulot', 'qty': 1}, {'kalit': 'ugop-16', 'name': 'x', 'qty': 1}])
         self.assertEqual(r.status_code, 400)
+
+
+class NaqdXaridYopiqTesti(TestCase):
+    """Xaridlarda naqd (yetkazishda) to'lov o'chirilgan: faqat Click yoki hisob raqamga o'tkazma."""
+
+    def test_naqd_bilan_xarid_qabul_qilinmaydi(self):
+        r = APIClient().post('/api/xaridlar/', {
+            'customer': {'name': 'Ali', 'phone': '+998901234567'},
+            'delivery': {'method': 'filialdan'}, 'payment': {'method': 'naqd'},
+            'items': [{'productId': 'p-1', 'qty': 1}]}, format='json')
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn('payment', r.json())
+        self.assertFalse(Xarid.objects.exists())
+
+    def test_bolib_tolash_hozircha_yopiq(self):
+        r = APIClient().post('/api/xaridlar/', {
+            'customer': {'name': 'Ali', 'phone': '+998901234567'},
+            'delivery': {'method': 'filialdan'}, 'payment': {'method': 'bolib', 'months': 6},
+            'items': [{'productId': 'p-1', 'qty': 1}]}, format='json')
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn('payment', r.json())

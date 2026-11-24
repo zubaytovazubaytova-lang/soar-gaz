@@ -33,20 +33,21 @@ def _sms_yuborish(telefon, matn):
     sms_yubor(telefon, matn)
 
 
-def click_url(sorov):
-    """Click checkout redirect havolasi (merchant kalitlaridan quriladi)."""
+def click_url(sorov, qaytish=None):
+    """Click checkout redirect havolasi (merchant kalitlaridan quriladi). `qaytish` — to'lovdan keyingi sahifa."""
     sid = getattr(settings, 'CLICK_SERVICE_ID', '')
     mid = getattr(settings, 'CLICK_MERCHANT_ID', '')
     params = {
         'service_id': sid,
         'merchant_id': mid,
-        'amount': sorov.summa,
+        # Click hujjati: summa N.NN formatida (docs.click.uz/click-button)
+        'amount': f'{float(sorov.summa):.2f}',
         'transaction_param': sorov.id,
     }
-    ret = getattr(settings, 'TOLOV_RETURN_URL', '')
+    ret = qaytish or getattr(settings, 'TOLOV_RETURN_URL', '')
     if ret:
         params['return_url'] = ret
-    return 'https://my.click.uz/services/pay?' + urlencode(params)
+    return 'https://my.click.uz/services/pay/?' + urlencode(params)
 
 
 def payme_url(sorov):
@@ -308,4 +309,7 @@ def metrologiya_ariza_yaratish(request):
         f"SOAR GAZ: metrologiya{tur} arizangiz #{ariza.id} qabul qilindi! "
         f"24 soat ichida bog'lanamiz."
     )
+    from apps.sms_app import xodim_xabar
+    xodim_xabar.yangi_ariza('metrologiya', f"Yangi metrologiya arizasi #{ariza.id}{tur} (saytdan)",
+                            ariza.ism, ariza.telefon, ariza.manzil, ariza.izoh)
     return Response(MetrologiyaArizasiSerializer(ariza).data, status=201)

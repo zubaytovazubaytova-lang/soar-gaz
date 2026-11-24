@@ -1,0 +1,22 @@
+#!/bin/bash
+# Zaxira nusxasini shifrlash parolini o'rnatadi. Parol ekranda ko'rinmaydi va chop etilmaydi.
+# DIQQAT: bu parol yo'qolsa, Telegram'dagi nusxalarni OCHIB BO'LMAYDI. Uni xavfsiz joyda saqlang.
+set -e
+[ "$(id -u)" = 0 ] || { echo "root bo'lishi kerak"; exit 1; }
+PAROL=/root/.config/soargaz/zaxira.parol
+tozala() { printf '%s' "$1" | tr -d '\r\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'; }
+
+echo "Zaxira nusxasi uchun shifr parolini o'ylab toping (kamida 12 belgi)."
+echo "Bu parolni daftar yoki parol menejerida saqlang: u yo'qolsa nusxalarni ochib bo'lmaydi."
+read -r -s -p "Zaxira paroli: " P1; echo
+read -r -s -p "Qayta kiriting: " P2; echo
+P1=$(tozala "$P1"); P2=$(tozala "$P2")
+[ "$P1" = "$P2" ] || { echo "XATO: ikkala parol bir xil emas. Hech narsa o'zgarmadi."; exit 1; }
+[ ${#P1} -ge 12 ] || { echo "XATO: parol kamida 12 belgi bo'lsin (hozir ${#P1}). Hech narsa o'zgarmadi."; exit 1; }
+
+mkdir -p "$(dirname "$PAROL")"
+chmod 700 "$(dirname "$PAROL")"
+( umask 077; printf '%s' "$P1" > "$PAROL" )
+chmod 600 "$PAROL"
+echo "OK: zaxira paroli saqlandi (uzunligi ${#P1} belgi)."
+echo "Endi birinchi nusxani yuborish: systemctl start soargaz-zaxira"

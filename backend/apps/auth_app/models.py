@@ -225,8 +225,8 @@ class Mijoz(Foydalanuvchi):
 
     class Meta:
         proxy = True
-        verbose_name = 'Mijoz'
-        verbose_name_plural = 'Mijozlar'
+        verbose_name = "Ro'yxatdan o'tgan mijoz"
+        verbose_name_plural = "Ro'yxatdan o'tgan mijozlar"
 
 
 AUDIT_AMAL_CHOICES = [
@@ -247,6 +247,8 @@ AUDIT_AMAL_CHOICES = [
     ('tushum_kiritildi', 'Xodim mijozdan olingan pulni kiritdi'),
     ('tushum_qabul', 'Administrator xodimdan pulni qabul qildi'),
     ('tushum_rad', 'Tushum yozuvi rad etildi'),
+    ('bank_chek', "Mijoz bank to'lovi chekini yukladi"),
+    ('bank_tekshir', "Bank to'lovi cheki tasdiqlandi/rad etildi"),
     ('xabar_yuborildi', 'Xodimlarga xabar yuborildi'),
     ('narx_ozgardi', "Xizmat narxi o'zgartirildi"),
     ('narx_qoshildi', "Narxnomaga yangi qator qo'shildi"),
@@ -265,6 +267,8 @@ AUDIT_AMAL_CHOICES = [
     ('shartnoma_tuzildi', 'Mijoz bilan shartnoma tuzildi'),
     ('shartnoma_tasdiq', 'Shartnoma tasdiqlandi'),
     ('shartnoma_bekor', 'Shartnoma bekor qilindi'),
+    ('mijozlar_eksport', "Mijozlar ro'yxati yuklab olindi (Excel/CSV)"),
+    ('kadr_malumot', "Kadrlar: xodim ma'lumoti (sertifikat, tabel, ishga kirgan sana) o'zgardi"),
 ]
 
 

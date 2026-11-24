@@ -110,6 +110,14 @@ def tushum_xodim(request):
             except (Buyurtma.DoesNotExist, TypeError, ValueError):
                 # Boshqa xodimning buyurtmasi ham shu xabarni oladi — mavjudligi sezilmasin
                 return Response({'detail': _('Buyurtma topilmadi')}, status=400)
+            if buyurtma.tolandi:
+                return Response({'detail': _("Bu buyurtma to'liq to'langan — mijozdan qayta pul olinmaydi")},
+                                status=400)
+            # Mijoz ariza berishda «hisob raqamga o'tkazma» tanlagan: usta naqd olmaydi
+            if buyurtma.tolov_usuli == 'otkazma' and usul == 'naqd':
+                return Response({'detail': _("Mijoz hisob raqamga o'tkazma (Click yoki bank) bilan to'lashni "
+                                             "tanlagan — naqd pul olinmaydi. Mijoz o'tkazma qilsa, "
+                                             "buyurtma o'zi yakunlanadi.")}, status=400)
 
         # Ish turi narxnomadan: nomni mijoz yuborgan matndan emas, serverdagi
         # narxnomadan olamiz (soxtalashtirib bo'lmasin)
